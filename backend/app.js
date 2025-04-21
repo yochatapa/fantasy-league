@@ -1,7 +1,6 @@
-// backend/app.js
-const express = require('express');
-const cors = require('cors');
-const helloRoutes = require('./routes/helloRoutes');  // 라우트 임포트
+import express from 'express';
+import cors from 'cors';
+import helloRoutes from './routes/helloRoutes.js';
 
 const app = express();
 
@@ -10,6 +9,6 @@ app.use(cors());
 app.use(express.json());
 
 // 라우팅 설정
-app.use('/api', helloRoutes);  // '/api' 경로에 helloRoutes 적용
+app.use('/api', helloRoutes);
 
-module.exports = app;
+export default app;
