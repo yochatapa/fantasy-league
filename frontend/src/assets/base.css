@@ -1,0 +1,992 @@
+* {
+  box-sizing: border-box;
+  font-family: 'Arial', sans-serif;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+html:has(#app>.modal),html:has(#app>.app-first-view){
+  overflow: hidden;
+}
+
+:root{
+  /* Primary */
+  --Primary-0 :   #FFFFFF;
+  --Primary-5 :   #EFF5FF;
+  --Primary-10 :  #D3E1FB;
+  --Primary-20 :  #A7C4F7;
+  --Primary-30 :  #7CA6F3;
+  --Primary-40 :  #5089EF;
+  --Primary-50 :  #246BEB;
+  --Primary-60 :  #1D56BC;
+  --Primary-70 :  #16408D;
+  --Primary-80 :  #0E2B5E;
+  --Primary-90 :  #07152F;
+  --Primary-100 : #000000;
+
+  /* Secondary */
+  --Secondary-0 :   #FFFFFF;
+  --Secondary-5 :   #EDF1F5;
+  --Secondary-10 :  #CDD7E4;
+  --Secondary-20 :  #B4C4D6;
+  --Secondary-30 :  #99B0CB;
+  --Secondary-40 :  #2A5C96;
+  --Secondary-50 :  #003675;
+  --Secondary-60 :  #002B5E;
+  --Secondary-70 :  #002046;
+  --Secondary-80 :  #00162F;
+  --Secondary-90 :  #000B17;
+  --Secondary-100 : #000000;
+
+  /* Grayscale */
+  --Grayscale-0 :   #FFFFFF;
+  --Grayscale-5 :   #F8F8F8;
+  --Grayscale-10 :  #F0F0F0;
+  --Grayscale-20 :  #E4E4E4;
+  --Grayscale-30 :  #D8D8D8;
+  --Grayscale-40 :  #C6C6C6;
+  --Grayscale-50 :  #8E8E8E;
+  --Grayscale-60 :  #717171;
+  --Grayscale-70 :  #555555;
+  --Grayscale-80 :  #2D2D2D;
+  --Grayscale-90 :  #1D1D1D;
+  --Grayscale-100 : #000000;
+
+  /* Danger */
+  --Danger-0 :   #FFFFFF;
+  --Danger-5 :   #FEECF0;
+  --Danger-10 :  #FCD4DE;
+  --Danger-20 :  #F799B1;
+  --Danger-30 :  #F36689;
+  --Danger-40 :  #EF3E5E;
+  --Danger-50 :  #EB003B;
+  --Danger-60 :  #D50136;
+  --Danger-70 :  #8D0023;
+  --Danger-80 :  #5E0018;
+  --Danger-90 :  #2F000C;
+  --Danger-100 : #000000;
+
+  /* Warning */
+  --Warning-0 :   #FFFFFF;
+  --Warning-5 :   #FFF8E9;
+  --Warning-10 :  #FFEAC1;
+  --Warning-20 :  #FFE2A7;
+  --Warning-30 :  #FFD47C;
+  --Warning-40 :  #FFC550;
+  --Warning-50 :  #FFB724;
+  --Warning-60 :  #98690A;
+  --Warning-70 :  #66490E;
+  --Warning-80 :  #4D370B;
+  --Warning-90 :  #332507;
+  --Warning-100 : #000000;
+
+  /* Success */
+  --Success-0 :   #FFFFFF;
+  --Success-5 :   #EEF7F0;
+  --Success-10 :  #CEE9D4;
+  --Success-20 :  #B2DCBB;
+  --Success-30 :  #8CCA99;
+  --Success-40 :  #33A14B;
+  --Success-50 :  #008A1E;
+  --Success-60 :  #006E18;
+  --Success-70 :  #005312;
+  --Success-80 :  #00370C;
+  --Success-90 :  #002207;
+  --Success-100 : #000000;
+
+   /* Information */
+   --Information-0 :   #FFFFFF;
+   --Information-5 :   #E9F0FF;
+   --Information-10 :  #D4E1FF;
+   --Information-20 :  #A9C3FF;
+   --Information-30 :  #7DA4FF;
+   --Information-40 :  #5286FF;
+   --Information-50 :  #2768FF;
+   --Information-60 :  #1F53CC;
+   --Information-70 :  #173E99;
+   --Information-80 :  #0C1F4D;
+   --Information-90 :  #040A1A;
+   --Information-100 : #000000;
+
+  /* Navy */
+  --Navy-0   : #FFFFFF;
+  --Navy-5   : #F1F1F9;
+  --Navy-10  : #D3D5ED;
+  --Navy-20  : #A7ABDA;
+  --Navy-30  : #7B82C8;
+  --Navy-40  : #4F58B5;
+  --Navy-50  : #232EA3;
+  --Navy-60  : #1C2582;
+  --Navy-70  : #151C62;
+  --Navy-80  : #0E1241;
+  --Navy-90  : #070921;
+  --Navy-100 : #000000;
+
+  /* Blue */
+  --Blue-0 :   #FFFFFF;
+  --Blue-5 :   #F0F2FF;
+  --Blue-10 :  #D2DCFE;
+  --Blue-20 :  #A4B8FE;
+  --Blue-30 :  #7795FD;
+  --Blue-40 :  #4971FD;
+  --Blue-50 :  #1C4EFC;
+  --Blue-60 :  #163ECA;
+  --Blue-70 :  #112F97;
+  --Blue-80 :  #0B1F65;
+  --Blue-90 :  #0B1F65;
+  --Blue-100 : #000000;
+
+  /* Royal Blue */
+  --Royal-Blue-0 :   #FFFFFF;
+  --Royal-Blue-5 :   #EBF5FF;
+  --Royal-Blue-10 :  #C7E3FF;
+  --Royal-Blue-20 :  #8FC8FF;
+  --Royal-Blue-30 :  #56ACFF;
+  --Royal-Blue-40 :  #1E90FF;
+  --Royal-Blue-50 :  #0074E5;
+  --Royal-Blue-60 :  #0056AA;
+  --Royal-Blue-70 :  #00407F;
+  --Royal-Blue-80 :  #002B55;
+  --Royal-Blue-90 :  #00152A;
+  --Royal-Blue-100 : #000000;
+
+  /* Sky Blue */
+  --Sky-Blue-0 :   #FFFFFF;
+  --Sky-Blue-5 :   #F0FBFF;
+  --Sky-Blue-10 :  #D4F3FE;
+  --Sky-Blue-20 :  #A9E6FC;
+  --Sky-Blue-30 :  #7DDAFB;
+  --Sky-Blue-40 :  #52CDF9;
+  --Sky-Blue-50 :  #27C1F8;
+  --Sky-Blue-60 :  #1F9AC6;
+  --Sky-Blue-70 :  #177495;
+  --Sky-Blue-80 :  #104D63;
+  --Sky-Blue-90 :  #082732;
+  --Sky-Blue-100 : #000000;
+
+  /* Aqua */
+  --Aqua-0 :   #FFFFFF;
+  --Aqua-5 :   #E7FDFD;
+  --Aqua-10 :  #CEFBFB;
+  --Aqua-20 :  #9DF6F6;
+  --Aqua-30 :  #6DF2F2;
+  --Aqua-40 :  #3BEDED;
+  --Aqua-50 :  #15DFDF;
+  --Aqua-60 :  #03C4C4;
+  --Aqua-70 :  #078C8C;
+  --Aqua-80 :  #045D5D;
+  --Aqua-90 :  #022F2F;
+  --Aqua-100 : #000000;
+
+  /* Teal */
+  --Teal-0 :   #FFFFFF;
+  --Teal-5 :   #EDF8F8;
+  --Teal-10 :  #CEEBEB;
+  --Teal-20 :  #9DD7D7;
+  --Teal-30 :  #6DC3C3;
+  --Teal-40 :  #3CAFAF;
+  --Teal-50 :  #0B9B9B;
+  --Teal-60 :  #097C7C;
+  --Teal-70 :  #075D5D;
+  --Teal-80 :  #043E3E;
+  --Teal-90 :  #021F1F;
+  --Teal-100 : #000000;
+
+  /* Green */
+  --Green-0 :   #FFFFFF;
+  --Green-5 :   #EEF7EE;
+  --Green-10 :  #CCE6CC;
+  --Green-20 :  #99CC99;
+  --Green-30 :  #66B366;
+  --Green-40 :  #339933;
+  --Green-50 :  #008000;
+  --Green-60 :  #006600;
+  --Green-70 :  #004D00;
+  --Green-80 :  #003300;
+  --Green-90 :  #001A00;
+  --Green-100 : #000000;
+
+  /* Lime Green */
+  --Lime-Green-0 :   #FFFFFF;
+  --Lime-Green-5 :   #F3FCF3;
+  --Lime-Green-10 :  #D6F5D6;
+  --Lime-Green-20 :  #ADEBAD;
+  --Lime-Green-30 :  #84E184;
+  --Lime-Green-40 :  #5BD75B;
+  --Lime-Green-50 :  #32CD32;
+  --Lime-Green-60 :  #1FAD1F;
+  --Lime-Green-70 :  #1E7B1E;
+  --Lime-Green-80 :  #145214;
+  --Lime-Green-90 :  #0A290A;
+  --Lime-Green-100 : #000000;
+
+  /* Lime */
+  --Lime-0 :   #FFFFFF;
+  --Lime-5 :   #F7FFEA;
+  --Lime-10 :  #EEFED6;
+  --Lime-20 :  #DEFFAB;
+  --Lime-30 :  #CEFE83;
+  --Lime-40 :  #BCF95D;
+  --Lime-50 :  #A1F524;
+  --Lime-60 :  #8EDD13;
+  --Lime-70 :  #699B1C;
+  --Lime-80 :  #476912;
+  --Lime-90 :  #253709;
+  --Lime-100 : #000000;
+
+  /* Olive */
+  --Olive-0 :   #FFFFFF;
+  --Olive-5 :   #F8F8ED;
+  --Olive-10 :  #EBEBCC;
+  --Olive-20 :  #D6D699;
+  --Olive-30 :  #C2C266;
+  --Olive-40 :  #ADAD33;
+  --Olive-50 :  #999900;
+  --Olive-60 :  #7A7A00;
+  --Olive-70 :  #5C5C00;
+  --Olive-80 :  #3D3D00;
+  --Olive-90 :  #1F1F00;
+  --Olive-100 : #000000;
+
+  /* Yellow */
+  --Yellow-0 :   #FFFFFF;
+  --Yellow-5 :   #FFF6CC;
+  --Yellow-10 :  #FFF6CC;
+  --Yellow-20 :  #FFEE99;
+  --Yellow-30 :  #FFE566;
+  --Yellow-40 :  #FFDD33;
+  --Yellow-50 :  #FFD400;
+  --Yellow-60 :  #D6AB00;
+  --Yellow-70 :  #A38500;
+  --Yellow-80 :  #6B5700;
+  --Yellow-90 :  #332A00;
+  --Yellow-100 : #000000;
+
+  /* Gold */
+  --Gold-0 :   #FFFFFF;
+  --Gold-5 :   #FDF7E9;
+  --Gold-10 :  #FAEFD3;
+  --Gold-20 :  #F5DFA7;
+  --Gold-30 :  #F1CF7A;
+  --Gold-40 :  #ECBF4E;
+  --Gold-50 :  #E7AF22;
+  --Gold-60 :  #B98C1B;
+  --Gold-70 :  #8B6914;
+  --Gold-80 :  #5C460E;
+  --Gold-90 :  #2E2307;
+  --Gold-100 : #000000;
+
+  /* Saddle Brown */
+  --Saddle-Brown-0 :   #FFFFFF;
+  --Saddle-Brown-5 :   #F8F2ED;
+  --Saddle-Brown-10 :  #ECDCCD;
+  --Saddle-Brown-20 :  #D9B99C;
+  --Saddle-Brown-30 :  #C6976A;
+  --Saddle-Brown-40 :  #B37439;
+  --Saddle-Brown-50 :  #A05107;
+  --Saddle-Brown-60 :  #804106;
+  --Saddle-Brown-70 :  #603104;
+  --Saddle-Brown-80 :  #402003;
+  --Saddle-Brown-90 :  #201001;
+  --Saddle-Brown-100 : #000000;
+
+  /* Brown */
+  --Brown-0 :   #FFFFFF;
+  --Brown-5 :   #F9F2F0;
+  --Brown-10 :  #EED8D3;
+  --Brown-20 :  #DCB0A7;
+  --Brown-30 :  #CB897C;
+  --Brown-40 :  #B96150;
+  --Brown-50 :  #A83A24;
+  --Brown-60 :  #862E1D;
+  --Brown-70 :  #652316;
+  --Brown-80 :  #43170E;
+  --Brown-90 :  #220C07;
+  --Brown-100 : #000000;
+
+  /* Dark Red */
+  --Dark-Red-0 :   #FFFFFF;
+  --Dark-Red-5 :   #FAEFF0;
+  --Dark-Red-10 :  #F1CECF;
+  --Dark-Red-20 :  #E39D9F;
+  --Dark-Red-30 :  #D56B70;
+  --Dark-Red-40 :  #C73A40;
+  --Dark-Red-50 :  #B90910;
+  --Dark-Red-60 :  #94070D;
+  --Dark-Red-70 :  #6F050A;
+  --Dark-Red-80 :  #4A0406;
+  --Dark-Red-90 :  #250203;
+  --Dark-Red-100 : #000000;
+
+  /* Red */
+  --Red-0 :   #FFFFFF;
+  --Red-5 :   #FEF1F1;
+  --Red-10 :  #FCCCCC;
+  --Red-20 :  #F89999;
+  --Red-30 :  #F56666;
+  --Red-40 :  #F23B3B;
+  --Red-50 :  #EE0000;
+  --Red-60 :  #CD0404;
+  --Red-70 :  #8F0000;
+  --Red-80 :  #5F0000;
+  --Red-90 :  #300000;
+  --Red-100 : #000000;
+
+  /* Orange */
+  --Orange-0 :   #FFFFFF;
+  --Orange-5 :   #FFF4F0;
+  --Orange-10 :  #FFDACC;
+  --Orange-20 :  #FFB599;
+  --Orange-30 :  #FF8F66;
+  --Orange-40 :  #FF6A33;
+  --Orange-50 :  #FF4500;
+  --Orange-60 :  #D53209;
+  --Orange-70 :  #992900;
+  --Orange-80 :  #661C00;
+  --Orange-90 :  #330E00;
+  --Orange-100 : #000000;
+
+  /* Coral */
+  --Coral-0 :   #FFFFFF;
+  --Coral-5 :   #FFF8F5;
+  --Coral-10 :  #FFE6DC;
+  --Coral-20 :  #FFCCBA;
+  --Coral-30 :  #FEB397;
+  --Coral-40 :  #FE9975;
+  --Coral-50 :  #FE8052;
+  --Coral-60 :  #D36942;
+  --Coral-70 :  #A85131;
+  --Coral-80 :  #7E3A21;
+  --Coral-90 :  #532210;
+  --Coral-100 : #000000;
+
+  /* Salmon */
+  --Salmon-0 :   #FFFFFF;
+  --Salmon-5 :   #FFF1F0;
+  --Salmon-10 :  #FFE3E0;
+  --Salmon-20 :  #FFC8C1;
+  --Salmon-30 :  #FEACA3;
+  --Salmon-40 :  #FE9184;
+  --Salmon-50 :  #FE7565;
+  --Salmon-60 :  #D75F51;
+  --Salmon-70 :  #B0493D;
+  --Salmon-80 :  #893228;
+  --Salmon-90 :  #621C14;
+  --Salmon-100 : #000000;
+
+  /* Hot Pink */
+  --Hot-Pink-0 :   #FFFFFF;
+  --Hot-Pink-5 :   #FFF5FC;
+  --Hot-Pink-10 :  #FFE3F5;
+  --Hot-Pink-20 :  #FFC6EC;
+  --Hot-Pink-30 :  #FFAAE2;
+  --Hot-Pink-40 :  #FF8DD9;
+  --Hot-Pink-50 :  #FF6FCE;
+  --Hot-Pink-60 :  #D05AA8;
+  --Hot-Pink-70 :  #A14482;
+  --Hot-Pink-80 :  #732D5B;
+  --Hot-Pink-90 :  #3D1530;
+  --Hot-Pink-100 : #000000;
+
+  /* Pink */
+  --Pink-0 :   #FFFFFF;
+  --Pink-5 :   #FFF0F8;
+  --Pink-10 :  #FFD0E9;
+  --Pink-20 :  #FFA1D4;
+  --Pink-30 :  #FF72BE;
+  --Pink-40 :  #FD51AD;
+  --Pink-50 :  #FF1493;
+  --Pink-60 :  #CC1076;
+  --Pink-70 :  #990C58;
+  --Pink-80 :  #66083B;
+  --Pink-90 :  #33041D;
+  --Pink-100 : #000000;
+
+  /* Funchsia */
+  --Funchsia-0 :   #FFFFFF;
+  --Funchsia-5 :   #FDF2FD;
+  --Funchsia-10 :  #F9D1F9;
+  --Funchsia-20 :  #F2A3F2;
+  --Funchsia-30 :  #EC75EC;
+  --Funchsia-40 :  #E547E5;
+  --Funchsia-50 :  #DF19DF;
+  --Funchsia-60 :  #B214B2;
+  --Funchsia-70 :  #860F86;
+  --Funchsia-80 :  #590A59;
+  --Funchsia-90 :  #2D052D;
+  --Funchsia-100 : #000000;
+
+  /* Purple */
+  --Purple-0 :   #FFFFFF;
+  --Purple-5 :   #F5EEF7;
+  --Purple-10 :  #E1CCE6;
+  --Purple-20 :  #C499CC;
+  --Purple-30 :  #A666B3;
+  --Purple-40 :  #893399;
+  --Purple-50 :  #6B0080;
+  --Purple-60 :  #560066;
+  --Purple-70 :  #40004D;
+  --Purple-80 :  #2B0033;
+  --Purple-90 :  #14001A;
+  --Purple-100 : #000000;
+
+  /* Blue Purple */
+  --Blue-Purple-0 :   #FFFFFF;
+  --Blue-Purple-5 :   #F4EFFA;
+  --Blue-Purple-10 :  #DED1F1;
+  --Blue-Purple-20 :  #BDA2E3;
+  --Blue-Purple-30 :  #9B74D4;
+  --Blue-Purple-40 :  #7A45C6;
+  --Blue-Purple-50 :  #5917B8;
+  --Blue-Purple-60 :  #471293;
+  --Blue-Purple-70 :  #350E6E;
+  --Blue-Purple-80 :  #24094A;
+  --Blue-Purple-90 :  #120525;
+  --Blue-Purple-100 : #000000;
+
+  /* Spacer */
+  --Spacer-100: 40rem;
+  --Spacer-99: 39.6rem;
+  --Spacer-98: 39.2rem;
+  --Spacer-97: 38.8rem;
+  --Spacer-96: 38.4rem;
+  --Spacer-95: 38rem;
+  --Spacer-94: 37.6rem;
+  --Spacer-93: 37.2rem;
+  --Spacer-92: 36.8rem;
+  --Spacer-91: 36.4rem;
+  --Spacer-90: 36rem;
+  --Spacer-89: 35.6rem;
+  --Spacer-88: 35.2rem;
+  --Spacer-87: 34.8rem;
+  --Spacer-86: 34.4rem;
+  --Spacer-85: 34rem;
+  --Spacer-84: 33.6rem;
+  --Spacer-83: 33.2rem;
+  --Spacer-82: 32.8rem;
+  --Spacer-81: 32.4rem;
+  --Spacer-80: 32rem;
+  --Spacer-79: 31.6rem;
+  --Spacer-78: 31.2rem;
+  --Spacer-77: 30.8rem;
+  --Spacer-76: 30.4rem;
+  --Spacer-75: 30rem;
+  --Spacer-74: 29.6rem;
+  --Spacer-73: 29.2rem;
+  --Spacer-72: 28.8rem;
+  --Spacer-71: 28.4rem;
+  --Spacer-70: 28rem;
+  --Spacer-69: 27.6rem;
+  --Spacer-68: 27.2rem;
+  --Spacer-67: 26.8rem;
+  --Spacer-66: 26.4rem;
+  --Spacer-65: 26rem;
+  --Spacer-64: 25.6rem;
+  --Spacer-63: 25.2rem;
+  --Spacer-62: 24.8rem;
+  --Spacer-61: 24.4rem;
+  --Spacer-60: 24rem;
+  --Spacer-59: 23.6rem;
+  --Spacer-58: 23.2rem;
+  --Spacer-57: 22.8rem;
+  --Spacer-56: 22.4rem;
+  --Spacer-55: 22rem;
+  --Spacer-54: 21.6rem;
+  --Spacer-53: 21.2rem;
+  --Spacer-52: 20.8rem;
+  --Spacer-51: 20.4rem;
+  --Spacer-50: 20rem;
+  --Spacer-49: 19.6rem;
+  --Spacer-48: 19.2rem;
+  --Spacer-47: 18.8rem;
+  --Spacer-46: 18.4rem;
+  --Spacer-45: 18rem;
+  --Spacer-44: 17.6rem;
+  --Spacer-43: 17.2rem;
+  --Spacer-42: 16.8rem;
+  --Spacer-41: 16.4rem;
+  --Spacer-40: 16rem;
+  --Spacer-39: 15.6rem;
+  --Spacer-38: 15.2rem;
+  --Spacer-37: 14.8rem;
+  --Spacer-36: 14.4rem;
+  --Spacer-35: 14rem;
+  --Spacer-34: 13.6rem;
+  --Spacer-33: 13.2rem;
+  --Spacer-32: 12.8rem;
+  --Spacer-31: 12.4rem;
+  --Spacer-30: 12rem;
+  --Spacer-29: 11.6rem;
+  --Spacer-28: 11.2rem;
+  --Spacer-27: 10.8rem;
+  --Spacer-26: 10.4rem;
+  --Spacer-25: 10rem;
+  --Spacer-24: 9.6rem;
+  --Spacer-23: 9.2rem;
+  --Spacer-22: 8.8rem;
+  --Spacer-21: 8.4rem;
+  --Spacer-20: 8rem;
+  --Spacer-19: 7.6rem;
+  --Spacer-18: 7.2rem;
+  --Spacer-17: 6.8rem;
+  --Spacer-16: 6.4rem;
+  --Spacer-15: 6rem;
+  --Spacer-14: 5.6rem;
+  --Spacer-13: 5.2rem;
+  --Spacer-12: 4.8rem;
+  --Spacer-11: 4.4rem;
+  --Spacer-10: 4rem;
+  --Spacer-9: 3.6rem;
+  --Spacer-8: 3.2rem;
+  --Spacer-7: 2.8rem;
+  --Spacer-6: 2.4rem;
+  --Spacer-5: 2rem;
+  --Spacer-4: 1.6rem;
+  --Spacer-3: 1.2rem;
+  --Spacer-2: 0.8rem;
+  --Spacer-1: 0.4rem;
+  --Spacer-0: 0rem;
+}
+
+:root.dark{
+/* Primary */
+--Primary-100 :   #FFFFFF;
+--Primary-90 :   #EFF5FF;
+--Primary-80 :  #D3E1FB;
+--Primary-70 :  #A7C4F7;
+--Primary-60 :  #7CA6F3;
+--Primary-50 :  #5089EF;
+--Primary-40 :  #246BEB;
+--Primary-30 :  #1D56BC;
+--Primary-20 :  #16408D;
+--Primary-10 :  #0E2B5E;
+--Primary-5 :  #07152F;
+--Primary-0 : #000000;
+
+/* Secondary */
+--Secondary--100 : #FFFFFF;
+--Secondary--90 :  #EDF1F5;
+--Secondary--80 :  #CDD7E4;
+--Secondary--70 :  #B4C4D6;
+--Secondary--60 :  #99B0CB;
+--Secondary--50 :  #2A5C96;
+--Secondary--40 :  #003675;
+--Secondary--30 :  #002B5E;
+--Secondary--20 :  #002046;
+--Secondary--10 :  #00162F;
+--Secondary--5  :  #000B17;
+--Secondary--0  : #000000;
+
+/* Grayscale */
+--Grayscale-100 :   #FFFFFF;
+--Grayscale-90  :   #F8F8F8;
+--Grayscale-80  :  #F0F0F0;
+--Grayscale-70  :  #E4E4E4;
+--Grayscale-60  :  #D8D8D8;
+--Grayscale-50  :  #C6C6C6;
+--Grayscale-40  :  #8E8E8E;
+--Grayscale-30  :  #717171;
+--Grayscale-20  :  #555555;
+--Grayscale-10  :  #2D2D2D;
+--Grayscale-5   :  #1D1D1D;
+--Grayscale-0   : #000000;
+
+/* Danger */
+--Danger-100 :   #FFFFFF;
+--Danger-90  :   #FEECF0;
+--Danger-80  :  #FCD4DE;
+--Danger-70  :  #F799B1;
+--Danger-60  :  #F36689;
+--Danger-50  :  #EF3E5E;
+--Danger-40  :  #EB003B;
+--Danger-30  :  #D50136;
+--Danger-20  :  #8D0023;
+--Danger-10  :  #5E0018;
+--Danger-5   :  #2F000C;
+--Danger-0   : #000000;
+
+/* Warning */
+--Warning-100 :   #FFFFFF;
+--Warning-90  :   #FFF8E9;
+--Warning-80  :  #FFEAC1;
+--Warning-70  :  #FFE2A7;
+--Warning-60  :  #FFD47C;
+--Warning-50  :  #FFC550;
+--Warning-40  :  #FFB724;
+--Warning-30  :  #98690A;
+--Warning-20  :  #66490E;
+--Warning-10  :  #4D370B;
+--Warning-5   :  #332507;
+--Warning-0   : #000000;
+
+/* Success */
+--Success-100 :  #FFFFFF;
+--Success-90  :  #EEF7F0;
+--Success-80  : #CEE9D4;
+--Success-70  : #B2DCBB;
+--Success-60  : #8CCA99;
+--Success-50  : #33A14B;
+--Success-40  : #008A1E;
+--Success-30  : #006E18;
+--Success-20  : #005312;
+--Success-10  : #00370C;
+--Success-5   : #002207;
+--Success-0   : #000000;
+
+ /* Information */
+ --Information-100 :   #FFFFFF;
+ --Information-90  :   #E9F0FF;
+ --Information-80  :  #D4E1FF;
+ --Information-70  :  #A9C3FF;
+ --Information-60  :  #7DA4FF;
+ --Information-50  :  #5286FF;
+ --Information-40  :  #2768FF;
+ --Information-30  :  #1F53CC;
+ --Information-20  :  #173E99;
+ --Information-10  :  #0C1F4D;
+ --Information-5   :  #040A1A;
+ --Information-0   : #000000;
+
+/* Navy */
+--Navy-100 : #FFFFFF;
+--Navy-90  : #F1F1F9;
+--Navy-80  : #D3D5ED;
+--Navy-70  : #A7ABDA;
+--Navy-60  : #7B82C8;
+--Navy-50  : #4F58B5;
+--Navy-40  : #232EA3;
+--Navy-30  : #1C2582;
+--Navy-20  : #151C62;
+--Navy-10  : #0E1241;
+--Navy-5   : #070921;
+--Navy-0   : #000000;
+
+/* Blue */
+--Blue-100 :   #FFFFFF;
+--Blue-90  :   #F0F2FF;
+--Blue-80  :  #D2DCFE;
+--Blue-70  :  #A4B8FE;
+--Blue-60  :  #7795FD;
+--Blue-50  :  #4971FD;
+--Blue-40  :  #1C4EFC;
+--Blue-30  :  #163ECA;
+--Blue-20  :  #112F97;
+--Blue-10  :  #0B1F65;
+--Blue-5   :  #0B1F65;
+--Blue-0   : #000000;
+
+/* Royal Blue */
+--Royal-Blue-100 :   #FFFFFF;
+--Royal-Blue-90  :   #EBF5FF;
+--Royal-Blue-80  :  #C7E3FF;
+--Royal-Blue-70  :  #8FC8FF;
+--Royal-Blue-60  :  #56ACFF;
+--Royal-Blue-50  :  #1E90FF;
+--Royal-Blue-40  :  #0074E5;
+--Royal-Blue-30  :  #0056AA;
+--Royal-Blue-20  :  #00407F;
+--Royal-Blue-10  :  #002B55;
+--Royal-Blue-5   :  #00152A;
+--Royal-Blue-0   : #000000;
+
+/* Sky Blue */
+--Sky-Blue-100 :   #FFFFFF;
+--Sky-Blue-90  :   #F0FBFF;
+--Sky-Blue-80  :  #D4F3FE;
+--Sky-Blue-70  :  #A9E6FC;
+--Sky-Blue-60  :  #7DDAFB;
+--Sky-Blue-50  :  #52CDF9;
+--Sky-Blue-40  :  #27C1F8;
+--Sky-Blue-30  :  #1F9AC6;
+--Sky-Blue-20  :  #177495;
+--Sky-Blue-10  :  #104D63;
+--Sky-Blue-5   :  #082732;
+--Sky-Blue-0   : #000000;
+
+/* Aqua */
+--Aqua-100 :   #FFFFFF;
+--Aqua-90  :   #E7FDFD;
+--Aqua-80  :  #CEFBFB;
+--Aqua-70  :  #9DF6F6;
+--Aqua-60  :  #6DF2F2;
+--Aqua-50  :  #3BEDED;
+--Aqua-40  :  #15DFDF;
+--Aqua-30  :  #03C4C4;
+--Aqua-20  :  #078C8C;
+--Aqua-10  :  #045D5D;
+--Aqua-5   :  #022F2F;
+--Aqua-0   : #000000;
+
+/* Teal */
+--Teal-100 :   #FFFFFF;
+--Teal-90  :   #EDF8F8;
+--Teal-80  :  #CEEBEB;
+--Teal-70  :  #9DD7D7;
+--Teal-60  :  #6DC3C3;
+--Teal-50  :  #3CAFAF;
+--Teal-40  :  #0B9B9B;
+--Teal-30  :  #097C7C;
+--Teal-20  :  #075D5D;
+--Teal-10  :  #043E3E;
+--Teal-5   :  #021F1F;
+--Teal-0   : #000000;
+
+/* Green */
+--Green-100 :   #FFFFFF;
+--Green-90  :   #EEF7EE;
+--Green-80  :  #CCE6CC;
+--Green-70  :  #99CC99;
+--Green-60  :  #66B366;
+--Green-50  :  #339933;
+--Green-40  :  #008000;
+--Green-30  :  #006600;
+--Green-20  :  #004D00;
+--Green-10  :  #003300;
+--Green-5   :  #001A00;
+--Green-0   : #000000;
+
+/* Lime Green */
+--Lime-Green-100 :   #FFFFFF;
+--Lime-Green-90  :   #F3FCF3;
+--Lime-Green-80  :  #D6F5D6;
+--Lime-Green-70  :  #ADEBAD;
+--Lime-Green-60  :  #84E184;
+--Lime-Green-50  :  #5BD75B;
+--Lime-Green-40  :  #32CD32;
+--Lime-Green-30  :  #1FAD1F;
+--Lime-Green-20  :  #1E7B1E;
+--Lime-Green-10  :  #145214;
+--Lime-Green-5   :  #0A290A;
+--Lime-Green-0   : #000000;
+
+/* Lime */
+--Lime-100 :   #FFFFFF;
+--Lime-90  :   #F7FFEA;
+--Lime-80  :  #EEFED6;
+--Lime-70  :  #DEFFAB;
+--Lime-60  :  #CEFE83;
+--Lime-50  :  #BCF95D;
+--Lime-40  :  #A1F524;
+--Lime-30  :  #8EDD13;
+--Lime-20  :  #699B1C;
+--Lime-10  :  #476912;
+--Lime-5   :  #253709;
+--Lime-0   : #000000;
+
+/* Olive */
+--Olive-100 :   #FFFFFF;
+--Olive-90  :   #F8F8ED;
+--Olive-80  :  #EBEBCC;
+--Olive-70  :  #D6D699;
+--Olive-60  :  #C2C266;
+--Olive-50  :  #ADAD33;
+--Olive-40  :  #999900;
+--Olive-30  :  #7A7A00;
+--Olive-20  :  #5C5C00;
+--Olive-10  :  #3D3D00;
+--Olive-5   :  #1F1F00;
+--Olive-0   : #000000;
+
+/* Yellow */
+--Yellow-100 :   #FFFFFF;
+--Yellow-90  :   #FFF6CC;
+--Yellow-80  :  #FFF6CC;
+--Yellow-70  :  #FFEE99;
+--Yellow-60  :  #FFE566;
+--Yellow-50  :  #FFDD33;
+--Yellow-40  :  #FFD400;
+--Yellow-30  :  #D6AB00;
+--Yellow-20  :  #A38500;
+--Yellow-10  :  #6B5700;
+--Yellow-5   :  #332A00;
+--Yellow-0   : #000000;
+
+/* Gold */
+--Gold-100 :   #FFFFFF;
+--Gold-90  :   #FDF7E9;
+--Gold-80  :  #FAEFD3;
+--Gold-70  :  #F5DFA7;
+--Gold-60  :  #F1CF7A;
+--Gold-50  :  #ECBF4E;
+--Gold-40  :  #E7AF22;
+--Gold-30  :  #B98C1B;
+--Gold-20  :  #8B6914;
+--Gold-10  :  #5C460E;
+--Gold-5   :  #2E2307;
+--Gold-0   : #000000;
+
+/* Saddle Brown */
+--Saddle-Brown-100 :   #FFFFFF;
+--Saddle-Brown-90  :   #F8F2ED;
+--Saddle-Brown-80  :  #ECDCCD;
+--Saddle-Brown-70  :  #D9B99C;
+--Saddle-Brown-60  :  #C6976A;
+--Saddle-Brown-50  :  #B37439;
+--Saddle-Brown-40  :  #A05107;
+--Saddle-Brown-30  :  #804106;
+--Saddle-Brown-20  :  #603104;
+--Saddle-Brown-10  :  #402003;
+--Saddle-Brown-5   :  #201001;
+--Saddle-Brown-0   : #000000;
+
+/* Brown */
+--Brown-100 :   #FFFFFF;
+--Brown-90  :   #F9F2F0;
+--Brown-80  :  #EED8D3;
+--Brown-70  :  #DCB0A7;
+--Brown-60  :  #CB897C;
+--Brown-50  :  #B96150;
+--Brown-40  :  #A83A24;
+--Brown-30  :  #862E1D;
+--Brown-20  :  #652316;
+--Brown-10  :  #43170E;
+--Brown-5   :  #220C07;
+--Brown-0   : #000000;
+
+/* Dark Red */
+--Dark-Red-100 :   #FFFFFF;
+--Dark-Red-90  :   #FAEFF0;
+--Dark-Red-80  :  #F1CECF;
+--Dark-Red-70  :  #E39D9F;
+--Dark-Red-60  :  #D56B70;
+--Dark-Red-50  :  #C73A40;
+--Dark-Red-40  :  #B90910;
+--Dark-Red-30  :  #94070D;
+--Dark-Red-20  :  #6F050A;
+--Dark-Red-10  :  #4A0406;
+--Dark-Red-5   :  #250203;
+--Dark-Red-0   : #000000;
+
+/* Red */
+--Red-100 :   #FFFFFF;
+--Red-90  :   #FEF1F1;
+--Red-80  :  #FCCCCC;
+--Red-70  :  #F89999;
+--Red-60  :  #F56666;
+--Red-50  :  #F23B3B;
+--Red-40  :  #EE0000;
+--Red-30  :  #CD0404;
+--Red-20  :  #8F0000;
+--Red-10  :  #5F0000;
+--Red-5   :  #300000;
+--Red-0   : #000000;
+
+/* Orange */
+--Orange-100 :   #FFFFFF;
+--Orange-90  :   #FFF4F0;
+--Orange-80  :  #FFDACC;
+--Orange-70  :  #FFB599;
+--Orange-60  :  #FF8F66;
+--Orange-50  :  #FF6A33;
+--Orange-40  :  #FF4500;
+--Orange-30  :  #D53209;
+--Orange-20  :  #992900;
+--Orange-10  :  #661C00;
+--Orange-5   :  #330E00;
+--Orange-0   : #000000;
+
+/* Coral */
+--Coral-100 :   #FFFFFF;
+--Coral-90  :   #FFF8F5;
+--Coral-80  :  #FFE6DC;
+--Coral-70  :  #FFCCBA;
+--Coral-60  :  #FEB397;
+--Coral-50  :  #FE9975;
+--Coral-40  :  #FE8052;
+--Coral-30  :  #D36942;
+--Coral-20  :  #A85131;
+--Coral-10  :  #7E3A21;
+--Coral-5   :  #532210;
+--Coral-0   : #000000;
+
+/* Salmon */
+--Salmon-100 :   #FFFFFF;
+--Salmon-90  :   #FFF1F0;
+--Salmon-80  :  #FFE3E0;
+--Salmon-70  :  #FFC8C1;
+--Salmon-60  :  #FEACA3;
+--Salmon-50  :  #FE9184;
+--Salmon-40  :  #FE7565;
+--Salmon-30  :  #D75F51;
+--Salmon-20  :  #B0493D;
+--Salmon-10  :  #893228;
+--Salmon-5   :  #621C14;
+--Salmon-0   : #000000;
+
+/* Hot Pink */
+--Hot-Pink-100 :   #FFFFFF;
+--Hot-Pink-90  :   #FFF5FC;
+--Hot-Pink-80  :  #FFE3F5;
+--Hot-Pink-70  :  #FFC6EC;
+--Hot-Pink-60  :  #FFAAE2;
+--Hot-Pink-50  :  #FF8DD9;
+--Hot-Pink-40  :  #FF6FCE;
+--Hot-Pink-30  :  #D05AA8;
+--Hot-Pink-20  :  #A14482;
+--Hot-Pink-10  :  #732D5B;
+--Hot-Pink-5   :  #3D1530;
+--Hot-Pink-0   : #000000;
+
+/* Pink */
+--Pink-100 :   #FFFFFF;
+--Pink-90  :   #FFF0F8;
+--Pink-80  :  #FFD0E9;
+--Pink-70  :  #FFA1D4;
+--Pink-60  :  #FF72BE;
+--Pink-50  :  #FD51AD;
+--Pink-40  :  #FF1493;
+--Pink-30  :  #CC1076;
+--Pink-20  :  #990C58;
+--Pink-10  :  #66083B;
+--Pink-5   :  #33041D;
+--Pink-0   : #000000;
+
+/* Funchsia */
+--Funchsia-100 :   #FFFFFF;
+--Funchsia-90  :   #FDF2FD;
+--Funchsia-80  :  #F9D1F9;
+--Funchsia-70  :  #F2A3F2;
+--Funchsia-60  :  #EC75EC;
+--Funchsia-50  :  #E547E5;
+--Funchsia-40  :  #DF19DF;
+--Funchsia-30  :  #B214B2;
+--Funchsia-20  :  #860F86;
+--Funchsia-10  :  #590A59;
+--Funchsia-5   :  #2D052D;
+--Funchsia-0   : #000000;
+
+/* Purple */
+--Purple-100 :   #FFFFFF;
+--Purple-90  :   #F5EEF7;
+--Purple-80  :  #E1CCE6;
+--Purple-70  :  #C499CC;
+--Purple-60  :  #A666B3;
+--Purple-50  :  #893399;
+--Purple-40  :  #6B0080;
+--Purple-30  :  #560066;
+--Purple-20  :  #40004D;
+--Purple-10  :  #2B0033;
+--Purple-5   :  #14001A;
+--Purple-0   : #000000;
+
+/* Blue Purple */
+--Blue-Purple-100 :   #FFFFFF;
+--Blue-Purple-90  :   #F4EFFA;
+--Blue-Purple-80  :  #DED1F1;
+--Blue-Purple-70  :  #BDA2E3;
+--Blue-Purple-60  :  #9B74D4;
+--Blue-Purple-50  :  #7A45C6;
+--Blue-Purple-40  :  #5917B8;
+--Blue-Purple-30  :  #471293;
+--Blue-Purple-20  :  #350E6E;
+--Blue-Purple-10  :  #24094A;
+--Blue-Purple-5   :  #120525;
+--Blue-Purple-0   : #000000;
+}
+
+:root.dark :where(img){
+  filter: grayscale(0) contrast(1) brightness(1) saturate(0.7)!important;
+}
