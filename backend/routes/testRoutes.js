@@ -1,7 +1,7 @@
 import express from 'express';
 const router = express.Router();
 
-import { getHelloMessage } from '../controllers/helloController.js';
+import { getHelloMessage } from '../controllers/testController.js';
 
 router.get('/hello', getHelloMessage);
 

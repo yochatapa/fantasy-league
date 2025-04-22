@@ -1,6 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import helloRoutes from './routes/helloRoutes.js';
+import testRoutes from './routes/testRoutes.js';
 
 const app = express();
 
@@ -9,6 +9,6 @@ app.use(cors());
 app.use(express.json());
 
 // 라우팅 설정
-app.use('/api', helloRoutes);
+app.use('/api/test', testRoutes);
 
 export default app;
