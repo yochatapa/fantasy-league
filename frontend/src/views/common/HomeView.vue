@@ -11,5 +11,5 @@ onMounted(async () => {
 </script>
 
 <template>
-  <h1>메시지: {{ message }}</h1>
+  <h1>홈: {{ message }}</h1>
 </template>
