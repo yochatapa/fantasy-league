@@ -6,11 +6,6 @@ import * as directives from 'vuetify/directives'
 const vuetify = createVuetify({
     components,
     directives,
-    defaults: {
-        global: {
-            density: 'comfortable',
-        },
-    },
 })
 
 export default vuetify
