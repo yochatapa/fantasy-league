@@ -83,6 +83,7 @@
 <script setup>
 import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
+import validation from '@/utils/common/validation'
 
 const emailError = ref('');
 
@@ -100,18 +101,13 @@ const email = ref('');
 const password = ref('');
 const router = useRouter();
 
-const isValidEmail = (email) => {
-    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return regex.test(email);
-};
-
 const login = () => {
     if (!email.value) {
         emailError.value = '이메일이 입력되지 않았습니다.';
         return;
     }
 
-    if (!isValidEmail(email.value)) {
+    if (!validation.isEmail(email.value)) {
         emailError.value = '올바른 이메일 형식이 아닙니다.';
         return;
     }
@@ -131,7 +127,7 @@ const handleEmailBlur = () => {
     
     if (!email.value) {
         emailError.value = '이메일이 입력되지 않았습니다.';
-    } else if (!isValidEmail(email.value)) {
+    } else if (!validation.isEmail(email.value)) {
         emailError.value = '올바른 이메일 형식이 아닙니다.';
     } else {
         emailError.value = '';
