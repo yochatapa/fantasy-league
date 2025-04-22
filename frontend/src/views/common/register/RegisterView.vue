@@ -61,10 +61,12 @@
 
                             <!-- 닉네임 입력 -->
                             <v-text-field
+                                ref="nicknameFieldRef"
                                 v-model="nickname"
                                 label="닉네임"
                                 required
                                 :rules="nicknameRules"
+                                :loading="isCheckingNickname"
                                 @blur="checkNicknameAvailability"
                                 class="mb-2"
                             />
@@ -85,7 +87,7 @@
                                 :rules="[bioRules]"
                                 class="mb-2"
                             />
-
+                            
                             <!-- 선호 구단 선택 -->
                             <v-select
                                 v-model="favoriteTeam"
@@ -110,9 +112,11 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, nextTick } from 'vue';
 import { KBO_TEAMS } from '@/utils/code/kboTeams';
 import validation from '@/utils/common/validation';
+
+const nicknameFieldRef = ref(null);
 
 const email = ref('');
 const password = ref('');
@@ -126,6 +130,10 @@ const emailError = ref('');
 const passwordError = ref('');
 const passwordConfirmError = ref('');
 const nicknameError = ref('');
+
+const isCheckingNickname = ref(false); // 닉네임 중복 확인 API 호출 중인지 여부
+// 닉네임 확인 결과 상태: null (초기/리셋), 'checking' (확인 중), 'available' (사용 가능), 'taken' (이미 사용 중), 'error' (API 오류)
+const nicknameCheckStatus = ref(null);
 
 const showPassword = ref(false);
 const showPassword2 = ref(false);
@@ -147,9 +155,47 @@ const passwordConfirmRules = computed(() => [
   () => passwordConfirmError.value === '' || passwordConfirmError.value
 ]);
 
-const nicknameRules = computed(() => [
-    () => nicknameError.value === '' || nicknameError.value
-]);
+const nicknameRules = computed(() => {
+     const rules = [
+        // 규칙 1: 필수 입력
+        value => !!value || '필수 입력 항목입니다.',
+        // 규칙 2: 특수 문자 불가
+        value => {
+             if (!value) return true;
+
+             const specialCharRegex = /[^가-힣a-zA-Z0-9]/;
+
+             if (specialCharRegex.test(value)) {
+                 return '특수 문자는 사용할 수 없습니다.';
+             }
+
+             // 특수 문자가 발견되지 않으면 true 반환하여 이 규칙 통과
+             return true;
+         },
+        // 규칙 3: 최소 길이
+        value => (value && value.length >= 3 && value.length<=20) || '닉네임은 3자 이상, 20자 이하여야 합니다.',
+        // 규칙 4: 비동기 중복 확인 상태에 따른 메시지
+        () => {
+             if (!nickname.value || nickname.value.length < 3 || nickname.value.length > 20) {
+                  return true; // 길이가 짧으면 이 규칙은 통과시키고 앞 규칙이 에러를 표시
+             }
+             console.log(nicknameCheckStatus.value)
+             switch (nicknameCheckStatus.value) {
+                case 'taken':
+                    return '이미 사용 중인 닉네임입니다.'; // 이미 사용 중이면 에러 메시지 반환
+                case 'error':
+                    return '닉네임 확인 중 오류가 발생했습니다.'; // API 오류 시 에러 메시지 반환
+                case 'checking':
+                case 'available':
+                case null:
+                default:
+                    // '확인 중', '사용 가능', '확인 전' 상태는 에러가 아니므로 true 반환
+                    return true;
+             }
+        }
+    ];
+    return rules;
+});
 
 const valid = computed(() => {
   return (
@@ -210,13 +256,50 @@ const handleConfirmPasswordInput = () => {
 };
 
 // 닉네임 중복 검사
-const checkNicknameAvailability = () => {
-    // 서버에서 닉네임 중복 여부 확인하는 API 호출
-    if (nickname.value.length < 3) {
-        nicknameError.value = '닉네임은 3자 이상이어야 합니다.';
-    } else {
-        nicknameError.value = '';
-        // 여기서 API로 닉네임 중복 체크를 할 수 있습니다.
+const checkNicknameAvailability = async () => {
+    // 입력 값이 없거나 너무 짧거나 이미 확인 중이면 API 호출하지 않음
+    if (!nickname.value || nickname.value.length < 3 || isCheckingNickname.value) {
+        return;
+    }
+
+    // 중복 확인 상태 초기화 및 확인 시작 표시
+    nicknameCheckStatus.value = 'checking';
+    isCheckingNickname.value = true; // 로딩 인디케이터 표시용
+
+    try {
+        const url = `${import.meta.env.VITE_API_URL}/api/users/check-nickname?nickname=${encodeURIComponent(nickname.value)}`;
+
+        const response = await fetch(url);
+
+        if (!response.ok) {
+            const errorDetail = await response.text(); // 또는 response.json()
+            throw new Error(`HTTP error! status: ${response.status}, detail: ${errorDetail}`);
+        }
+
+        const data = await response.json();
+
+        if (data.exists) {
+            nicknameCheckStatus.value = 'taken'; // 이미 사용 중
+        } else {
+            nicknameCheckStatus.value = 'available'; // 사용 가능
+        }
+
+    } catch (error) {
+        // 네트워크 오류나 위에서 throw 한 HTTP 에러가 여기서 잡힙니다.
+        console.error('닉네임 중복 확인 API 오류:', error);
+        nicknameCheckStatus.value = 'error'; // API 오류 또는 네트워크 오류 발생
+    } finally {
+        // 확인 완료 후 로딩 상태 해제
+        isCheckingNickname.value = false;
+
+        await nextTick();
+
+        // nicknameFieldRef가 존재하고 유효성 검사 메서드가 있다면 호출합니다.
+        // Vuetify 3의 v-text-field 컴포넌트 인스턴스는 validate() 메서드를 노출합니다.
+        if (nicknameFieldRef.value && typeof nicknameFieldRef.value.validate === 'function') {
+            // 해당 필드의 유효성 검사를 다시 실행합니다.
+             nicknameFieldRef.value.validate();
+        }
     }
 };
 
