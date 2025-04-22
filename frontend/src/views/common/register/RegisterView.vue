@@ -16,7 +16,6 @@
                                 type="email"
                                 prepend-inner-icon="mdi-email-outline"
                                 required
-                                density="comfortable"
                                 :rules="emailRules"
                                 @blur="handleEmailBlur"
                                 class="mb-2"
@@ -30,7 +29,6 @@
                             :rules="passwordRules"
                             required
                             prepend-inner-icon="mdi-lock-outline"
-                            class=""
                             />
 
                             <!-- 조건 체크 시각화 -->
