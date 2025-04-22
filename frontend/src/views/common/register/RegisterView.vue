@@ -25,10 +25,12 @@
                             <v-text-field
                             v-model="password"
                             label="비밀번호"
-                            type="password"
                             :rules="passwordRules"
                             required
                             prepend-inner-icon="mdi-lock-outline"
+                            :append-icon="showPassword ? 'mdi-eye' : 'mdi-eye-off'"
+                            :type="showPassword ? 'text' : 'password'"
+                            @click:append="showPassword = !showPassword"
                             />
 
                             <!-- 조건 체크 시각화 -->
@@ -48,11 +50,13 @@
                             <v-text-field
                             v-model="passwordConfirm"
                             label="비밀번호 확인"
-                            type="password"
                             :rules="passwordConfirmRules"
                             required
                             prepend-inner-icon="mdi-lock-check-outline"
                             class="mb-2"
+                            :append-icon="showPassword2 ? 'mdi-eye' : 'mdi-eye-off'"
+                            :type="showPassword2 ? 'text' : 'password'"
+                            @click:append="showPassword2 = !showPassword2"
                             />
 
                             <!-- 닉네임 입력 -->
@@ -122,6 +126,9 @@ const emailError = ref('');
 const passwordError = ref('');
 const passwordConfirmError = ref('');
 const nicknameError = ref('');
+
+const showPassword = ref(false);
+const showPassword2 = ref(false);
 
 const kboTeams = Object.keys(KBO_TEAMS).map(key => ({
     key,

@@ -22,12 +22,14 @@
                 <v-text-field
                     v-model="password"
                     label="비밀번호"
-                    type="password"
                     prepend-inner-icon="mdi-lock-outline"
                     required
                     :rules="passwordRules"
                     @blur="handlePasswordBlur"
                     class="mb-2"
+                    :append-icon="showPassword ? 'mdi-eye' : 'mdi-eye-off'"
+                    :type="showPassword ? 'text' : 'password'"
+                    @click:append="showPassword = !showPassword"
                 />
                 <v-btn color="primary" type="submit" block class="mt-2">
                     로그인
@@ -82,6 +84,8 @@
 import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import validation from '@/utils/common/validation'
+
+const showPassword = ref(false);
 
 const emailError = ref('');
 
