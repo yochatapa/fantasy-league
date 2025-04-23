@@ -1,15 +1,18 @@
 import express from 'express';
 import cors from 'cors';
+import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser'
 import testRoutes from './routes/testRoutes.js';
 import usersRoutes from './routes/usersRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 
+dotenv.config();
+
 const app = express();
 
 // 미들웨어 설정
 app.use(cors({
-    origin: 'http://localhost:5173', // 정확한 origin 명시
+    origin: process.env.FRONTEND_URL, // 정확한 origin 명시
     credentials: true,               // 쿠키 포함 허용
 }));
 app.use(express.json());
