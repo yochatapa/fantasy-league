@@ -1,7 +1,7 @@
 <template>
     <v-container class="d-flex justify-center align-center" style="height: 100vh;">
         <v-row class="d-flex justify-center" style="height: 100%;">
-            <v-col cols="12" sm="8" md="4">
+            <v-col cols="12" sm="8" md="6">
                 <v-card class="pa-4">
                     <v-card-title class="justify-center mb-4">
                         <span class="text-h6 font-weight-bold">회원가입</span>
@@ -25,14 +25,15 @@
 
                             <!-- 비밀번호 입력 -->
                             <v-text-field
-                            v-model="password"
-                            label="비밀번호"
-                            :rules="passwordRules"
-                            required
-                            prepend-inner-icon="mdi-lock-outline"
-                            :append-icon="showPassword ? 'mdi-eye' : 'mdi-eye-off'"
-                            :type="showPassword ? 'text' : 'password'"
-                            @click:append="showPassword = !showPassword"
+                                v-model="password"
+                                label="비밀번호"
+                                :rules="passwordRules"
+                                required
+                                prepend-inner-icon="mdi-lock-outline"
+                                :append-icon="showPassword ? 'mdi-eye' : 'mdi-eye-off'"
+                                :type="showPassword ? 'text' : 'password'"
+                                @click:append="showPassword = !showPassword"
+                                class="mb-1"
                             />
 
                             <!-- 조건 체크 시각화 -->
@@ -50,15 +51,15 @@
 
                             <!-- 비밀번호 확인 필드 -->
                             <v-text-field
-                            v-model="passwordConfirm"
-                            label="비밀번호 확인"
-                            :rules="passwordConfirmRules"
-                            required
-                            prepend-inner-icon="mdi-lock-check-outline"
-                            class="mb-2"
-                            :append-icon="showPassword2 ? 'mdi-eye' : 'mdi-eye-off'"
-                            :type="showPassword2 ? 'text' : 'password'"
-                            @click:append="showPassword2 = !showPassword2"
+                                v-model="passwordConfirm"
+                                label="비밀번호 확인"
+                                :rules="passwordConfirmRules"
+                                required
+                                prepend-inner-icon="mdi-lock-check-outline"
+                                class="mb-2"
+                                :append-icon="showPassword2 ? 'mdi-eye' : 'mdi-eye-off'"
+                                :type="showPassword2 ? 'text' : 'password'"
+                                @click:append="showPassword2 = !showPassword2"
                             />
 
                             <!-- 닉네임 입력 -->
@@ -117,6 +118,7 @@
 import { ref, computed, watch, nextTick } from 'vue';
 import { KBO_TEAMS } from '@/utils/code/kboTeams';
 import validation from '@/utils/common/validation';
+import { commonFetch } from '@/utils/common/commonFetch';
 
 const emailFieldRef = ref(null);
 const nicknameFieldRef = ref(null);
@@ -250,7 +252,7 @@ const valid = computed(() => {
 });
 
 const bioRules = [
-    v => v.length <= 255 || '소개글은 255자 이내로 입력해주세요.'
+    v => !v || v.length <= 255 || '소개글은 255자 이내로 입력해주세요.'
 ];
 
 const passwordValidationState = ref({
@@ -303,38 +305,23 @@ const handleEmailBlur = async () => {
     emailCheckStatus.value = 'checking';
     isCheckingEmail.value = true; // 로딩 인디케이터 표시용
 
-    try {
-        const url = `${import.meta.env.VITE_API_URL}/api/users/check-email?email=${encodeURIComponent(email.value)}`;
+    const url = `${import.meta.env.VITE_API_URL}/api/users/check-email?email=${encodeURIComponent(email.value)}`;
+    isCheckingEmail.value = true;
 
-        const response = await fetch(url);
+    const result = await commonFetch({ url });
 
-        if (!response.ok) {
-            const errorDetail = await response.text(); // 또는 response.json()
-            throw new Error(`HTTP error! status: ${response.status}, detail: ${errorDetail}`);
-        }
+    if (result.success) {
+        emailCheckStatus.value = result.data.exists ? 'taken' : 'available';
+    } else {
+        console.error('이메일 중복 확인 API 오류:', result.error);
+        emailCheckStatus.value = 'error';
+    }
 
-        const data = await response.json();
+    isCheckingEmail.value = false;
 
-        if (data.exists) {
-            emailCheckStatus.value = 'taken'; // 이미 사용 중
-        } else {
-            emailCheckStatus.value = 'available'; // 사용 가능
-        }
-
-    } catch (error) {
-        // 네트워크 오류나 위에서 throw 한 HTTP 에러가 여기서 잡힙니다.
-        console.error('닉네임 중복 확인 API 오류:', error);
-        emailCheckStatus.value = 'error'; // API 오류 또는 네트워크 오류 발생
-    } finally {
-        // 확인 완료 후 로딩 상태 해제
-        isCheckingEmail.value = false;
-
-        await nextTick();
-
-        if (emailFieldRef.value && typeof emailFieldRef.value.validate === 'function') {
-            // 해당 필드의 유효성 검사를 다시 실행합니다.
-            emailFieldRef.value.validate();
-        }
+    await nextTick();
+    if (emailFieldRef.value && typeof emailFieldRef.value.validate === 'function') {
+        emailFieldRef.value.validate();
     }
 };
 
@@ -349,40 +336,24 @@ const handleNicknameBlur = async () => {
     nicknameCheckStatus.value = 'checking';
     isCheckingNickname.value = true; // 로딩 인디케이터 표시용
 
-    try {
-        const url = `${import.meta.env.VITE_API_URL}/api/users/check-nickname?nickname=${encodeURIComponent(nickname.value)}`;
+    const url = `${import.meta.env.VITE_API_URL}/api/users/check-nickname?nickname=${encodeURIComponent(nickname.value)}`;
+    isCheckingNickname.value = true;
 
-        const response = await fetch(url);
+    const result = await commonFetch({ url });
 
-        if (!response.ok) {
-            const errorDetail = await response.text(); // 또는 response.json()
-            throw new Error(`HTTP error! status: ${response.status}, detail: ${errorDetail}`);
-        }
+    if (result.success) {
+        nicknameCheckStatus.value = result.data.exists ? 'taken' : 'available';
+    } else {
+        console.error('닉네임 중복 확인 API 오류:', result.error);
+        nicknameCheckStatus.value = 'error';
+    }
 
-        const data = await response.json();
+    isCheckingNickname.value = false;
 
-        if (data.exists) {
-            nicknameCheckStatus.value = 'taken'; // 이미 사용 중
-        } else {
-            nicknameCheckStatus.value = 'available'; // 사용 가능
-        }
+    await nextTick();
 
-    } catch (error) {
-        // 네트워크 오류나 위에서 throw 한 HTTP 에러가 여기서 잡힙니다.
-        console.error('닉네임 중복 확인 API 오류:', error);
-        nicknameCheckStatus.value = 'error'; // API 오류 또는 네트워크 오류 발생
-    } finally {
-        // 확인 완료 후 로딩 상태 해제
-        isCheckingNickname.value = false;
-
-        await nextTick();
-
-        // nicknameFieldRef가 존재하고 유효성 검사 메서드가 있다면 호출합니다.
-        // Vuetify 3의 v-text-field 컴포넌트 인스턴스는 validate() 메서드를 노출합니다.
-        if (nicknameFieldRef.value && typeof nicknameFieldRef.value.validate === 'function') {
-            // 해당 필드의 유효성 검사를 다시 실행합니다.
-             nicknameFieldRef.value.validate();
-        }
+    if (nicknameFieldRef.value && typeof nicknameFieldRef.value.validate === 'function') {
+        nicknameFieldRef.value.validate();
     }
 };
 
@@ -403,10 +374,3 @@ const submitForm = () => {
     // TODO: API 호출로 백엔드에 데이터 전송 (회원가입 처리)
 };
 </script>
-
-<style scoped>
-.v-card {
-  max-width: 400px;
-  margin: auto;
-}
-</style>

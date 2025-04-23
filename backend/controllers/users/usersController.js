@@ -1,10 +1,11 @@
 import {query} from '../../db.js';
+import { sendSuccess, sendBadRequest, sendServerError } from '../../utils/apiResponse.js';
 
 export const checkNickname = async (req, res) => {
     const { nickname } = req.query;
 
     if (!nickname) {
-        return res.status(400).json({ message: '닉네임을 입력해주세요.' });
+        return sendBadRequest(res,"닉네임을 입력해주세요.");
     }
 
     try {
@@ -15,10 +16,9 @@ export const checkNickname = async (req, res) => {
 
         const exists = result.rows.length > 0;
 
-        res.status(200).json({ exists });
+        return sendSuccess(res, { exists });
     } catch (error) {
-        console.error('닉네임 중복 확인 에러:', error);
-        res.status(500).json({ message: '서버 오류가 발생했습니다.', error: error.message });
+        return sendServerError(res, error, '닉네임 중복 확인 에러:');
     }
 };
 
@@ -26,7 +26,7 @@ export const checkEmail = async (req, res) => {
     const { email } = req.query;
 
     if (!email) {
-        return res.status(400).json({ message: '이메일을 입력해주세요.' });
+        return sendBadRequest(res,"이메일을 입력해주세요.");
     }
 
     try {
@@ -37,9 +37,8 @@ export const checkEmail = async (req, res) => {
 
         const exists = result.rows.length > 0;
 
-        res.status(200).json({ exists });
+        return sendSuccess(res, { exists });
     } catch (error) {
-        console.error('이메일 중복 확인 에러:', error);
-        res.status(500).json({ message: '서버 오류가 발생했습니다.', error: error.message });
+        return sendServerError(res, error, '이메일 중복 확인 에러:');
     }
 };
