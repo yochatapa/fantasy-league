@@ -289,6 +289,11 @@ watch(password, (val) => {
     // 비밀번호 변경 시 확인값도 다시 체크
     if (passwordConfirm.value) {
         passwordConfirmError.value = passwordConfirm.value === val ? '' : '비밀번호가 일치하지 않습니다.';
+        nextTick(() => {
+            if (passwordConfirmFieldRef.value && typeof passwordConfirmFieldRef.value.validate === 'function') {
+                passwordConfirmFieldRef.value.validate(); // 이메일 유효성 검증
+            }
+        });
     }
 });
 
@@ -370,73 +375,6 @@ const handleNicknameBlur = async () => {
 };
 
 const submitForm = async () => {
-    /*if (!email.value) {
-        emailError.value = '필수 입력 항목입니다.';
-        emailFieldRef.value.focus();
-        return;
-    } else {
-        emailError.value = '';
-    }
-    
-    if (!validation.isEmail(email.value)) {
-        emailError.value = '올바른 이메일 형식이 아닙니다.';
-        emailFieldRef.value.focus();
-        return;
-    } else {
-        emailError.value = '';
-    }
-
-    if (!password.value) {
-        passwordError.value = '필수 입력 항목입니다.';
-        passwordFieldRef.value.focus();
-        return;
-    } else {
-        passwordError.value = '';
-    }
-
-    if (!validation.isPassword(password.value).isAllValid) {
-        passwordError.value = '비밀번호 조건을 충족해주세요.';
-        passwordFieldRef.value.focus();
-        return;
-    } else {
-        passwordError.value = '';
-    }
-
-    if (!passwordConfirm.value || passwordConfirm.value !== password.value) {
-        passwordConfirmError.value = '비밀번호가 일치하지 않습니다.';
-        passwordConfirmFieldRef.value.focus();
-        return;
-    } else {
-        passwordConfirmError.value = '';
-    }
-
-    if (!nickname.value) {
-        nicknameError.value = '필수 입력 항목입니다.';
-        nicknameFieldRef.value.focus();
-        return;
-    } else {
-        nicknameError.value = '';
-    }
-
-    const specialCharRegex = /[^가-힣a-zA-Z0-9]/;
-
-    if (specialCharRegex.test(nickname.value)) {
-        nicknameError.value = '특수 문자는 사용할 수 없습니다.';
-        nicknameFieldRef.value.focus();
-        return;
-    } else {
-        nicknameError.value = '';
-    }
-
-    if (nickname.value.length < 3 || nickname.value.length > 20) {
-        nicknameError.value = '닉네임은 3자 이상, 20자 이하여야 합니다.';
-        nicknameFieldRef.value.focus();
-        return;
-    } else {
-        nicknameError.value = '';
-    }*/
-
-    // TODO: API 호출로 백엔드에 데이터 전송 (회원가입 처리)
     try {
         const response = await commonFetch(`${import.meta.env.VITE_API_URL}/api/users/signup`,
             {
