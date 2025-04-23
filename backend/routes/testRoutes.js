@@ -4,6 +4,6 @@ import { getHelloMessage } from '../controllers/testController.js';
 
 const router = express.Router();
 
-router.get('/hello', verifyToken, getHelloMessage);
+router.get('/hello', /*verifyToken,*/ getHelloMessage);
 
 export default router;
