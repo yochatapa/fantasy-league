@@ -53,20 +53,49 @@ export const login = async (req, res) => {
 
         // 만약 이메일 비밀번호가 있다면, 로그인 (jwt 사용)
 
-        
-
-        const token = jwt.sign(
+        const accessToken = jwt.sign(
             {
-                userId: user.id,
+                userId: user.user_id,
                 email: user.email,
                 nickname: user.nickname,
             },
             process.env.JWT_SECRET,
-            { expiresIn: '7d' }
+            { expiresIn: '15m' }
         );
 
+        // Refresh Token 유효성 확인
+        const existingRefreshToken = await query(
+            `SELECT * FROM refresh_tokens WHERE user_id = $1 AND expires_at > NOW() LIMIT 1`,
+            [user.user_id]
+        );
+
+        let refreshToken;
+
+        if (existingRefreshToken.rows.length > 0) {
+            // 유효한 refreshToken이 있으면 그걸 사용하고 연장
+            refreshToken = existingRefreshToken.rows[0].token;
+
+            // refreshToken을 연장
+            await query(
+                `UPDATE refresh_tokens SET expires_at = NOW() + INTERVAL '7 days' WHERE token = $1`,
+                [refreshToken]
+            );
+        } else {
+            // 유효한 refreshToken이 없다면 새로 발급
+            refreshToken = jwt.sign(
+                { userId: user.user_id },
+                process.env.JWT_SECRET,
+                { expiresIn: '7d' }
+            );
+
+            // 새로 발급한 refreshToken을 DB에 저장
+            await query(
+                `INSERT INTO refresh_tokens (token, user_id, expires_at) VALUES ($1, $2, NOW() + INTERVAL '7 days')`,
+                [refreshToken, user.user_id]
+            );
+        }
+
         // 로그인 이력 저장
-        
         await query(
             `INSERT INTO login_history (user_id, ip_address, user_agent, success)
              VALUES ($1, $2, $3, $4)`,
@@ -91,11 +120,19 @@ export const login = async (req, res) => {
             ]
         );
 
+        // Refresh Token은 HttpOnly 쿠키로 설정
+        res.cookie('refreshToken', refreshToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production', // HTTPS 환경에서만 사용
+            sameSite: 'Strict',
+            maxAge: 7 * 24 * 60 * 60 * 1000 // 7일
+        });
+
         return sendSuccess(res, {
             message: '로그인 성공',
-            token,
+            token : accessToken,
             user: {
-                id: user.id,
+                id: user.user_id,
                 email: user.email,
                 nickname: user.nickname,
             }

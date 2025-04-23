@@ -1,15 +1,28 @@
 <script setup>
-import { ref, onMounted } from 'vue'
-import { commonFetch } from '../../utils/common/commonFetch'
+import { onMounted } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useUserStore } from '../../stores/userStore'
 
-const message = ref('')
+const userStore = useUserStore()
+const { isLoggedIn, user } = storeToRefs(userStore)
 
 onMounted(async () => {
-  const res = await commonFetch(`${import.meta.env.VITE_API_URL}/api/test/hello`)
-  message.value = res.data.message
+    
 })
 </script>
 
 <template>
-  <h1>홈: {{ message }}</h1>
+    <div>
+        <h1>홈</h1>
+        <p>isLoggedIn: {{ isLoggedIn }}</p>
+        <p>user: {{ user }}</p>
+
+        <div v-if="isLoggedIn">
+            <p><strong>닉네임:</strong> {{ user?.nickname }}</p>
+            <p><strong>이메일:</strong> {{ user?.email }}</p>
+        </div>
+        <div v-else>
+            <p>로그인이 필요합니다.</p>
+        </div>
+    </div>
 </template>

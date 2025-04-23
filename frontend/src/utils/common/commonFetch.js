@@ -18,10 +18,11 @@ export async function commonFetch(url, options = {}) {
             ...(token ? { Authorization: `Bearer ${token}` } : {})
         },
         body: isJson ? JSON.stringify(body) : body,
+        credentials: 'include',
     };
-
+    
     try {
-        const response = await fetch(url, finalOptions);
+        const response = await fetch(`${import.meta.env.VITE_API_URL}`+url, finalOptions);
 
         if (!response.ok) {
             const errorDetail = await response.json();
@@ -42,6 +43,11 @@ export async function commonFetch(url, options = {}) {
         }
     
         const data = await response.json();
+
+        if(data.token && data.access){
+            localStorage.setItem("token",data.token)
+        }
+
         return {
             success: true,
             message : data?.message || "요청이 정상적으로 처리되었습니다.",

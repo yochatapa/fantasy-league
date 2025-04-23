@@ -1,5 +1,10 @@
-<script setup lang="ts">
+<script setup>
 import { RouterLink, RouterView } from 'vue-router'
+import { useUserStore } from '@/stores/userStore'
+
+const userStore = useUserStore()
+
+userStore.checkAuth()
 </script>
 
 <template>

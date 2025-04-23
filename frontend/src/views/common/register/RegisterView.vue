@@ -376,7 +376,7 @@ const handleNicknameBlur = async () => {
 
 const submitForm = async () => {
     try {
-        const response = await commonFetch(`${import.meta.env.VITE_API_URL}/api/users/signup`,
+        const response = await commonFetch(`/api/users/signup`,
             {
                 method: 'POST',
                 body: {

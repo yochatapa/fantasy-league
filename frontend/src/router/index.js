@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '@/views/common/HomeView.vue'
 import LoginView from '@/views/common/login/LoginView.vue'
 import RegisterView from '@/views/common/register/RegisterView.vue'
+import { useUserStore } from '@/stores/userStore'
 
 const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
@@ -40,6 +41,20 @@ const router = createRouter({
           };
         }
       },
+})
+
+router.beforeEach(async (to, from, next) => {
+  const userStore = useUserStore()
+
+  if (to.meta.requiresAuth) {
+    // 아직 로그인 안 되어 있으면 인증 확인
+    if (!userStore.isLoggedIn) {
+      const ok = await userStore.checkAuth()
+      if (!ok) return next('/login')
+    }
+  }
+
+  next()
 })
 
 export default router
