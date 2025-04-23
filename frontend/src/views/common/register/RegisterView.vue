@@ -25,6 +25,7 @@
 
                             <!-- 비밀번호 입력 -->
                             <v-text-field
+                                ref="passwordFieldRef"
                                 v-model="password"
                                 label="비밀번호"
                                 :rules="passwordRules"
@@ -34,6 +35,7 @@
                                 :type="showPassword ? 'text' : 'password'"
                                 @click:append="showPassword = !showPassword"
                                 class="mb-1"
+                                maxlength="20"
                             />
 
                             <!-- 조건 체크 시각화 -->
@@ -51,6 +53,7 @@
 
                             <!-- 비밀번호 확인 필드 -->
                             <v-text-field
+                                ref="passwordConfirmFieldRef"
                                 v-model="passwordConfirm"
                                 label="비밀번호 확인"
                                 :rules="passwordConfirmRules"
@@ -60,6 +63,7 @@
                                 :append-icon="showPassword2 ? 'mdi-eye' : 'mdi-eye-off'"
                                 :type="showPassword2 ? 'text' : 'password'"
                                 @click:append="showPassword2 = !showPassword2"
+                                maxlength="20"
                             />
 
                             <!-- 닉네임 입력 -->
@@ -72,6 +76,7 @@
                                 :loading="isCheckingNickname"
                                 @blur="handleNicknameBlur"
                                 class="mb-2"
+                                maxlength="20"
                             />
 
                             <!-- 프로필 이미지 -->
@@ -87,8 +92,12 @@
                             <v-textarea
                                 v-model="profileBio"
                                 label="프로필 소개글"
-                                :rules="[bioRules]"
+                                :rules="bioRules"
                                 class="mb-2"
+                                maxlength="255"
+                                counter
+                                no-resize
+                                auto-grow
                             />
                             
                             <!-- 선호 구단 선택 -->
@@ -119,22 +128,25 @@ import { ref, computed, watch, nextTick } from 'vue';
 import { KBO_TEAMS } from '@/utils/code/kboTeams';
 import validation from '@/utils/common/validation';
 import { commonFetch } from '@/utils/common/commonFetch';
+import { useRouter } from 'vue-router';
+
+const router = useRouter();
 
 const emailFieldRef = ref(null);
+const passwordFieldRef = ref(null);
+const passwordConfirmFieldRef = ref(null);
 const nicknameFieldRef = ref(null);
 
 const email = ref('');
 const password = ref('');
 const passwordConfirm = ref('');
 const nickname = ref('');
-const profileImage = ref('');
+const profileImage = ref([]);
 const profileBio = ref('');
 const favoriteTeam = ref(null);
 
-const emailError = ref('');
 const passwordError = ref('');
 const passwordConfirmError = ref('');
-const nicknameError = ref('');
 
 const isCheckingEmail = ref(false); // 이메일 중복 확인 API 호출 중인지 여부
 // 이메일 확인 결과 상태: null (초기/리셋), 'checking' (확인 중), 'available' (사용 가능), 'taken' (이미 사용 중), 'error' (API 오류)
@@ -204,10 +216,8 @@ const nicknameRules = computed(() => {
         value => {
             if (!value) return true;
 
-            const specialCharRegex = /[^가-힣a-zA-Z0-9]/;
-
-            if (specialCharRegex.test(value)) {
-                return '특수 문자는 사용할 수 없습니다.';
+            if (!validation.isNickname(value)) {
+                return '닉네임에는 한글, 영문, 숫자, 마침표(.), 밑줄(_)만 사용할 수 있습니다.';
             }
 
              // 특수 문자가 발견되지 않으면 true 반환하여 이 규칙 통과
@@ -239,20 +249,22 @@ const nicknameRules = computed(() => {
 });
 
 const valid = computed(() => {
-  return (
-    email.value &&
-    password.value &&
-    passwordConfirm.value &&
-    nickname.value &&
-    emailError.value === '' &&
-    passwordError.value === '' &&
-    passwordConfirmError.value === '' &&
-    nicknameError.value === ''
-  );
+    return (
+        email.value &&
+        validation.isEmail(email.value) &&
+        password.value &&
+        validation.isPassword(password.value).isAllValid &&
+        passwordConfirm.value &&
+        nickname.value &&
+        passwordError.value === '' &&
+        passwordConfirmError.value === '' &&
+        emailCheckStatus.value === 'available' && // 이메일 중복 확인이 완료되지 않으면 비활성화
+        nicknameCheckStatus.value === 'available' // 닉네임 중복 확인이 완료되지 않으면 비활성화
+    );
 });
 
 const bioRules = [
-    v => !v || v.length <= 255 || '소개글은 255자 이내로 입력해주세요.'
+    v =>  v.length <= 255 || '소개글은 255자까지 입력 가능합니다.'
 ];
 
 const passwordValidationState = ref({
@@ -263,25 +275,25 @@ const passwordValidationState = ref({
 });
 
 watch(email, (newVal) => {
-  if (!newVal || !validation.isEmail(newVal)) {
-    emailCheckStatus.value = null;
-  } else {
-    emailCheckStatus.value = null;
-  }
+    if (!newVal || !validation.isEmail(newVal)) {
+        emailCheckStatus.value = null;
+    } else {
+        emailCheckStatus.value = null;
+    }
 });
 
 watch(password, (val) => {
-  const result = validation.isPassword(val);
-  passwordValidationState.value = result;
-  passwordError.value = result.isAllValid ? '' : '비밀번호 조건을 충족해주세요.';
-  // 비밀번호 변경 시 확인값도 다시 체크
-  if (passwordConfirm.value) {
-    passwordConfirmError.value = passwordConfirm.value === val ? '' : '비밀번호가 일치하지 않습니다.';
-  }
+    const result = validation.isPassword(val);
+    passwordValidationState.value = result;
+    passwordError.value = result.isAllValid ? '' : '비밀번호 조건을 충족해주세요.';
+    // 비밀번호 변경 시 확인값도 다시 체크
+    if (passwordConfirm.value) {
+        passwordConfirmError.value = passwordConfirm.value === val ? '' : '비밀번호가 일치하지 않습니다.';
+    }
 });
 
 watch(passwordConfirm, (val) => {
-  passwordConfirmError.value = val === password.value ? '' : '비밀번호가 일치하지 않습니다.';
+    passwordConfirmError.value = val === password.value ? '' : '비밀번호가 일치하지 않습니다.';
 });
 
 watch(nickname, (newVal) => {
@@ -308,7 +320,7 @@ const handleEmailBlur = async () => {
     const url = `${import.meta.env.VITE_API_URL}/api/users/check-email?email=${encodeURIComponent(email.value)}`;
     isCheckingEmail.value = true;
 
-    const result = await commonFetch({ url });
+    const result = await commonFetch(url);
 
     if (result.success) {
         emailCheckStatus.value = result.data.exists ? 'taken' : 'available';
@@ -339,7 +351,7 @@ const handleNicknameBlur = async () => {
     const url = `${import.meta.env.VITE_API_URL}/api/users/check-nickname?nickname=${encodeURIComponent(nickname.value)}`;
     isCheckingNickname.value = true;
 
-    const result = await commonFetch({ url });
+    const result = await commonFetch(url);
 
     if (result.success) {
         nicknameCheckStatus.value = result.data.exists ? 'taken' : 'available';
@@ -357,20 +369,124 @@ const handleNicknameBlur = async () => {
     }
 };
 
-const submitForm = () => {
-    if (!email.value || !password.value || !confirmPassword.value || !nickname.value) {
-        console.log('입력값이 부족합니다.');
+const submitForm = async () => {
+    /*if (!email.value) {
+        emailError.value = '필수 입력 항목입니다.';
+        emailFieldRef.value.focus();
         return;
+    } else {
+        emailError.value = '';
+    }
+    
+    if (!validation.isEmail(email.value)) {
+        emailError.value = '올바른 이메일 형식이 아닙니다.';
+        emailFieldRef.value.focus();
+        return;
+    } else {
+        emailError.value = '';
     }
 
-    console.log('회원가입 데이터:', {
-        email: email.value,
-        password: password.value,
-        nickname: nickname.value,
-        profileImage: profileImage.value,
-        profileBio: profileBio.value,
-        favoriteTeam: favoriteTeam.value,
-    });
+    if (!password.value) {
+        passwordError.value = '필수 입력 항목입니다.';
+        passwordFieldRef.value.focus();
+        return;
+    } else {
+        passwordError.value = '';
+    }
+
+    if (!validation.isPassword(password.value).isAllValid) {
+        passwordError.value = '비밀번호 조건을 충족해주세요.';
+        passwordFieldRef.value.focus();
+        return;
+    } else {
+        passwordError.value = '';
+    }
+
+    if (!passwordConfirm.value || passwordConfirm.value !== password.value) {
+        passwordConfirmError.value = '비밀번호가 일치하지 않습니다.';
+        passwordConfirmFieldRef.value.focus();
+        return;
+    } else {
+        passwordConfirmError.value = '';
+    }
+
+    if (!nickname.value) {
+        nicknameError.value = '필수 입력 항목입니다.';
+        nicknameFieldRef.value.focus();
+        return;
+    } else {
+        nicknameError.value = '';
+    }
+
+    const specialCharRegex = /[^가-힣a-zA-Z0-9]/;
+
+    if (specialCharRegex.test(nickname.value)) {
+        nicknameError.value = '특수 문자는 사용할 수 없습니다.';
+        nicknameFieldRef.value.focus();
+        return;
+    } else {
+        nicknameError.value = '';
+    }
+
+    if (nickname.value.length < 3 || nickname.value.length > 20) {
+        nicknameError.value = '닉네임은 3자 이상, 20자 이하여야 합니다.';
+        nicknameFieldRef.value.focus();
+        return;
+    } else {
+        nicknameError.value = '';
+    }*/
+
     // TODO: API 호출로 백엔드에 데이터 전송 (회원가입 처리)
+    try {
+        const response = await commonFetch(`${import.meta.env.VITE_API_URL}/api/users/signup`,
+            {
+                method: 'POST',
+                body: {
+                    email: email.value,
+                    password: password.value,
+                    nickname: nickname.value,
+                    profileImage: profileImage.value,
+                    profileBio: profileBio.value,
+                    favoriteTeam: favoriteTeam.value,
+                },
+            }
+        );
+
+        if (response.success) {
+            console.log('회원가입 성공:', response);
+            alert("가입을 환영합니다!\n지금 바로 로그인해서 서비스를 시작해보세요.");
+            router.push('/login');
+        } else {
+            console.error('회원가입 실패:', response);
+
+            handleServerError(response);
+        }
+    } catch (error) {
+        console.error('회원가입 API 오류:', error);
+        handleServerError(error);
+    }
+};
+
+// 서버 오류 처리
+const handleServerError = (error) => {
+     // 이메일 오류 처리
+     if (error.code === -3) {
+        emailCheckStatus.value = 'taken'; // 이메일 서버 오류 상태 설정
+        nextTick(() => {
+            if (emailFieldRef.value && typeof emailFieldRef.value.validate === 'function') {
+                emailFieldRef.value.validate(); // 이메일 유효성 검증
+            }
+        });
+    }
+
+    // 닉네임 오류 처리
+    if (error.code === -4) {
+        nicknameCheckStatus.value = 'taken'; // 닉네임 서버 오류 상태 설정
+        nextTick(() => {
+            if (nicknameFieldRef.value && typeof nicknameFieldRef.value.validate === 'function') {
+                nicknameFieldRef.value.validate(); // 이메일 유효성 검증
+            }
+        });
+    }
 };
 </script>

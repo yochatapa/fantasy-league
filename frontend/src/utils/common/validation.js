@@ -13,6 +13,14 @@ const validation = {
             specialCharValid,
             isAllValid: lengthValid && numberValid && specialCharValid,
         }
+    }, 
+    hasSpecialChar: (str) => {
+        const regex = /[^가-힣a-zA-Z0-9]/;
+        return regex.test(str);
+    },
+    isNickname: (str) => {
+        const regex = /^[가-힣a-zA-Z0-9._]+$/;
+        return regex.test(str);
     }
 };
 
