@@ -1,8 +1,9 @@
 import express from 'express';
-const router = express.Router();
-
+import verifyToken from '../middleware/auth.js';
 import { getHelloMessage } from '../controllers/testController.js';
 
-router.get('/hello', getHelloMessage);
+const router = express.Router();
+
+router.get('/hello', verifyToken, getHelloMessage);
 
 export default router;

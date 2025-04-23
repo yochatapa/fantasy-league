@@ -19,7 +19,6 @@ export async function commonFetch(url, options = {}) {
     try {
         const response = await fetch(url, finalOptions);
 
-    
         if (!response.ok) {
             const errorDetail = await response.json();
             return {

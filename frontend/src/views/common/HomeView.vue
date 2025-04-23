@@ -1,12 +1,12 @@
 <script setup>
 import { ref, onMounted } from 'vue'
+import { commonFetch } from '../../utils/common/commonFetch'
 
 const message = ref('')
 
 onMounted(async () => {
-  const res = await fetch(`${import.meta.env.VITE_API_URL}/api/test/hello`)
-  const data = await res.json()
-  message.value = data.message
+  const res = await commonFetch(`${import.meta.env.VITE_API_URL}/api/test/hello`)
+  message.value = res.data.message
 })
 </script>
 

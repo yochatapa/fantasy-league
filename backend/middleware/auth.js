@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
+import { sendNoTokenRequest, sendInvalidTokenRequest } from '../utils/apiResponse.js';
 
 dotenv.config();
 
@@ -8,12 +9,12 @@ const verifyToken = (req, res, next) => {
     const token = req.headers['authorization']?.split(' ')[1]; // 'Bearer <token>'
 
     if (!token) {
-        return res.status(401).json({ success: false, message: '토큰이 제공되지 않았습니다.' });
+        return sendNoTokenRequest(res);
     }
 
     jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
         if (err) {
-            return res.status(403).json({ success: false, message: '유효하지 않은 토큰입니다.' });
+            return sendInvalidTokenRequest(res);
         }
 
         // 인증된 사용자 정보 저장 (옵션)
