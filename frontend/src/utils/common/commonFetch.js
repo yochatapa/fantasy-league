@@ -3,12 +3,15 @@ export async function commonFetch(url, options = {}) {
 
     const isJson = body && typeof body === 'object' && !(body instanceof FormData);
 
+    const token = localStorage.getItem('token');
+
     const finalOptions = {
         ...options,
         method,
         headers: {
             ...headers,
             ...(isJson ? { 'Content-Type': 'application/json' } : {}),
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
         },
         body: isJson ? JSON.stringify(body) : body,
     };

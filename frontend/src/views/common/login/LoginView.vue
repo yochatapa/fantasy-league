@@ -10,6 +10,7 @@
             <v-card-text>
                 <v-form @submit.prevent="login" ref="form">
                 <v-text-field
+                    ref="emailFieldRef"
                     v-model="email"
                     label="이메일"
                     type="email"
@@ -20,6 +21,7 @@
                     class="mb-2"
                 />
                 <v-text-field
+                    ref="passwordFieldRef"
                     v-model="password"
                     label="비밀번호"
                     prepend-inner-icon="mdi-lock-outline"
@@ -81,9 +83,13 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import validation from '@/utils/common/validation'
+import { commonFetch } from '@/utils/common/commonFetch';
+
+const emailFieldRef = ref(null);
+const passwordFieldRef = ref(null);
 
 const showPassword = ref(false);
 
@@ -103,26 +109,86 @@ const email = ref('');
 const password = ref('');
 const router = useRouter();
 
-const login = () => {
+const login = async () => {
     if (!email.value) {
         emailError.value = '이메일이 입력되지 않았습니다.';
+        nextTick(() => {
+            if (emailFieldRef.value && typeof emailFieldRef.value.validate === 'function') {
+                emailFieldRef.value.validate();
+            }
+        });
         return;
     }
 
     if (!validation.isEmail(email.value)) {
         emailError.value = '올바른 이메일 형식이 아닙니다.';
+        nextTick(() => {
+            if (emailFieldRef.value && typeof emailFieldRef.value.validate === 'function') {
+                emailFieldRef.value.validate();
+            }
+        });
         return;
     }
 
-    if (email.value && password.value) {
-        // 로그인 처리 (여기서는 예시로 로그인을 콘솔에 출력)
-        console.log('Logging in with:', email.value, password.value);
-        emailValidationYn.value = false;
-        // 로그인 성공 시 리디렉션
-        //router.push('/dashboard');  // 로그인 후 대시보드로 이동
-    } else {
-        console.log('Please enter email and password');
+    if (!password.value) {
+        passwordError.value = '비밀번호가 입력되지 않았습니다.';
+        nextTick(() => {
+            if (passwordFieldRef.value && typeof passwordFieldRef.value.validate === 'function') {
+                passwordFieldRef.value.validate();
+            }
+        });
+        return;
     }
+
+    if (email.value && password.value) {        
+        // 로그인 성공 시 리디렉션
+        try {
+            const response = await commonFetch(`${import.meta.env.VITE_API_URL}/api/auth/login`,
+                {
+                    method: 'POST',
+                    body: {
+                        email: email.value,
+                        password: password.value,
+                    },
+                }
+            );
+
+            if (response.success) {
+                console.log('로그인 성공');
+                localStorage.setItem('token', response.data.token);
+                router.push('/');
+            } else {
+                console.error('로그인 실패:', response);
+
+                handleServerError(response);
+            }
+        } catch (error) {
+            console.error('로그인 API 오류:', error);
+            handleServerError(error);
+        }
+    }
+};
+
+const handleServerError = (error) => {
+     // 이메일 오류 처리
+     /*if (error.code === -3) {
+        emailError.value = '이메일이 입력되지 않았습니다.';
+        nextTick(() => {
+            if (emailFieldRef.value && typeof emailFieldRef.value.validate === 'function') {
+                emailFieldRef.value.validate(); // 이메일 유효성 검증
+            }
+        });
+    }
+
+    // 닉네임 오류 처리
+    if (error.code === -4) {
+        nicknameCheckStatus.value = 'taken'; // 닉네임 서버 오류 상태 설정
+        nextTick(() => {
+            if (nicknameFieldRef.value && typeof nicknameFieldRef.value.validate === 'function') {
+                nicknameFieldRef.value.validate(); // 이메일 유효성 검증
+            }
+        });
+    }*/
 };
 
 const handleEmailBlur = () => {
