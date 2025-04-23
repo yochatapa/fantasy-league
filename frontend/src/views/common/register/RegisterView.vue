@@ -11,12 +11,14 @@
                         <v-form @submit.prevent="submitForm" ref="form">
                             <!-- 이메일 입력 -->
                             <v-text-field
+                                ref="emailFieldRef"
                                 v-model="email"
                                 label="이메일"
                                 type="email"
                                 prepend-inner-icon="mdi-email-outline"
                                 required
                                 :rules="emailRules"
+                                :loading="isCheckingEmail"
                                 @blur="handleEmailBlur"
                                 class="mb-2"
                             />
@@ -67,7 +69,7 @@
                                 required
                                 :rules="nicknameRules"
                                 :loading="isCheckingNickname"
-                                @blur="checkNicknameAvailability"
+                                @blur="handleNicknameBlur"
                                 class="mb-2"
                             />
 
@@ -116,6 +118,7 @@ import { ref, computed, watch, nextTick } from 'vue';
 import { KBO_TEAMS } from '@/utils/code/kboTeams';
 import validation from '@/utils/common/validation';
 
+const emailFieldRef = ref(null);
 const nicknameFieldRef = ref(null);
 
 const email = ref('');
@@ -131,6 +134,9 @@ const passwordError = ref('');
 const passwordConfirmError = ref('');
 const nicknameError = ref('');
 
+const isCheckingEmail = ref(false); // 이메일 중복 확인 API 호출 중인지 여부
+// 이메일 확인 결과 상태: null (초기/리셋), 'checking' (확인 중), 'available' (사용 가능), 'taken' (이미 사용 중), 'error' (API 오류)
+const emailCheckStatus = ref(null);
 const isCheckingNickname = ref(false); // 닉네임 중복 확인 API 호출 중인지 여부
 // 닉네임 확인 결과 상태: null (초기/리셋), 'checking' (확인 중), 'available' (사용 가능), 'taken' (이미 사용 중), 'error' (API 오류)
 const nicknameCheckStatus = ref(null);
@@ -143,9 +149,42 @@ const kboTeams = Object.keys(KBO_TEAMS).map(key => ({
     name: KBO_TEAMS[key].name
 }));
 
-const emailRules = computed(() => [
-    () => emailError.value === '' || emailError.value
-]);
+const emailRules = computed(() => {
+    const rules = [
+        // 규칙 1: 필수 입력
+        value => !!value || '필수 입력 항목입니다.',
+        // 규칙 2: 특수 문자 불가
+        value => {
+            if (!value) return true;
+             
+            if (!validation.isEmail(email.value)) {
+                return '올바른 이메일 형식이 아닙니다.';
+            }
+
+            return true;
+        },
+        // 규칙 3: 비동기 중복 확인 상태에 따른 메시지
+        () => {
+            if (!email.value || !validation.isEmail(email.value)) {
+                return true; // 길이가 짧으면 이 규칙은 통과시키고 앞 규칙이 에러를 표시
+            }
+            
+            switch (emailCheckStatus.value) {
+                case 'taken':
+                    return '이미 사용 중인 이메일입니다.'; // 이미 사용 중이면 에러 메시지 반환
+                case 'error':
+                    return '이메일 확인 중 오류가 발생했습니다.'; // API 오류 시 에러 메시지 반환
+                case 'checking':
+                case 'available':
+                case null:
+                default:
+                    // '확인 중', '사용 가능', '확인 전' 상태는 에러가 아니므로 true 반환
+                    return true;
+            }
+        }
+    ];
+    return rules;
+});
 
 const passwordRules = computed(() => [
     () => passwordError.value === '' || passwordError.value
@@ -161,13 +200,13 @@ const nicknameRules = computed(() => {
         value => !!value || '필수 입력 항목입니다.',
         // 규칙 2: 특수 문자 불가
         value => {
-             if (!value) return true;
+            if (!value) return true;
 
-             const specialCharRegex = /[^가-힣a-zA-Z0-9]/;
+            const specialCharRegex = /[^가-힣a-zA-Z0-9]/;
 
-             if (specialCharRegex.test(value)) {
-                 return '특수 문자는 사용할 수 없습니다.';
-             }
+            if (specialCharRegex.test(value)) {
+                return '특수 문자는 사용할 수 없습니다.';
+            }
 
              // 특수 문자가 발견되지 않으면 true 반환하여 이 규칙 통과
              return true;
@@ -176,11 +215,11 @@ const nicknameRules = computed(() => {
         value => (value && value.length >= 3 && value.length<=20) || '닉네임은 3자 이상, 20자 이하여야 합니다.',
         // 규칙 4: 비동기 중복 확인 상태에 따른 메시지
         () => {
-             if (!nickname.value || nickname.value.length < 3 || nickname.value.length > 20) {
-                  return true; // 길이가 짧으면 이 규칙은 통과시키고 앞 규칙이 에러를 표시
-             }
-             console.log(nicknameCheckStatus.value)
-             switch (nicknameCheckStatus.value) {
+            if (!nickname.value || nickname.value.length < 3 || nickname.value.length > 20) {
+                return true; // 길이가 짧으면 이 규칙은 통과시키고 앞 규칙이 에러를 표시
+            }
+            
+            switch (nicknameCheckStatus.value) {
                 case 'taken':
                     return '이미 사용 중인 닉네임입니다.'; // 이미 사용 중이면 에러 메시지 반환
                 case 'error':
@@ -191,7 +230,7 @@ const nicknameRules = computed(() => {
                 default:
                     // '확인 중', '사용 가능', '확인 전' 상태는 에러가 아니므로 true 반환
                     return true;
-             }
+            }
         }
     ];
     return rules;
@@ -221,6 +260,14 @@ const passwordValidationState = ref({
   isAllValid: false,
 });
 
+watch(email, (newVal) => {
+  if (!newVal || !validation.isEmail(newVal)) {
+    emailCheckStatus.value = null;
+  } else {
+    emailCheckStatus.value = null;
+  }
+});
+
 watch(password, (val) => {
   const result = validation.isPassword(val);
   passwordValidationState.value = result;
@@ -235,28 +282,64 @@ watch(passwordConfirm, (val) => {
   passwordConfirmError.value = val === password.value ? '' : '비밀번호가 일치하지 않습니다.';
 });
 
-// 이메일 검증
-const handleEmailBlur = () => {
-    if (!email.value) {
-        emailError.value = '이메일을 입력해주세요.';
-    } else if (!validation.isEmail(email.value)) {
-        emailError.value = '올바른 이메일 형식이 아닙니다.';
-    } else {
-        emailError.value = '';
-    }
-};
+watch(nickname, (newVal) => {
+  // 길이가 짧으면 상태 초기화
+  if (!newVal || newVal.length < 3 || nickname.value.length > 20) {
+    nicknameCheckStatus.value = null;
+  } else {
+    // 값이 바뀌었으므로, 이전 확인 결과는 무효
+    nicknameCheckStatus.value = null;
+  }
+});
 
-// 비밀번호 확인 검증
-const handleConfirmPasswordInput = () => {
-    if (confirmPassword.value !== password.value) {
-        confirmPasswordError.value = '비밀번호가 일치하지 않습니다.';
-    } else {
-        confirmPasswordError.value = '';
+// 이메일 검증
+const handleEmailBlur = async () => {
+    // 입력 값이 없거나 너무 짧거나 이미 확인 중이면 API 호출하지 않음
+    if (!email.value || !validation.isEmail(email.value)) {
+        return;
+    }
+
+    // 중복 확인 상태 초기화 및 확인 시작 표시
+    emailCheckStatus.value = 'checking';
+    isCheckingEmail.value = true; // 로딩 인디케이터 표시용
+
+    try {
+        const url = `${import.meta.env.VITE_API_URL}/api/users/check-email?email=${encodeURIComponent(email.value)}`;
+
+        const response = await fetch(url);
+
+        if (!response.ok) {
+            const errorDetail = await response.text(); // 또는 response.json()
+            throw new Error(`HTTP error! status: ${response.status}, detail: ${errorDetail}`);
+        }
+
+        const data = await response.json();
+
+        if (data.exists) {
+            emailCheckStatus.value = 'taken'; // 이미 사용 중
+        } else {
+            emailCheckStatus.value = 'available'; // 사용 가능
+        }
+
+    } catch (error) {
+        // 네트워크 오류나 위에서 throw 한 HTTP 에러가 여기서 잡힙니다.
+        console.error('닉네임 중복 확인 API 오류:', error);
+        emailCheckStatus.value = 'error'; // API 오류 또는 네트워크 오류 발생
+    } finally {
+        // 확인 완료 후 로딩 상태 해제
+        isCheckingEmail.value = false;
+
+        await nextTick();
+
+        if (emailFieldRef.value && typeof emailFieldRef.value.validate === 'function') {
+            // 해당 필드의 유효성 검사를 다시 실행합니다.
+            emailFieldRef.value.validate();
+        }
     }
 };
 
 // 닉네임 중복 검사
-const checkNicknameAvailability = async () => {
+const handleNicknameBlur = async () => {
     // 입력 값이 없거나 너무 짧거나 이미 확인 중이면 API 호출하지 않음
     if (!nickname.value || nickname.value.length < 3 || isCheckingNickname.value) {
         return;
