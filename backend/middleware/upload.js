@@ -14,7 +14,7 @@ const storage = multer.diskStorage({
         cb(null, uploadDir); // 저장될 서버의 디렉토리 경로를 동기적으로 콜백에 전달
     },
     filename: (req, file, cb) => {
-        console.log('Multer storage.filename - Original filename received:', file.originalname);
+        file.originalname = Buffer.from(file.originalname, 'latin1').toString('utf8')
         const uniqueFilename = uuidv4() + '-' + file.originalname; // 고유한 파일 이름 생성
         cb(null, uniqueFilename); // 파일 이름을 동기적으로 콜백에 전달
     }
