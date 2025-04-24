@@ -1,8 +1,10 @@
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
+import { PUBLIC_ROUTES } from '@/utils/code/code'
 
 export async function commonFetch(url, options = {}) {
     const { method = 'GET', headers = {}, body } = options;
 
+    const route = useRoute()
     const router = useRouter();
 
     const isJson = body && typeof body === 'object' && !(body instanceof FormData);
@@ -23,16 +25,20 @@ export async function commonFetch(url, options = {}) {
     
     try {
         const response = await fetch(`${import.meta.env.VITE_API_URL}`+url, finalOptions);
-
+        console.log(route.path, PUBLIC_ROUTES)
         if (!response.ok) {
             const errorDetail = await response.json();
-            console.log(errorDetail)
+            
             if(response.status === 401){
-                alert("로그인 정보가 없습니다.\n다시 로그인해주세요.")
-                await router.push("/")
+                if(!PUBLIC_ROUTES.includes(route.path)){
+                    alert("로그인 정보가 없습니다.\n다시 로그인해주세요.")
+                    await router.push("/")
+                }
             }else if(response.status === 403){
-                alert("접근 권한이 없습니다.\n다시 로그인해주세요.")
-                await router.push("/")
+                if(!PUBLIC_ROUTES.includes(route.path)){
+                    alert("접근 권한이 없습니다.\n다시 로그인해주세요.")
+                    await router.push("/")
+                }
             }
             return {
                 success: false,
