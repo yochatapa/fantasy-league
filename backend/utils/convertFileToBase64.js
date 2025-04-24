@@ -22,7 +22,7 @@ const convertFileToBase64 = async (filePath, mimeType) => {
         return `data:${mimeType};base64,${base64Image}`;
     } catch (error) {
         console.error('파일을 Base64로 변환하는 중 오류 발생:', error);
-        throw new Error('파일을 읽고 변환하는 중 오류가 발생했습니다.');
+        return null;
     }
 };
 
