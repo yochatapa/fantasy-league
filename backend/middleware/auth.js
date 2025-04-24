@@ -21,7 +21,7 @@ const verifyToken = async (req, res, next) => {
             // accessToken이 만료됐거나 유효하지 않으면 아래로 진행
         }
     }
-    console.log("refreshToken",refreshToken);
+    
     // accessToken이 없거나 유효하지 않으면 refreshToken 검사
     if (!refreshToken) {
         return sendNoTokenRequest(res);
