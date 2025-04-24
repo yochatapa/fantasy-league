@@ -3,6 +3,8 @@ import { sendSuccess, sendBadRequest, sendServerError } from '../../utils/apiRes
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
+import convertFileToBase64 from '../../utils/convertFileToBase64.js'; // apiResponse에서 임포트
+import path from 'path'; // 경로 처리 모듈
 
 dotenv.config();
 
@@ -26,8 +28,9 @@ export const login = async (req, res) => {
     try {
         const checkUser = await query(
             `SELECT 
-                * 
-            FROM user_master 
+                user_id, password_hash, email, nickname, path, mimetype
+            FROM user_master um
+                LEFT JOIN file_table ft ON um.profile_image = ft.file_id and sn = 1
             WHERE email = $1
             LIMIT 1`,
             [email]
@@ -128,6 +131,10 @@ export const login = async (req, res) => {
             maxAge: 7 * 24 * 60 * 60 * 1000 // 7일
         });
 
+        const filePath = path.join(process.cwd(), user.path);
+
+        const base64Image = await convertFileToBase64(filePath, user.mimetype);
+
         return sendSuccess(res, {
             message: '로그인 성공',
             token : accessToken,
@@ -135,6 +142,7 @@ export const login = async (req, res) => {
                 id: user.user_id,
                 email: user.email,
                 nickname: user.nickname,
+                profileImage : base64Image, 
             }
         });
     } catch (error) {

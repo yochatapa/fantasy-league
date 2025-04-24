@@ -1,11 +1,14 @@
 import jwt from 'jsonwebtoken';
 import { query } from '../../db.js';  // DB 쿼리 함수
 import dotenv from 'dotenv';
+import fs from 'fs/promises'; // 비동기 파일 시스템 모듈
+import path from 'path'; // 경로 처리 모듈
 import { sendSuccess, sendBadRequest, sendServerError } from '../../utils/apiResponse.js'; // apiResponse에서 임포트
+import convertFileToBase64 from '../../utils/convertFileToBase64.js'; // apiResponse에서 임포트
+
 
 dotenv.config();
 
-// /api/auth/check-token 라우터 핸들러
 export const checkToken = async (req, res) => {
     const accessToken = req.headers['authorization']?.split(' ')[1];  // 'Bearer <token>' 형식에서 토큰 추출
     
@@ -22,7 +25,11 @@ export const checkToken = async (req, res) => {
 
         // 토큰이 유효하면, DB에서 해당 사용자 정보 조회
         const userResult = await query(
-            `SELECT * FROM user_master WHERE user_id = $1 LIMIT 1`,
+            `SELECT 
+                user_id, email, nickname, path, mimetype
+            FROM user_master um
+                LEFT JOIN file_table ft ON um.profile_image = ft.file_id and sn = 1
+            WHERE user_id = $1 LIMIT 1`,
             [decoded.userId]
         );
 
@@ -34,6 +41,11 @@ export const checkToken = async (req, res) => {
         }
 
         const user = userResult.rows[0];
+        
+        // 파일 경로 가져오기 (profile_image 컬럼에 저장된 UUID로 파일 경로 생성)
+        const filePath = path.join(process.cwd(), user.path);
+
+        const base64Image = await convertFileToBase64(filePath, user.mimetype);
 
         // 성공적으로 인증된 사용자 정보 반환
         return sendSuccess(res, {
@@ -42,11 +54,10 @@ export const checkToken = async (req, res) => {
                 user_id: user.user_id,
                 email: user.email,
                 nickname: user.nickname,
-                // profileImage: user.profile_image,
-                // profileBio: user.profile_bio,
-                // favoriteTeam: user.favorite_team,
+                profileImage : base64Image, // 파일 읽기 실패 시 null
             },
         });
+        
     } catch (error) {
         console.error('토큰 검증 오류:', error);
         return sendServerError(res, error, '토큰이 유효하지 않거나 만료되었습니다.');

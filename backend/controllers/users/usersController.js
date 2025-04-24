@@ -13,7 +13,6 @@ export const signup = async (req, res) => {
     // 파일 정보
     const uploadedFilesInfo = req.filesInfo;
     const profileImageInfo = uploadedFilesInfo?.find(f => f.fieldName === 'profileImage');
-    console.log("profileImageInfo",profileImageInfo);
 
     if (!email || !password || !nickname) {
         return sendBadRequest(res, {
@@ -74,7 +73,7 @@ export const signup = async (req, res) => {
             console.log('파일 복사 및 임시 삭제 완료:', finalFileSavedInfo);
 
             // DB에 저장할 파일 경로/URL 구성 (예: 프로젝트 루트 기준 상대 경로)
-            finalFileUrlForDB = path.join('uploads', 'user', createdUserId.toString(), 'profile', finalFileSavedInfo.finalFileName);
+            finalFileUrlForDB = path.join('uploads', 'users', createdUserId.toString(), 'profile', finalFileSavedInfo.finalFileName);
 
 
             // 1. uuid file_id 생성

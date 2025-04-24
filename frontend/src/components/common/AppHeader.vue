@@ -32,8 +32,8 @@ const logout = () => userStore.logout()
                                 style="border: 2px solid #ccc;"
                             >
                                 <v-img
-                                    v-if="user?.imageUrl"
-                                    :src="user.imageUrl"
+                                    v-if="user?.profileImage"
+                                    :src="user.profileImage"
                                     alt="User Image"
                                 />
                                 <v-icon v-else size="28" color="#666">mdi-account-circle</v-icon>
