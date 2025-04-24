@@ -322,7 +322,7 @@ const handleEmailBlur = async () => {
     emailCheckStatus.value = 'checking';
     isCheckingEmail.value = true; // 로딩 인디케이터 표시용
 
-    const url = `${import.meta.env.VITE_API_URL}/api/users/check-email?email=${encodeURIComponent(email.value)}`;
+    const url = `/api/users/check-email?email=${encodeURIComponent(email.value)}`;
     isCheckingEmail.value = true;
 
     const result = await commonFetch(url);
@@ -353,7 +353,7 @@ const handleNicknameBlur = async () => {
     nicknameCheckStatus.value = 'checking';
     isCheckingNickname.value = true; // 로딩 인디케이터 표시용
 
-    const url = `${import.meta.env.VITE_API_URL}/api/users/check-nickname?nickname=${encodeURIComponent(nickname.value)}`;
+    const url = `/api/users/check-nickname?nickname=${encodeURIComponent(nickname.value)}`;
     isCheckingNickname.value = true;
 
     const result = await commonFetch(url);
