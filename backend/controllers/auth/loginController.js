@@ -119,7 +119,7 @@ export const login = async (req, res) => {
                 req.ip || req.headers['x-forwarded-for'] || null
             ]
         );
-
+        console.log("login enviroment",process.env.NODE_ENV)
         // Refresh Token은 HttpOnly 쿠키로 설정
         res.cookie('refreshToken', refreshToken, {
             httpOnly: true,
