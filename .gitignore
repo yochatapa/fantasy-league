@@ -44,3 +44,7 @@ Thumbs.db
 # nodemon related
 *.pid
 *.log
+
+# backend temporary files and uploads
+/backend/tempfiles/
+/backend/uploads/

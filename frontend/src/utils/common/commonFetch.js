@@ -16,7 +16,7 @@ export async function commonFetch(url, options = {}) {
         method,
         headers: {
             ...headers,
-            ...(isJson ? { 'Content-Type': 'application/json' } : {}),
+            ...(isJson ? { 'Content-Type': 'application/json; charset=UTF-8' } : {}),
             ...(token ? { Authorization: `Bearer ${token}` } : {})
         },
         body: isJson ? JSON.stringify(body) : body,

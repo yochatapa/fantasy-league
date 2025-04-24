@@ -1,11 +1,14 @@
 import express from 'express';
-const router = express.Router();
-
 import { checkNickname, checkEmail, signup } from '../controllers/users/usersController.js';
+import handleUpload from '../middleware/upload.js';
+
+const router = express.Router();
 
 router.get('/check-nickname', checkNickname);
 router.get('/check-email', checkEmail);
 
-router.post('/signup', signup)
+router.post('/signup', handleUpload([{
+    name : "profileImage"
+}]), signup)
 
 export default router;

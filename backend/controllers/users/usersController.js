@@ -1,9 +1,19 @@
+import bcrypt from 'bcrypt';
+import path from 'path'; // 경로 처리 모듈
 import {query} from '../../db.js';
 import { sendSuccess, sendBadRequest, sendServerError } from '../../utils/apiResponse.js';
-import bcrypt from 'bcrypt';
+import { saveUploadedFile } from '../../utils/fileUploader.js';
+import { v4 as uuidv4 } from 'uuid';
+
+const finalUploadsBaseDir = path.join(process.cwd(), 'uploads');
 
 export const signup = async (req, res) => {
-    const { email, password, nickname, profileImage, profileBio, favoriteTeam } = req.body;
+    const { email, password, nickname, profileBio, favoriteTeam } = req.body;
+
+    // 파일 정보
+    const uploadedFilesInfo = req.filesInfo;
+    const profileImageInfo = uploadedFilesInfo?.find(f => f.fieldName === 'profileImage');
+    console.log("profileImageInfo",profileImageInfo);
 
     if (!email || !password || !nickname) {
         return sendBadRequest(res, {
@@ -44,13 +54,69 @@ export const signup = async (req, res) => {
 
         // DB 저장
         const insertQuery = `
-            INSERT INTO user_master (email, password_hash, nickname, profile_image, profile_bio, favorite_team)
-            VALUES ($1, $2, $3, $4, $5, $6)
+            INSERT INTO user_master (email, password_hash, nickname, profile_bio, favorite_team)
+            VALUES ($1, $2, $3, $4, $5)
             RETURNING user_id, email, nickname
         `;
 
-        const values = [email, hashedPassword, nickname, profileImage || null, profileBio || null, favoriteTeam || null];
+        const values = [email, hashedPassword, nickname, profileBio || null, favoriteTeam || null];
         const result = await query(insertQuery, values);
+        const createdUserId = result.rows[0].user_id;
+
+        let finalFileSavedInfo = null; // saveUploadedFile 함수가 반환할 최종 파일 정보
+        let finalFileUrlForDB = null; // DB file_path 컬럼에 저장할 경로/URL
+
+        if (profileImageInfo && createdUserId !== null) { // 파일이 업로드되었고 유저 ID 발급된 경우
+            const userSpecificUploadDir = path.join(finalUploadsBaseDir, 'users', createdUserId.toString(), 'profile');
+
+            // saveUploadedFile 함수를 호출하여 파일 복사
+            finalFileSavedInfo = await saveUploadedFile(profileImageInfo, userSpecificUploadDir);
+            console.log('파일 복사 및 임시 삭제 완료:', finalFileSavedInfo);
+
+            // DB에 저장할 파일 경로/URL 구성 (예: 프로젝트 루트 기준 상대 경로)
+            finalFileUrlForDB = path.join('uploads', 'user', createdUserId.toString(), 'profile', finalFileSavedInfo.finalFileName);
+
+
+            // 1. uuid file_id 생성
+            const generatedFileId = uuidv4();
+
+            // 2. 파일 정보 DB 저장 쿼리 실행
+            const insertFileQuery = `
+                INSERT INTO file_table (
+                    file_id, sn, original_name, unique_name,
+                    mimetype, size, path, category, uploaded_by
+                ) VALUES (
+                    $1, 1, $2, $3, $4, $5, $6, $7, $8
+                )
+            `;
+
+            await query(insertFileQuery, [
+                generatedFileId, // uuid
+                profileImageInfo.originalName,
+                finalFileSavedInfo.finalFileName,
+                profileImageInfo.mimetype,
+                profileImageInfo.size,
+                finalFileUrlForDB,
+                'profile',
+                createdUserId
+            ]);
+
+            // 3. user_master 테이블에 profile_image 컬럼 업데이트
+            const updateUserQuery = `
+                UPDATE user_master
+                SET profile_image = $1
+                WHERE user_id = $2
+            `;
+
+            await query(updateUserQuery, [
+                generatedFileId, // profile_image는 uuid
+                createdUserId
+            ]);
+
+        } else {
+             // 파일이 업로드되지 않은 경우
+             console.log("No profile image uploaded.");
+        }
 
         return sendSuccess(res, {
             message: '회원가입 성공',
