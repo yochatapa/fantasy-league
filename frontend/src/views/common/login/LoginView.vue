@@ -74,7 +74,7 @@
 
             <v-card-actions class="justify-center">
                 <span class="text-caption">계정이 없으신가요?</span>
-                <v-btn text class="ml-1" @click="goToRegister">회원가입</v-btn>
+                <v-btn text class="ml-1" @click="goToSignup">회원가입</v-btn>
             </v-card-actions>
             </v-card>
         </v-col>
@@ -219,8 +219,8 @@ function required (v) {
     return !!v || 'Field is required'
 }
 
-const goToRegister = () => {
-    router.push('/register');  // 등록 화면으로 이동
+const goToSignup = () => {
+    router.push('/signup');  // 등록 화면으로 이동
 };
 
 const goToFindId = () => {

@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '@/views/common/HomeView.vue'
 import LoginView from '@/views/common/login/LoginView.vue'
-import RegisterView from '@/views/common/register/RegisterView.vue'
+import SignupView from '@/views/common/signup/SignupView.vue'
 import { useUserStore } from '@/stores/userStore'
 
 const router = createRouter({
@@ -18,9 +18,9 @@ const router = createRouter({
             component: LoginView,
         },
         {
-            path: '/register',
-            name: 'register',
-            component: RegisterView,
+            path: '/signup',
+            name: 'signup',
+            component: SignupView,
         }
     ],
     scrollBehavior(to, from, savedPosition) {
