@@ -13,10 +13,24 @@ export const useUserStore = defineStore('user', {
             this.user = userData;
             this.isLoggedIn = true;
         },
-        logout() {
-            this.user = null;
-            this.isLoggedIn = false;
-            this.isAuthChecked = true
+        async logout() {
+            try {
+                const response = await commonFetch('/api/auth/logout', {
+                    method: 'POST',
+                });
+
+                if(response.success){
+                    this.user = null;
+                    this.isLoggedIn = false;
+                    this.isAuthChecked = true;
+                    localStorage.removeItem('token');
+                } else {
+                    alert("로그아웃 처리 중 문제가 발생했습니다.\n잠시 후 다시 시도해 주세요.")
+                }
+            } catch (error) {
+                console.error('서버 로그아웃 실패:', error);
+                // 필요하다면 사용자에게 에러 메시지를 보여줄 수 있음
+            }
         },
         async checkAuth() {
             try {
@@ -32,7 +46,10 @@ export const useUserStore = defineStore('user', {
                     throw new Error('로그인 상태가 아닙니다.');
                 }
             } catch (e) {
-                this.logout();
+                this.user = null;
+                this.isLoggedIn = false;
+                this.isAuthChecked = true;
+                localStorage.removeItem('token');
                 return false;
             } finally {
                 this.isAuthChecked = true
