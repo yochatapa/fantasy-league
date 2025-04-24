@@ -119,12 +119,12 @@ export const login = async (req, res) => {
                 req.ip || req.headers['x-forwarded-for'] || null
             ]
         );
-        console.log("login enviroment",process.env.NODE_ENV)
+        
         // Refresh Token은 HttpOnly 쿠키로 설정
         res.cookie('refreshToken', refreshToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production', // HTTPS 환경에서만 사용
-            sameSite: 'Strict',
+            sameSite: process.env.NODE_ENV === 'production'?'None':'Strict',
             maxAge: 7 * 24 * 60 * 60 * 1000 // 7일
         });
 
