@@ -83,7 +83,7 @@
                             <v-file-input
                                 v-model="profileImage"
                                 label="프로필 이미지"
-                                prepend-inner-icon="mdi-image-outline"
+                                prepend-icon="mdi-camera"
                                 class="mb-2"
                                 accept="image/*"
                             />
@@ -376,17 +376,21 @@ const handleNicknameBlur = async () => {
 
 const submitForm = async () => {
     try {
+        const formData = new FormData();
+        formData.append('email', email.value);
+        formData.append('password', password.value);
+        formData.append('nickname', nickname.value);
+        formData.append('profileBio', profileBio.value);
+        formData.append('favoriteTeam', favoriteTeam.value);
+
+        if (profileImage.value) {
+            formData.append('profileImage', profileImage.value);
+        }
+
         const response = await commonFetch(`/api/users/signup`,
             {
                 method: 'POST',
-                body: {
-                    email: email.value,
-                    password: password.value,
-                    nickname: nickname.value,
-                    profileImage: profileImage.value,
-                    profileBio: profileBio.value,
-                    favoriteTeam: favoriteTeam.value,
-                },
+                body: formData
             }
         );
 
