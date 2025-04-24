@@ -131,9 +131,13 @@ export const login = async (req, res) => {
             maxAge: 7 * 24 * 60 * 60 * 1000 // 7일
         });
 
-        const filePath = path.join(process.cwd(), user.path);
+        let base64Image = null;
 
-        const base64Image = await convertFileToBase64(filePath, user.mimetype);
+        if(user.path){
+            const filePath = path.join(process.cwd(), user.path);
+
+            base64Image = await convertFileToBase64(filePath, user.mimetype);
+        }
 
         return sendSuccess(res, {
             message: '로그인 성공',

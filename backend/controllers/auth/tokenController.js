@@ -41,11 +41,15 @@ export const checkToken = async (req, res) => {
         }
 
         const user = userResult.rows[0];
-        
-        // 파일 경로 가져오기 (profile_image 컬럼에 저장된 UUID로 파일 경로 생성)
-        const filePath = path.join(process.cwd(), user.path);
 
-        const base64Image = await convertFileToBase64(filePath, user.mimetype);
+        // 파일 경로 가져오기 (profile_image 컬럼에 저장된 UUID로 파일 경로 생성)
+        let base64Image = null;
+
+        if(user.path){
+            const filePath = path.join(process.cwd(), user.path);
+
+            base64Image = await convertFileToBase64(filePath, user.mimetype);
+        }
 
         // 성공적으로 인증된 사용자 정보 반환
         return sendSuccess(res, {
