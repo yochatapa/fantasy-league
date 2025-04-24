@@ -25,7 +25,7 @@ export async function commonFetch(url, options = {}) {
     
     try {
         const response = await fetch(`${import.meta.env.VITE_API_URL}`+url, finalOptions);
-        console.log(route.path, PUBLIC_ROUTES)
+        
         if (!response.ok) {
             const errorDetail = await response.json();
             

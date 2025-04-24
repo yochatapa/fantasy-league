@@ -6,6 +6,7 @@ export const useUserStore = defineStore('user', {
     state: () => ({
         user: null, // user 정보
         isLoggedIn: false,
+        isAuthChecked: false
     }),
     actions: {
         setUser(userData) {
@@ -15,6 +16,7 @@ export const useUserStore = defineStore('user', {
         logout() {
             this.user = null;
             this.isLoggedIn = false;
+            this.isAuthChecked = true
         },
         async checkAuth() {
             try {
@@ -32,6 +34,8 @@ export const useUserStore = defineStore('user', {
             } catch (e) {
                 this.logout();
                 return false;
+            } finally {
+                this.isAuthChecked = true
             }
         },
     },
