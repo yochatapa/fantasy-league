@@ -31,7 +31,7 @@
             <v-list-item
                 v-for="(player, i) in stat.topPlayers.slice(1)"
                 :key="i"
-                class="py-1 px-2"
+                style="overflow: hidden;"
             >
                 <v-list-item-title class="text-body-2">
                     {{ i + 2 }}위 {{ player.name }} ({{ player.team }})
@@ -54,7 +54,6 @@ const defaultImage = 'https://via.placeholder.com/56'
 
 <style scoped>
 .stat-card {
-    max-width: 360px;
-    width: 100%;
+    margin: 2px 1rem;
 }
 </style>

@@ -4,29 +4,48 @@
             <h3 class="font-weight-bold mb-2">타자 TOP 5</h3>
         </v-col>
 
-        <v-col cols="12" class="d-flex justify-center">
-            <v-slide-group show-arrows class="custom-slide-group">
-                <v-slide-group-item v-for="(stat, i) in batterStats" :key="i">
+        <v-col cols="12" class="d-flex position-relative justify-center">
+            <swiper 
+                :breakpoints="breakpoints"
+                :space-between="20" 
+                :modules="modules"
+                :navigation="swiperNavigationOptions"
+                class="custom-swiper">
+                <swiper-slide v-for="(stat, i) in batterStats" :key="i">
                     <StatCard v-if="stat && stat.topPlayers" :stat="stat" />
-                </v-slide-group-item>
-            </v-slide-group>
+                </swiper-slide>
+            </swiper>
+            <div class="swiper-button-next batter"></div>
+            <div class="swiper-button-prev batter"></div>
         </v-col>
 
         <v-col cols="12" class="mt-6">
             <h3 class="font-weight-bold mb-2">투수 TOP 5</h3>
         </v-col>
 
-        <v-col cols="12" class="d-flex justify-center">
-            <v-slide-group show-arrows class="custom-slide-group">
-                <v-slide-group-item v-for="(stat, i) in pitcherStats" :key="i">
+        <v-col cols="12" class="d-flex position-relative justify-center">
+            <swiper 
+                :breakpoints="breakpoints"
+                :space-between="20" 
+                :modules="modules"
+                :navigation="swiperNavigationOptions2"
+                class="custom-swiper">
+                <swiper-slide v-for="(stat, i) in pitcherStats" :key="i">
                     <StatCard v-if="stat && stat.topPlayers" :stat="stat" />
-                </v-slide-group-item>
-            </v-slide-group>
+                </swiper-slide>
+                <div class="swiper-button-next pitcher"></div>
+                <div class="swiper-button-prev pitcher"></div>
+            </swiper>
         </v-col>
     </v-row>
 </template>
 
 <script setup>
+import { Swiper, SwiperSlide } from 'swiper/vue'
+import { Navigation } from 'swiper/modules';
+import 'swiper/css'
+import 'swiper/css/pagination'
+import 'swiper/css/navigation'
 import StatCard from '@/components/common/card/StatCard.vue'
 
 const batterStats = [
@@ -130,38 +149,32 @@ const pitcherStats = [
         ],
     },
 ]
+
+const breakpoints = {
+    // 화면 크기에 따라 슬라이드 개수를 조정
+    320: {
+        slidesPerView: 1,  // 작은 화면에서는 1개씩
+    },
+    600: {
+        slidesPerView: 2,  // 중간 화면에서는 2개씩
+    },
+    900: {
+        slidesPerView: 3,  // 큰 화면에서는 3개씩
+    },
+    1200: {
+        slidesPerView: 4,  // 더 큰 화면에서는 4개씩
+    },
+}
+
+const modules = [Navigation];
+
+const swiperNavigationOptions = {
+    nextEl: '.swiper-button-next.batter',
+    prevEl: '.swiper-button-prev.batter',
+};
+
+const swiperNavigationOptions2 = {
+    nextEl: '.swiper-button-next.pitcher',
+    prevEl: '.swiper-button-prev.pitcher',
+};
 </script>
-
-<style scoped>
-.custom-slide-group {
-    max-width: 100%;
-    margin: 0 auto;
-    height: auto;
-    display: flex;
-    justify-content: center;
-}
-
-.v-slide-item {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.stat-card {
-    width: 300px; /* 카드의 크기를 설정 */
-    max-width: 100%;
-    margin: 0 1rem;
-}
-
-/* 모바일에서 카드 크기 및 간격을 조정 */
-@media (max-width: 600px) {
-    .stat-card {
-        width: 100%; /* 모바일에서 카드가 화면에 맞게 늘어나도록 설정 */
-        margin: 0.5rem; /* 간격을 좁혀서 여백을 줄임 */
-    }
-
-    .custom-slide-group {
-        padding: 0 1rem; /* 슬라이드 그룹에 여백을 추가 */
-    }
-}
-</style>
