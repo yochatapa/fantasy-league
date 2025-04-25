@@ -188,6 +188,8 @@ const emailRules = computed(() => {
                     return '이미 사용 중인 이메일입니다.'; // 이미 사용 중이면 에러 메시지 반환
                 case 'error':
                     return '이메일 확인 중 오류가 발생했습니다.'; // API 오류 시 에러 메시지 반환
+                case 'server':
+                    return '회원가입 중 문제가 발생했습니다. 다시 시도해주세요.'; // API 오류 시 에러 메시지 반환
                 case 'checking':
                 case 'available':
                 case null:
@@ -236,6 +238,8 @@ const nicknameRules = computed(() => {
                     return '이미 사용 중인 닉네임입니다.'; // 이미 사용 중이면 에러 메시지 반환
                 case 'error':
                     return '닉네임 확인 중 오류가 발생했습니다.'; // API 오류 시 에러 메시지 반환
+                case 'server':
+                    return '회원가입 중 문제가 발생했습니다. 다시 시도해주세요.'; // API 오류 시 에러 메시지 반환
                 case 'checking':
                 case 'available':
                 case null:
@@ -411,24 +415,45 @@ const submitForm = async () => {
 
 // 서버 오류 처리
 const handleServerError = (error) => {
-     // 이메일 오류 처리
      if (error.code === -3) {
+        // 이메일 오류 처리
         emailCheckStatus.value = 'taken'; // 이메일 서버 오류 상태 설정
         nextTick(() => {
             if (emailFieldRef.value && typeof emailFieldRef.value.validate === 'function') {
-                emailFieldRef.value.validate(); // 이메일 유효성 검증
+                emailFieldRef.value.validate();
             }
         });
-    }
-
-    // 닉네임 오류 처리
-    if (error.code === -4) {
+    }else if (error.code === -4) {
+        // 닉네임 오류 처리
         nicknameCheckStatus.value = 'taken'; // 닉네임 서버 오류 상태 설정
         nextTick(() => {
             if (nicknameFieldRef.value && typeof nicknameFieldRef.value.validate === 'function') {
-                nicknameFieldRef.value.validate(); // 이메일 유효성 검증
+                nicknameFieldRef.value.validate();
             }
         });
+    }else if (error.code === -1) {
+        alert("회원가입 중 문제가 발생했습니다.\n다시 시도해주세요.");
+        /*emailCheckStatus.value = 'server'; // 이메일 서버 오류 상태 설정
+        nicknameCheckStatus.value = 'server'; // 닉네임 서버 오류 상태 설정
+        passwordError.value = '회원가입 중 문제가 발생했습니다. 다시 시도해주세요.';
+        passwordConfirmError.value = '회원가입 중 문제가 발생했습니다. 다시 시도해주세요.';
+        nextTick(() => {
+            if (emailFieldRef.value && typeof emailFieldRef.value.validate === 'function') {
+                emailFieldRef.value.validate();
+            }
+
+            if (passwordFieldRef.value && typeof passwordFieldRef.value.validate === 'function') {
+                passwordFieldRef.value.validate();
+            }
+
+            if (passwordConfirmFieldRef.value && typeof passwordConfirmFieldRef.value.validate === 'function') {
+                passwordConfirmFieldRef.value.validate();
+            }
+
+            if (nicknameFieldRef.value && typeof nicknameFieldRef.value.validate === 'function') {
+                nicknameFieldRef.value.validate();
+            }
+        });*/
     }
 };
 </script>
