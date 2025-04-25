@@ -5,7 +5,7 @@ export const logout = async (req, res) => {
     try {
         await withTransaction(async (client) => {
             // 쿠키에서 refreshToken 가져오기
-            const refreshToken = req.cookies.refreshToken;
+            const refreshToken = req.cookies.refreshToken || req.cookies.legacyRefreshToken;
 
             if (refreshToken) {
                 // 해당 refreshToken을 DB에서 삭제
@@ -23,9 +23,8 @@ export const logout = async (req, res) => {
             });
 
             // 레거시 스타일 쿠키 (SameSite 속성 없음) 삭제
-            res.clearCookie('refreshToken', {
+            res.clearCookie('legacyRefreshToken', {
                 httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
             });
         })
 

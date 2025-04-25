@@ -132,9 +132,8 @@ export const login = async (req, res) => {
         });
 
         // 레거시 스타일 쿠키 (SameSite 속성 없음) 설정
-        res.cookie('refreshToken', refreshToken, {
+        res.cookie('legacyRefreshToken', refreshToken, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production', // HTTPS 환경에서만 사용
             maxAge: 7 * 24 * 60 * 60 * 1000 // 7일
         });
 
@@ -145,7 +144,7 @@ export const login = async (req, res) => {
 
             base64Image = await convertFileToBase64(filePath, user.mimetype);
         }
-
+        
         return sendSuccess(res, {
             message: '로그인 성공',
             token : accessToken,
