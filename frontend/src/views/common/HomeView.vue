@@ -1,28 +1,38 @@
-<script setup>
-import { onMounted } from 'vue'
-import { storeToRefs } from 'pinia'
-import { useUserStore } from '../../stores/userStore'
-
-const userStore = useUserStore()
-const { isLoggedIn, user } = storeToRefs(userStore)
-
-onMounted(async () => {
-    
-})
-</script>
-
 <template>
-    <div>
-        <h1>홈</h1>
-        <p>isLoggedIn: {{ isLoggedIn }}</p>
-        <p>user: {{ user }}</p>
+    <v-container fluid>
+        <v-row>
+            <v-col cols="12">
+                <LeagueInfoCard />
+            </v-col>
 
-        <div v-if="isLoggedIn">
-            <p><strong>닉네임:</strong> {{ user?.nickname }}</p>
-            <p><strong>이메일:</strong> {{ user?.email }}</p>
-        </div>
-        <div v-else>
-            <p>로그인이 필요합니다.</p>
-        </div>
-    </div>
+            <v-col cols="12">
+                <KboNewsSection />
+            </v-col>
+
+            <v-col cols="12">
+                <PlayerStatsSection />
+            </v-col>
+
+            <v-col cols="12">
+                <GameScheduleSection />
+            </v-col>
+
+            <v-col cols="12">
+                <PlayerSearchSection />
+            </v-col>
+
+            <v-col cols="12">
+                <EventBanner />
+            </v-col>
+        </v-row>
+    </v-container>
 </template>
+
+<script setup>
+import LeagueInfoCard from '@/components/common/home/LeagueInfoCard.vue'
+import KboNewsSection from '@/components/common/home/KboNewsSection.vue'
+import PlayerStatsSection from '@/components/common/home/PlayerStatsSection.vue'
+import GameScheduleSection from '@/components/common/home/GameScheduleSection.vue'
+import PlayerSearchSection from '@/components/common/home/PlayerSearchSection.vue'
+import EventBanner from '@/components/common/home/EventBanner.vue'
+</script>
