@@ -21,6 +21,12 @@ export const logout = async (req, res) => {
                 secure: process.env.NODE_ENV === 'production',
                 sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Strict'
             });
+
+            // 레거시 스타일 쿠키 (SameSite 속성 없음) 삭제
+            res.clearCookie('refreshToken', {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+            });
         })
 
         return sendSuccess(res, {
