@@ -5,19 +5,11 @@
         </v-col>
 
         <v-col cols="12" class="d-flex justify-center">
-            <v-carousel v-if="isMobile" hide-delimiters class="custom-carousel" show-arrows="hover">
-                <v-carousel-item v-for="(stat, i) in batterStats" :key="i" cover>
+            <v-slide-group show-arrows class="custom-slide-group">
+                <v-slide-group-item v-for="(stat, i) in batterStats" :key="i">
                     <StatCard v-if="stat && stat.topPlayers" :stat="stat" />
-                </v-carousel-item>
-            </v-carousel>
-
-            <v-row v-else class="d-flex flex-wrap justify-center" style="width: 100%;">
-                <template v-for="(stat, i) in batterStats" :key="i">
-                    <v-col cols="12" sm="6" md="6" lg="3">
-                        <StatCard v-if="stat && stat.topPlayers" :stat="stat" class="mb-4" />
-                    </v-col>
-                </template>
-            </v-row>
+                </v-slide-group-item>
+            </v-slide-group>
         </v-col>
 
         <v-col cols="12" class="mt-6">
@@ -25,29 +17,17 @@
         </v-col>
 
         <v-col cols="12" class="d-flex justify-center">
-            <v-carousel v-if="isMobile" hide-delimiters class="custom-carousel" show-arrows="hover">
-                <v-carousel-item v-for="(stat, i) in pitcherStats" :key="i" cover>
+            <v-slide-group show-arrows class="custom-slide-group">
+                <v-slide-group-item v-for="(stat, i) in pitcherStats" :key="i">
                     <StatCard v-if="stat && stat.topPlayers" :stat="stat" />
-                </v-carousel-item>
-            </v-carousel>
-
-            <v-row v-else class="d-flex flex-wrap justify-center" style="width: 100%;">
-                <template v-for="(stat, i) in pitcherStats" :key="i">
-                    <v-col cols="12" sm="6" md="6" lg="3">
-                        <StatCard v-if="stat && stat.topPlayers" :stat="stat" class="mb-4" />
-                    </v-col>
-                </template>
-            </v-row>
+                </v-slide-group-item>
+            </v-slide-group>
         </v-col>
     </v-row>
 </template>
 
 <script setup>
-import { useDisplay } from 'vuetify'
 import StatCard from '@/components/common/card/StatCard.vue'
-
-const { smAndDown } = useDisplay()
-const isMobile = smAndDown
 
 const batterStats = [
     {
@@ -150,35 +130,38 @@ const pitcherStats = [
         ],
     },
 ]
-
 </script>
 
 <style scoped>
-.custom-carousel {
+.custom-slide-group {
     max-width: 100%;
     margin: 0 auto;
-    height: auto !important; /* Ensure the height is auto */
-}
-
-.v-carousel-item {
+    height: auto;
     display: flex;
     justify-content: center;
-    align-items: center; /* Align content vertically in the middle */
+}
+
+.v-slide-item {
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .stat-card {
-    max-width: 300px;
-    width: 100%;
-    margin: 2px;
-}
-
-.v-row {
-    flex-wrap: wrap;
-}
-
-.v-col {
+    width: 300px; /* 카드의 크기를 설정 */
     max-width: 100%;
-    display: flex;
-    justify-content: center;
+    margin: 0 1rem;
+}
+
+/* 모바일에서 카드 크기 및 간격을 조정 */
+@media (max-width: 600px) {
+    .stat-card {
+        width: 100%; /* 모바일에서 카드가 화면에 맞게 늘어나도록 설정 */
+        margin: 0.5rem; /* 간격을 좁혀서 여백을 줄임 */
+    }
+
+    .custom-slide-group {
+        padding: 0 1rem; /* 슬라이드 그룹에 여백을 추가 */
+    }
 }
 </style>
