@@ -132,10 +132,10 @@ export const login = async (req, res) => {
         });
 
         // 레거시 스타일 쿠키 (SameSite 속성 없음) 설정
-        res.cookie('legacyRefreshToken', refreshToken, {
-            httpOnly: true,
-            maxAge: 7 * 24 * 60 * 60 * 1000 // 7일
-        });
+        // res.cookie('legacyRefreshToken', refreshToken, {
+        //     httpOnly: true,
+        //     maxAge: 7 * 24 * 60 * 60 * 1000 // 7일
+        // });
 
         let base64Image = null;
 

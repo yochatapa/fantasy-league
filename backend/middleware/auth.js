@@ -9,7 +9,7 @@ dotenv.config();
 const verifyToken = async (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const accessToken = authHeader?.split(' ')[1];
-    const refreshToken = req.cookies.refreshToken || req.cookies.legacyRefreshToken;
+    const refreshToken = req.cookies.refreshToken // || req.cookies.legacyRefreshToken;
 
     // 먼저 accessToken 검증
     if (accessToken) {
