@@ -24,7 +24,7 @@ app.use(express.json());
 app.use(cookieParser());
 
 if(process.env.SERVE_FRONTEND === 'true'){
-    app.use(express.static(path.join(__dirname, '../frontend/build')));
+    app.use(express.static(path.join(__dirname, '../frontend/dist')));
 }
 
 // 라우팅 설정
@@ -34,7 +34,7 @@ app.use('/api/auth' , authRoutes);
 
 if(process.env.SERVE_FRONTEND === 'true'){
     app.get('*', (req, res) => {
-        res.sendFile(path.join(__dirname, '../frontend/build', 'index.html'));
+        res.sendFile(path.join(__dirname, '../frontend/dist', 'index.html'));
     });
 }
 
