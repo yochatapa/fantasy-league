@@ -25,7 +25,7 @@
           <v-stepper-window-item class="pa-1" :value="4">
             <LeagueCreateStep4 
                 v-model:draftMethod="draftMethod"
-                v-model:isPrivate="isPrivate"
+                v-model:isPublic="isPublic"
                 v-model:maxTeams="maxTeams"
                 v-model:playoffTeams="playoffTeams"
                 v-model:seasonStartDate="seasonStartDate"
@@ -33,7 +33,17 @@
             />
           </v-stepper-window-item>
           <v-stepper-window-item class="pa-1" :value="5">
-            <LeagueCreateStep5 />
+            <LeagueCreateStep5 
+                v-model="leagueName"    
+                v-model:leagueType="leagueType" 
+                v-model:leagueFormat="leagueFormat"
+                v-model:draftMethod="draftMethod"
+                v-model:isPublic="isPublic"
+                v-model:maxTeams="maxTeams"
+                v-model:playoffTeams="playoffTeams"
+                v-model:seasonStartDate="seasonStartDate"
+                v-model:draftDate="draftDate"
+            />
           </v-stepper-window-item>
         </v-stepper-window>
   
@@ -64,12 +74,12 @@ const userStore = useUserStore();
 const user = userStore.user;
 const { mobile } = useDisplay();
 
-const step = ref(1); // Step 1부터 시작
+const step = ref(4); // Step 1부터 시작
 const leagueName = ref(user.nickname?user.nickname+"의 리그":"");    // 리그명 상태 관리
 const leagueType = ref('');                                         // 예: 'head-to-head', 'season'
 const leagueFormat = ref('');                                       // 예: 'point', 'roto'
 const draftMethod = ref('');                                        // 드래프트 방법
-const isPrivate = ref(true);                                        // 리그 공개 여부
+const isPublic = ref(true);                                         // 리그 공개 여부
 const maxTeams = ref(8);                                            // 최대 팀 수
 const playoffTeams = ref(4);                                        // 플레이오프 팀 수
 const seasonStartDate = ref(new Date());                            // 시즌 시작일
@@ -149,7 +159,7 @@ const handleNext = async () => {
 - 리그 유형: ${LEAGUE_TYPES.filter((row)=>row.id === leagueType.value)[0].label}
 - 리그 방식: ${LEAGUE_FORMATS.filter((row)=>row.id === leagueFormat.value)[0].label}
 - 드래프트 방식: ${DRAFT_METHODS.filter((row)=>row.id === draftMethod.value)[0].label}
-- 비공개 여부: ${isPrivate.value ? '비공개' : '공개'}
+- 리그 공개 여부: ${isPublic.value ? '공개' : '비공개'}
 - 최대 팀 수: ${maxTeams.value}팀
 - 플레이오프 팀 수: ${playoffTeams.value}팀
 - 시즌 시작일: ${dayjs(seasonStartDate.value).format('YYYY.MM.DD')}

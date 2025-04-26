@@ -1,5 +1,5 @@
 ﻿<template>
-    <v-switch v-model="isPrivate" color="primary" label="리그 공개 여부" />
+    <v-switch v-model="isPublic" color="primary" :label="isPublic?'공개 리그':'비공개 리그'" />
 
     <v-select
         v-model="maxTeams"
@@ -76,7 +76,7 @@ import { ref, computed, watch, defineProps, defineEmits } from 'vue';
 
 const props = defineProps({
     draftMethod: String,
-    isPrivate: Boolean,
+    isPublic: Boolean,
     maxTeams: Number,
     playoffTeams: Number,
     seasonStartDate: [String, Date, null],
@@ -84,21 +84,21 @@ const props = defineProps({
 });
 
 const emit = defineEmits([
-    'update:isPrivate',
+    'update:isPublic',
     'update:maxTeams',
     'update:playoffTeams',
     'update:seasonStartDate',
     'update:draftDate',
 ]);
 
-const isPrivate = ref(props.isPrivate);
+const isPublic = ref(props.isPublic);
 const maxTeams = ref(props.maxTeams);
 const playoffTeams = ref(props.playoffTeams);
 const seasonStartDate = ref(props.seasonStartDate ? new Date(props.seasonStartDate) : null);
 const draftDate = ref(props.draftDate ? new Date(props.draftDate) : null);
 
 // emit when local state changes
-watch(isPrivate, (newValue) => emit('update:isPrivate', newValue));
+watch(isPublic, (newValue) => emit('update:isPublic', newValue));
 watch(maxTeams, (newValue) => emit('update:maxTeams', Number(newValue)));
 watch(playoffTeams, (newValue) => emit('update:playoffTeams', Number(newValue)));
 watch(seasonStartDate, (newValue) => {
@@ -112,7 +112,7 @@ watch(seasonStartDate, (newValue) => {
 watch(draftDate, (newValue) => emit('update:draftDate', newValue));
 
 // react to prop changes
-watch(() => props.isPrivate, (newValue) => { isPrivate.value = newValue; });
+watch(() => props.isPublic, (newValue) => { isPublic.value = newValue; });
 watch(() => props.maxTeams, (newValue) => { maxTeams.value = newValue; });
 watch(() => props.playoffTeams, (newValue) => { playoffTeams.value = newValue; });
 watch(() => props.seasonStartDate, (newValue) => { seasonStartDate.value = newValue ? new Date(newValue) : null; });
