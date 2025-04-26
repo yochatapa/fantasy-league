@@ -9,12 +9,12 @@
             >
                 <v-card
                     :elevation="selectedType === type.id ? 8 : 2"
-                    :class="selectedType === type.id ? 'bg-primary text-white' : ''"
-                    class="pa-4"
+                    :class="selectedType === type.id ? 'bg-secondary text-white' : ''"
+                    class="pa-4 card-fixed"
                     @click="selectType(type.id)"
                 >
-                    <div class="text-h6">{{ type.label }}</div>
-                    <div class="text-body-2 mt-2">{{ type.description }}</div>
+                    <div class="card-title">{{ type.label }}</div>
+                    <div class="card-description">{{ type.description }}</div>
                 </v-card>
             </v-col>
         </v-row>
@@ -31,12 +31,12 @@
                 >
                     <v-card
                         :elevation="selectedFormat === format.id ? 8 : 2"
-                        :class="selectedFormat === format.id ? 'bg-secondary text-white' : ''"
+                        :class="selectedFormat === format.id ? 'bg-primary text-white' : ''"
                         class="pa-4 card-fixed"
                         @click="selectFormat(format.id)"
                     >
-                        <div class="text-subtitle-1 font-weight-medium mb-1">{{ format.label }}</div>
-                        <div class="text-body-2">{{ format.description }}</div>
+                        <div class="card-title">{{ format.label }}</div>
+                        <div class="card-description">{{ format.description }}</div>
                     </v-card>
                 </v-col>
             </v-row>
@@ -47,7 +47,6 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
 
-// Props로 받기
 const props = defineProps({
     leagueType: {
         type: String,
@@ -59,23 +58,19 @@ const props = defineProps({
     },
 });
 
-// 부모 컴포넌트에 전달할 emit 설정
 const emit = defineEmits(['update:leagueType', 'update:leagueFormat']);
 
-// 내부 선택 상태
 const selectedType = ref(props.leagueType);
 const selectedFormat = ref(props.leagueFormat);
 
-// props가 바뀌면 내부도 동기화
 watch(() => props.leagueType, (val) => selectedType.value = val);
 watch(() => props.leagueFormat, (val) => selectedFormat.value = val);
 
-// 선택 핸들러
 const selectType = (typeId) => {
     selectedType.value = typeId;
-    selectedFormat.value = ''; // 포맷 초기화
+    selectedFormat.value = '';
     emit('update:leagueType', typeId);
-    emit('update:leagueFormat', ''); // format 초기화도 알림
+    emit('update:leagueFormat', '');
 };
 
 const selectFormat = (formatId) => {
@@ -83,7 +78,6 @@ const selectFormat = (formatId) => {
     emit('update:leagueFormat', formatId);
 };
 
-// 리그 유형
 const leagueTypes = [
     {
         id: 'head2head',
@@ -97,7 +91,6 @@ const leagueTypes = [
     },
 ];
 
-// 리그 방식
 const leagueFormats = [
     {
         id: 'h2h-category',
@@ -131,23 +124,29 @@ const leagueFormats = [
     },
 ];
 
-// 선택된 유형에 따라 포맷 필터링
 const filteredFormats = computed(() =>
     leagueFormats.filter((format) => format.type === selectedType.value)
 );
 </script>
 
 <style scoped>
-.v-card {
-    cursor: pointer;
-    transition: all 0.2s;
+.card-fixed {
+    min-height: 140px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
     margin: 2px;
 }
 
-.card-fixed {
-    min-height: 120px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
+.card-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.card-description {
+    font-size: 0.9rem;
+    color: inherit;
 }
 </style>
