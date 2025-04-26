@@ -44,10 +44,20 @@
             </v-card>
         </v-col>
     </v-row>
-</template>
+</template>]
+
+
+
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router';
+import { useUserStore } from '@/stores/userStore'
+
+const userStore = useUserStore();
+const router = useRouter();
+
+const isLoggedIn = computed(() => userStore.isLoggedIn);
 
 const leagues = ref([
     /*{ id: 1, name: '드림리그', rank: 2, points: 1420 },
@@ -56,7 +66,8 @@ const leagues = ref([
 ])
 
 const joinLeague = () => {
-    console.log('리그 참가 페이지로 이동')
+    if(isLoggedIn.value) router.push("/league/start")
+    else router.push("/login")
 }
 
 const goToLeague = (id) => {
