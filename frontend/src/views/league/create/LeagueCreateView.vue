@@ -61,7 +61,7 @@ const userStore = useUserStore();
 const user = userStore.user;
 const { mobile } = useDisplay();
 
-const step = ref(4); // Step 1부터 시작
+const step = ref(1); // Step 1부터 시작
 const leagueName = ref(user.nickname?user.nickname+"의 리그":"");    // 리그명 상태 관리
 const leagueType = ref('');                                         // 예: 'head-to-head', 'season'
 const leagueFormat = ref('');                                       // 예: 'point', 'roto'
@@ -100,12 +100,12 @@ const handleNext = async () => {
 
     if (step.value === 2) {
         if (!leagueType.value) {
-            alert('리그 방식을 선택해 주세요.', 'error');
+            alert('리그 유형을 선택해 주세요.', 'error');
             return;
         }
 
         if (!leagueFormat.value) {
-            alert('리그 포맷을 선택해 주세요.', 'error');
+            alert('리그 방식을 선택해 주세요.', 'error');
             return;
         }
     }
