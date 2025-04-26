@@ -160,8 +160,11 @@ const maxTeamsOptions = Array.from({ length: 27 }, (_, i) => i + 4);
 // 플레이오프 팀 수 옵션 (최대 팀 수보다 작은 수들)
 const playoffTeamsOptions = computed(() => {
     const max = maxTeams.value ? maxTeams.value - 1 : 3;
-    return Array.from({ length: max }, (_, i) => i + 1);
+    const start = 2;
+    const count = Math.max(0, max - start + 1); // 2부터 max까지 몇 개 필요한지 계산
+    return Array.from({ length: count }, (_, i) => i + start);
 });
+
 
 // v-form 유효성 검사용
 import { ref as vueRef } from 'vue';
