@@ -39,6 +39,7 @@
   
         <v-stepper-actions 
             class="mt-6" 
+            :style="step === stepLabels.length?'display:none':''"
             @click:prev="handlePrev"
             @click:next="handleNext"
         >
@@ -51,11 +52,13 @@
 import { ref } from 'vue';
 import { useUserStore } from '@/stores/userStore'
 import { useDisplay } from 'vuetify'
+import dayjs from 'dayjs';
 import LeagueCreateStep1 from '@/components/league/create/LeagueCreateStep1.vue';
 import LeagueCreateStep2 from '@/components/league/create/LeagueCreateStep2.vue';
 import LeagueCreateStep3 from '@/components/league/create/LeagueCreateStep3.vue';
 import LeagueCreateStep4 from '@/components/league/create/LeagueCreateStep4.vue';
 import LeagueCreateStep5 from '@/components/league/create/LeagueCreateStep5.vue';
+import { LEAGUE_TYPES, LEAGUE_FORMATS, DRAFT_METHODS } from '@/utils/code/code';
 
 const userStore = useUserStore();
 const user = userStore.user;
@@ -118,7 +121,6 @@ const handleNext = async () => {
     }
 
     if(step.value === 4){
-        console.log(maxTeams.value)
         if (!maxTeams.value || maxTeams.value < 4 || maxTeams.value > 30) {
             alert('최대 팀 수는 4에서 30 사이로 설정해 주세요.', 'error');
             return false;
@@ -138,6 +140,27 @@ const handleNext = async () => {
             alert('드래프트 일자를 설정해 주세요.', 'error');
             return false;
         }
+
+        // 여기 추가: 사용자에게 확인창 띄우기
+        const confirmMessage = `
+📋 리그 정보를 확인해 주세요:
+
+- 리그명: ${leagueName.value}
+- 리그 유형: ${LEAGUE_TYPES.filter((row)=>row.id === leagueType.value)[0].label}
+- 리그 방식: ${LEAGUE_FORMATS.filter((row)=>row.id === leagueFormat.value)[0].label}
+- 드래프트 방식: ${DRAFT_METHODS.filter((row)=>row.id === draftMethod.value)[0].label}
+- 비공개 여부: ${isPrivate.value ? '비공개' : '공개'}
+- 최대 팀 수: ${maxTeams.value}팀
+- 플레이오프 팀 수: ${playoffTeams.value}팀
+- 시즌 시작일: ${dayjs(seasonStartDate.value).format('YYYY.MM.DD')}
+${draftMethod.value !== 'custom' ? '- 드래프트 일자: ' + dayjs(draftDate.value).format('YYYY.MM.DD') : ''}
+        
+이대로 진행할까요?
+        `;
+
+        if (!await confirm(confirmMessage)) return;
+
+        //api 호출하여 저장
     }
     
     if (step.value < stepLabels.length) {
