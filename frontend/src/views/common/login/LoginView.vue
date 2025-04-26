@@ -120,6 +120,7 @@ const login = async () => {
                 emailFieldRef.value.validate();
             }
         });
+        alert("이메일이 입력되지 않았습니다.", "error")
         return;
     }
 
@@ -130,6 +131,7 @@ const login = async () => {
                 emailFieldRef.value.validate();
             }
         });
+        alert("올바른 이메일 형식이 아닙니다.", "error")
         return;
     }
 
@@ -140,6 +142,7 @@ const login = async () => {
                 passwordFieldRef.value.validate();
             }
         });
+        alert("비밀번호가 입력되지 않았습니다.", "error")
         return;
     }
 
@@ -174,25 +177,18 @@ const login = async () => {
 };
 
 const handleServerError = (error) => {
-     // 이메일 오류 처리
-     /*if (error.code === -3) {
-        emailError.value = '이메일이 입력되지 않았습니다.';
-        nextTick(() => {
-            if (emailFieldRef.value && typeof emailFieldRef.value.validate === 'function') {
-                emailFieldRef.value.validate(); // 이메일 유효성 검증
-            }
-        });
+    switch(error.code){
+        case -2 :
+        case -3 :
+            alert(error.message)
+            break;
+        case -4 :
+        case -5 :
+            alert("가입되지 않은 계정이거나 잘못된 비밀번호입니다.", "error")
+            break;
+        default :
+            alert("로그인 과정에서 오류가 발생하였습니다.", "error")
     }
-
-    // 닉네임 오류 처리
-    if (error.code === -4) {
-        nicknameCheckStatus.value = 'taken'; // 닉네임 서버 오류 상태 설정
-        nextTick(() => {
-            if (nicknameFieldRef.value && typeof nicknameFieldRef.value.validate === 'function') {
-                nicknameFieldRef.value.validate(); // 이메일 유효성 검증
-            }
-        });
-    }*/
 };
 
 const handleEmailBlur = () => {
