@@ -19,7 +19,7 @@
             <LeagueCreateStep2 v-model:leagueType="leagueType" v-model:leagueFormat="leagueFormat" ref="step2Ref"/>
           </v-stepper-window-item>
           <v-stepper-window-item :value="3">
-            <LeagueCreateStep3 />
+            <LeagueCreateStep3  v-model:draftMethod="draftMethod"/>
           </v-stepper-window-item>
           <v-stepper-window-item :value="4">
             <LeagueCreateStep4 />
@@ -55,6 +55,7 @@ const step = ref(1); // Step 1부터 시작
 const leagueName = ref(user.nickname?user.nickname+"의 리그":""); // 리그명 상태 관리
 const leagueType = ref('');   // 예: 'head-to-head', 'season'
 const leagueFormat = ref(''); // 예: 'point', 'roto'
+const draftMethod = ref('');
 
 const step1Ref = ref(null);
 const step2Ref = ref(null);
@@ -90,6 +91,13 @@ const handleNext = async () => {
 
         if (!leagueFormat.value) {
             alert('리그 포맷을 선택해 주세요.', 'error');
+            return;
+        }
+    }
+
+    if(step.value === 3){
+      if (!draftMethod.value) {
+            alert('드래프트 방식을 선택해 주세요.', 'error');
             return;
         }
     }
