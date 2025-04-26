@@ -34,7 +34,7 @@
           </v-stepper-window-item>
           <v-stepper-window-item class="pa-1" :value="5">
             <LeagueCreateStep5 
-                v-model="leagueName"    
+                v-model:leagueName="leagueName"    
                 v-model:leagueType="leagueType" 
                 v-model:leagueFormat="leagueFormat"
                 v-model:draftMethod="draftMethod"
@@ -74,7 +74,7 @@ const userStore = useUserStore();
 const user = userStore.user;
 const { mobile } = useDisplay();
 
-const step = ref(4); // Step 1부터 시작
+const step = ref(1); // Step 1부터 시작
 const leagueName = ref(user.nickname?user.nickname+"의 리그":"");    // 리그명 상태 관리
 const leagueType = ref('');                                         // 예: 'head-to-head', 'season'
 const leagueFormat = ref('');                                       // 예: 'point', 'roto'
