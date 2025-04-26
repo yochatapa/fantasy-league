@@ -1,6 +1,6 @@
 <template>
     <v-container class="py-10" fluid>
-      <v-stepper v-model="step" class="mx-auto" max-width="800">
+      <v-stepper v-model="step" class="mx-auto">
         <v-stepper-header>
           <v-stepper-item
             v-for="(label, index) in stepLabels"
