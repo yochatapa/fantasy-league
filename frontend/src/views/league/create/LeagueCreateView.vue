@@ -41,14 +41,18 @@
   
 <script setup>
 import { ref } from 'vue';
+import { useUserStore } from '@/stores/userStore'
 import LeagueCreateStep1 from '@/components/league/create/LeagueCreateStep1.vue';
 import LeagueCreateStep2 from '@/components/league/create/LeagueCreateStep2.vue';
 import LeagueCreateStep3 from '@/components/league/create/LeagueCreateStep3.vue';
 import LeagueCreateStep4 from '@/components/league/create/LeagueCreateStep4.vue';
 import LeagueCreateStep5 from '@/components/league/create/LeagueCreateStep5.vue';
 
+const userStore = useUserStore();
+const user = userStore.user;
+
 const step = ref(1); // Step 1부터 시작
-const leagueName = ref(''); // 리그명 상태 관리
+const leagueName = ref(user.nickname?user.nickname+"의 리그":""); // 리그명 상태 관리
 const leagueType = ref('');   // 예: 'head-to-head', 'season'
 const leagueFormat = ref(''); // 예: 'point', 'roto'
 
