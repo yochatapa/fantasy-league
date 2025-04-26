@@ -1,6 +1,7 @@
 // stores/userStore.ts (Pinia 예시)
 import { defineStore } from 'pinia'
 import { commonFetch } from '../utils/common/commonFetch'; // commonFetch 가져오기
+import router from '../router';
 
 export const useUserStore = defineStore('user', {
     state: () => ({
@@ -24,6 +25,7 @@ export const useUserStore = defineStore('user', {
                     this.isLoggedIn = false;
                     this.isAuthChecked = true;
                     localStorage.removeItem('token');
+                    router.push("/")
                 } else {
                     alert("로그아웃 처리 중 문제가 발생했습니다.\n잠시 후 다시 시도해 주세요.")
                 }
