@@ -1,8 +1,12 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory, RouterView  } from 'vue-router'
+import { useUserStore } from '@/stores/userStore'
 import HomeView from '@/views/common/HomeView.vue'
 import LoginView from '@/views/common/login/LoginView.vue'
 import SignupView from '@/views/common/signup/SignupView.vue'
-import { useUserStore } from '@/stores/userStore'
+// league
+import LeagueStartView from '@/views/league/create/LeagueStartView.vue'
+import LeagueCreateView from '@/views/league/create/LeagueCreateView.vue'
+import LeagueJoinView from '@/views/league/create/LeagueJoinView.vue'
 
 const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
@@ -21,7 +25,28 @@ const router = createRouter({
             path: '/signup',
             name: 'signup',
             component: SignupView,
-        }
+        },
+        {
+          path: '/league',
+          component: RouterView ,
+          children: [
+              {
+                  path: 'start',
+                  name: 'LeagueStart',
+                  component: LeagueStartView,
+              },
+              {
+                  path: 'create',
+                  name: 'LeagueCreate',
+                  component: LeagueCreateView,
+              },
+              {
+                  path: 'join',
+                  name: 'LeagueJoin',
+                  component: LeagueJoinView,
+              }
+          ]
+      }
     ],
     scrollBehavior(to, from, savedPosition) {
         // savedPosition은 뒤로가기/앞으로가기 버튼으로 이동했을 때
