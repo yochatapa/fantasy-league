@@ -379,6 +379,18 @@ const handleNicknameBlur = async () => {
 };
 
 const submitForm = async () => {
+    if(!email.value) return alert("이메일이 입력되지 않았습니다.", "error")
+    if(!validation.isEmail(email.value)) return alert("올바른 이메일 형식이 아닙니다.", "error")
+    if(emailCheckStatus.value === "taken") return alert("이미 사용 중인 이메일입니다.", "error")
+
+    if(!password.value) return alert("비밀번호가 입력되지 않았습니다.", "error")
+    if(!validation.isPassword(password.value).isAllValid) return alert("비밀번호 조건을 충족해주세요.", "error")
+    if(password.value !== passwordConfirm.value) return alert("비밀번호가 일치하지 않습니다.", "error")
+
+    if(!nickname.value) return alert("닉네임이 입력되지 않았습니다.", "error")
+    if(!validation.isNickname(nickname.value)) return alert("닉네임에는 한글, 영문, 숫자, 마침표(.), 밑줄(_)만 사용할 수 있습니다.", "error")
+    if(nicknameCheckStatus.value === "taken") return alert("비밀번호가 일치하지 않습니다.", "error")
+
     try {
         const formData = new FormData();
         formData.append('email', email.value);
@@ -423,6 +435,7 @@ const handleServerError = (error) => {
                 emailFieldRef.value.validate();
             }
         });
+        alert("이미 사용 중인 이메일입니다.");
     }else if (error.code === -4) {
         // 닉네임 오류 처리
         nicknameCheckStatus.value = 'taken'; // 닉네임 서버 오류 상태 설정
@@ -431,6 +444,7 @@ const handleServerError = (error) => {
                 nicknameFieldRef.value.validate();
             }
         });
+        alert("이미 사용 중인 닉네임입니다.");
     }else if (error.code === -1) {
         alert("회원가입 중 문제가 발생했습니다.\n다시 시도해주세요.");
         /*emailCheckStatus.value = 'server'; // 이메일 서버 오류 상태 설정
