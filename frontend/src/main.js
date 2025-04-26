@@ -8,7 +8,7 @@ import App from './App.vue'
 import router from './router'
 import vuetify from './plugins/vuetify';
 
-import { useAlertStore } from '@/stores/useAlertStore';
+import { useAlertStore } from '@/stores/alertStore';
 
 const app = createApp(App)
 

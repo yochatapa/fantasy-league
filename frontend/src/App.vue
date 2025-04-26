@@ -4,7 +4,7 @@ import AppHeader from '@/components/common/AppHeader.vue'
 import { useUserStore } from '@/stores/userStore'
 import { storeToRefs } from 'pinia'
 import { onMounted } from 'vue'
-import { useAlertStore } from '@/stores/useAlertStore';
+import { useAlertStore } from '@/stores/alertStore';
 
 const alert = useAlertStore();
 
