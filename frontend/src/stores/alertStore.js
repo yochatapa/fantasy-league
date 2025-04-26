@@ -17,7 +17,7 @@ export const useAlertStore = defineStore('alert', () => {
     }
 
     function Confirm(message) {
-        dialogMessage.value = message;
+        dialogMessage.value = message.replaceAll("\n","<br>");
         dialog.value = true;
 
         return new Promise((resolve) => {

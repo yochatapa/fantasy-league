@@ -40,14 +40,16 @@ onMounted(() => {
                 timeout="3000"
                 location="top center"
             >
-                {{ alert.snackbarMessage }}
+                <div style="white-space: pre-line;">
+                    {{ alert.snackbarMessage  }}
+                </div>
             </v-snackbar>
 
             <!-- Confirm Dialog -->
             <v-dialog v-model="alert.dialog" width="400">
                 <v-card>
                     <v-card-title class="text-h6">확인</v-card-title>
-                    <v-card-text>{{ alert.dialogMessage }}</v-card-text>
+                    <v-card-text v-html="alert.dialogMessage "></v-card-text>
                     <v-card-actions>
                         <v-spacer />
                         <v-btn text @click="alert.confirmNo()">취소</v-btn>
