@@ -179,6 +179,7 @@ export const createLeague = async (req, res) => {
             return sendSuccess(res, {
                 message: '리그가 성공적으로 생성되었습니다.',
                 leagueId,
+                seasonId
             });
 
         });
