@@ -7,6 +7,7 @@ import cookieParser from 'cookie-parser'
 import testRoutes from './routes/testRoutes.js';
 import usersRoutes from './routes/usersRoutes.js';
 import authRoutes from './routes/authRoutes.js';
+import leagueRoutes from './routes/leagueRoutes.js';
 
 dotenv.config();
 
@@ -31,6 +32,7 @@ if(process.env.SERVE_FRONTEND === 'true'){
 app.use('/api/test' , testRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/auth' , authRoutes);
+app.use('/api/league', leagueRoutes);
 
 if(process.env.SERVE_FRONTEND === 'true'){
     app.get(/^\/(.*)?$/, (req, res) => {

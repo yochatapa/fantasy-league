@@ -69,6 +69,7 @@ import LeagueCreateStep3 from '@/components/league/create/LeagueCreateStep3.vue'
 import LeagueCreateStep4 from '@/components/league/create/LeagueCreateStep4.vue';
 import LeagueCreateStep5 from '@/components/league/create/LeagueCreateStep5.vue';
 import { LEAGUE_TYPES, LEAGUE_FORMATS, DRAFT_METHODS } from '@/utils/code/code';
+import { commonFetch } from '@/utils/common/commonFetch';
 
 const userStore = useUserStore();
 const user = userStore.user;
@@ -150,10 +151,9 @@ const handleNext = async () => {
             alert('드래프트 일자를 설정해 주세요.', 'error');
             return false;
         }
-
+        
         // 여기 추가: 사용자에게 확인창 띄우기
-        const confirmMessage = `
-📋 리그 정보를 확인해 주세요:
+        const confirmMessage = `📋 리그 정보를 확인해 주세요:
 
 - 리그명: ${leagueName.value}
 - 리그 유형: ${LEAGUE_TYPES.filter((row)=>row.id === leagueType.value)[0].label}
@@ -165,12 +165,35 @@ const handleNext = async () => {
 - 시즌 시작일: ${dayjs(seasonStartDate.value).format('YYYY.MM.DD')}
 ${draftMethod.value !== 'custom' ? '- 드래프트 일자: ' + dayjs(draftDate.value).format('YYYY.MM.DD') : ''}
         
-이대로 진행할까요?
-        `;
+이대로 진행할까요?`;
 
         if (!await confirm(confirmMessage)) return;
-
+        
         //api 호출하여 저장
+        const response = await commonFetch(`/api/league/create`,
+            {
+                method: 'POST',
+                body: {
+                    leagueName        : leagueName.value
+                    , leagueType        : leagueType.value
+                    , leagueFormat      : leagueFormat.value
+                    , draftMethod       : draftMethod.value
+                    , isPublic          : isPublic.value
+                    , maxTeams          : maxTeams.value
+                    , playoffTeams      : playoffTeams.value
+                    , seasonStartDate   : seasonStartDate.value
+                    , draftDate         : draftDate.value
+                }
+            }
+        );
+
+        if (response.success) {
+            console.log('리그 생성 성공:', response);
+        } else {
+            console.error('리그 생성 실패:', response);
+
+            return alert("리그 생성 도중 문제가 발생하였습니다.\n다시 시도해주세요.", "error");
+        }
     }
     
     if (step.value < stepLabels.length) {
