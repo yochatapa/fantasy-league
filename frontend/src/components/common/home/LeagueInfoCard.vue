@@ -19,11 +19,12 @@
             <v-card
                 class="pa-4"
                 elevation="1"
-                @click="goToLeague(league.id)"
+                @click="goToLeague(league.league_id)"
             >
                 <div class="text-subtitle-1 font-weight-medium mb-2">
-                    {{ league.name }}
+                    {{ league.league_name }}
                 </div>
+                <!-- 이번주 순위 or 내 점수 등 추가 예정 -->
                 <v-chip color="secondary" class="ma-1" label>
                     순위: {{ league.rank }}위
                 </v-chip>
@@ -50,9 +51,11 @@
 
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router';
 import { useUserStore } from '@/stores/userStore'
+import { commonFetch } from '@/utils/common/commonFetch';
+import { encryptData } from '@/utils/common/crypto'
 
 const userStore = useUserStore();
 const router = useRouter();
@@ -60,9 +63,9 @@ const router = useRouter();
 const isLoggedIn = computed(() => userStore.isLoggedIn);
 
 const leagues = ref([
-    /*{ id: 1, name: '드림리그', rank: 2, points: 1420 },
-    { id: 2, name: '챌린저스', rank: 5, points: 1280 },
-    { id: 3, name: '야구왕조', rank: 1, points: 1600 },*/
+    /*{ id: 1, league_name: '드림리그', rank: 2, points: 1420 },
+    { id: 2, league_name: '챌린저스', rank: 5, points: 1280 },
+    { id: 3, league_name: '야구왕조', rank: 1, points: 1600 },*/
 ])
 
 const joinLeague = () => {
@@ -71,6 +74,30 @@ const joinLeague = () => {
 }
 
 const goToLeague = (id) => {
-    console.log(`리그 상세로 이동: ${id}`)
+    router.push({
+        path: "/league/info",
+        query: {
+            leagueId : encryptData(id),
+        }
+    })
 }
+
+const loadLeagueInfo = async () => {
+    try {
+        // fetchLeagueInfo는 서버에서 리그 정보를 받아오는 API 호출 함수입니다.
+        const response = await commonFetch(`/api/league/list`, {
+            method : 'GET'
+        });
+
+        if(response.success){            
+            leagues.value = response.data.leagueInfo;
+        }        
+    } catch (error) {
+        console.error('리그 정보 조회 실패:', error);
+    }
+}
+
+onMounted(() => {
+    loadLeagueInfo();
+});
 </script>

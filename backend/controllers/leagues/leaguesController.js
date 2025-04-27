@@ -197,6 +197,14 @@ export const getLeagueInfo = async (req, res) => {
     leagueId = decryptData(leagueId)
     seasonId = decryptData(seasonId)
 
+    const accessToken = req.headers['authorization']?.split(' ')[1];  // 'Bearer <token>' 형식에서 토큰 추출
+
+    if(!accessToken){
+        return sendBadRequest(res, '토큰이 제공되지 않았습니다.');
+    }
+
+    const user = jwt.verify(accessToken, process.env.JWT_SECRET);
+
     try {
         const leagueInfoQuery = `
             SELECT
@@ -233,7 +241,7 @@ export const getLeagueInfo = async (req, res) => {
                 , ls.season_status
             FROM league_master lm 
                 INNER JOIN league_season ls 
-                    ON lm.league_id = $1
+                    ON lm.league_id = ls.league_id
                     AND ls.season_id = $2
             WHERE lm.league_id = $1
         `;
@@ -246,6 +254,78 @@ export const getLeagueInfo = async (req, res) => {
                 leagueInfo : leagueInfo.rows[0]
             });
         else return sendBadRequest(res, '리그 정보가 없습니다.');
+    } catch (error) {
+        //return sendServerError(res, error, '리그 정보 조회 중 문제가 발생했습니다. 다시 시도해주세요.');
+    }
+}
+
+export const getLeagueList = async (req, res) => {
+    let { leagueId, seasonId } = req.query;
+
+    const accessToken = req.headers['authorization']?.split(' ')[1];  // 'Bearer <token>' 형식에서 토큰 추출
+
+    if(!accessToken){
+        return sendBadRequest(res, '토큰이 제공되지 않았습니다.');
+    }
+
+    const user = jwt.verify(accessToken, process.env.JWT_SECRET);
+
+    try {
+        const leagueListQuery = `
+            SELECT
+                lm.league_id 
+                , lm.league_name 
+                , lm.description
+                , lm.is_public
+                , lm.allow_clone
+                , lm.league_type 
+                , lm.league_format
+                , lm.commissioner_id
+                , lm.join_approval_type
+                , lm.invite_code
+                , lm.icon_url
+                , lm.banner_url
+                , lm.status
+                , ls.season_id 
+                , ls.season_year
+                , ls.max_teams
+                , ls.playoff_teams
+                , ls.foreign_player_limit 
+                , ls.start_date 
+                , ls.draft_date
+                , ls.draft_type
+                , ls.draft_timer 
+                , ls.allow_auto_draft
+                , ls.allow_trades
+                , ls.trade_deadline 
+                , ls.waiver_clear_days 
+                , ls.allow_matchup_reset 
+                , ls.injured_list_slots
+                , ls.tie_breaker
+                , ls.lineup_change_restriction 
+                , ls.season_status
+                , (	SELECT 
+                		count(*) 
+                	FROM league_season_team 
+                	WHERE league_id = lm.league_id 
+                		AND season_id = ls.season_id ) AS team_count
+            FROM league_season_team lst
+            	INNER JOIN league_master lm ON lst.league_id = lm.league_id 
+                INNER JOIN league_season ls 
+                    ON lst.season_id  = ls.season_id
+            WHERE lst.user_id = $1
+            	AND ls.season_year = DATE_PART('year', CURRENT_DATE)
+            	AND lm.status <> 'inactive'
+        `;
+
+        const leagueInfo = await query(leagueListQuery, [user.userId]);
+
+        if(leagueInfo.rows[0])
+            return sendSuccess(res, {
+                message: '리그 목록이 조회되었습니다.',
+                leagueInfo : leagueInfo.rows
+            });
+        else return sendBadRequest(res, '리그 목록이 없습니다.');
     } catch (error) {
         //return sendServerError(res, error, '리그 정보 조회 중 문제가 발생했습니다. 다시 시도해주세요.');
     }
