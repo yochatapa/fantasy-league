@@ -1,5 +1,5 @@
 <template>
-    <v-row>
+    <v-row v-if="isLoadedData">
         <v-col
             cols="12"
             class="d-flex justify-space-between align-center mb-2"
@@ -61,6 +61,7 @@ const userStore = useUserStore();
 const router = useRouter();
 
 const isLoggedIn = computed(() => userStore.isLoggedIn);
+const isLoadedData = ref(false);
 
 const leagues = ref([
     /*{ id: 1, league_name: '드림리그', rank: 2, points: 1420 },
@@ -91,6 +92,7 @@ const loadLeagueInfo = async () => {
 
         if(response.success){            
             leagues.value = response.data.leagueInfo;
+            isLoadedData.value = true;
         }        
     } catch (error) {
         console.error('리그 정보 조회 실패:', error);

@@ -97,6 +97,7 @@ const goToNews = (link) => {
 <style scoped>
 .v-card .v-col .news-title {
     display: -webkit-box !important;
+    line-clamp: 2 !important;
     -webkit-line-clamp: 2 !important;
     -webkit-box-orient: vertical !important;
     overflow: hidden !important;
