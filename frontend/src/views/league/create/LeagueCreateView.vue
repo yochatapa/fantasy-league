@@ -33,17 +33,6 @@
             />
           </v-stepper-window-item>
           <v-stepper-window-item class="pa-1" :value="5">
-            <LeagueCreateStep5 
-                v-model:leagueName="leagueName"    
-                v-model:leagueType="leagueType" 
-                v-model:leagueFormat="leagueFormat"
-                v-model:draftMethod="draftMethod"
-                v-model:isPublic="isPublic"
-                v-model:maxTeams="maxTeams"
-                v-model:playoffTeams="playoffTeams"
-                v-model:seasonStartDate="seasonStartDate"
-                v-model:draftDate="draftDate"
-            />
           </v-stepper-window-item>
         </v-stepper-window>
   
@@ -67,9 +56,12 @@ import LeagueCreateStep1 from '@/components/league/create/LeagueCreateStep1.vue'
 import LeagueCreateStep2 from '@/components/league/create/LeagueCreateStep2.vue';
 import LeagueCreateStep3 from '@/components/league/create/LeagueCreateStep3.vue';
 import LeagueCreateStep4 from '@/components/league/create/LeagueCreateStep4.vue';
-import LeagueCreateStep5 from '@/components/league/create/LeagueCreateStep5.vue';
 import { LEAGUE_TYPES, LEAGUE_FORMATS, DRAFT_METHODS } from '@/utils/code/code';
 import { commonFetch } from '@/utils/common/commonFetch';
+import { useRouter } from 'vue-router';
+import { encryptData } from '@/utils/common/crypto'
+
+const router = useRouter();
 
 const userStore = useUserStore();
 const user = userStore.user;
@@ -188,7 +180,20 @@ ${draftMethod.value !== 'custom' ? '- 드래프트 일자: ' + dayjs(draftDate.v
         );
 
         if (response.success) {
-            console.log('리그 생성 성공:', response);
+            if(response.data && response.data?.leagueId && response.data?.seasonId){
+                const leagueId = response.data?.leagueId
+                const seasonId = response.data?.seasonId;
+
+                console.log('리그 생성 성공:', response);
+
+                return router.replace({
+                    path: '/league/create/complete',
+                    query: {
+                        leagueId : encryptData(leagueId),
+                        seasonId : encryptData(seasonId)
+                    }
+                });
+            }else return alert("리그 생성 도중 문제가 발생하였습니다.\n다시 시도해주세요.", "error");
         } else {
             console.error('리그 생성 실패:', response);
 

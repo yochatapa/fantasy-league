@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { query, withTransaction } from '../../db.js';
 import { sendSuccess, sendBadRequest, sendServerError } from '../../utils/apiResponse.js';
+import { decryptData } from '../../utils/crypto.js';
 
 export const createLeague = async (req, res) => {
     const { leagueName, leagueType, leagueFormat, draftMethod, isPublic, maxTeams, playoffTeams, seasonStartDate, draftDate } = req.body;
@@ -187,3 +188,65 @@ export const createLeague = async (req, res) => {
         return sendServerError(res, error, '리그 생성 중 문제가 발생했습니다. 다시 시도해주세요.');
     }
 };
+
+
+
+export const getLeagueInfo = async (req, res) => {
+    let { leagueId, seasonId } = req.query;
+
+    leagueId = decryptData(leagueId)
+    seasonId = decryptData(seasonId)
+
+    try {
+        const leagueInfoQuery = `
+            SELECT
+                lm.league_id 
+                , lm.league_name 
+                , lm.description
+                , lm.is_public
+                , lm.allow_clone
+                , lm.league_type 
+                , lm.league_format
+                , lm.commissioner_id
+                , lm.join_approval_type
+                , lm.invite_code
+                , lm.icon_url
+                , lm.banner_url
+                , lm.status
+                , ls.season_id 
+                , ls.season_year
+                , ls.max_teams
+                , ls.playoff_teams
+                , ls.foreign_player_limit 
+                , ls.start_date 
+                , ls.draft_date
+                , ls.draft_type
+                , ls.draft_timer 
+                , ls.allow_auto_draft
+                , ls.allow_trades
+                , ls.trade_deadline 
+                , ls.waiver_clear_days 
+                , ls.allow_matchup_reset 
+                , ls.injured_list_slots
+                , ls.tie_breaker
+                , ls.lineup_change_restriction 
+                , ls.season_status
+            FROM league_master lm 
+                INNER JOIN league_season ls 
+                    ON lm.league_id = $1
+                    AND ls.season_id = $2
+            WHERE lm.league_id = $1
+        `;
+
+        const leagueInfo = await query(leagueInfoQuery, [leagueId, seasonId]);
+
+        if(leagueInfo.rows[0])
+            return sendSuccess(res, {
+                message: '리그 정보가 조회되었습니다.',
+                leagueInfo : leagueInfo.rows[0]
+            });
+        else return sendBadRequest(res, '리그 정보가 없습니다.');
+    } catch (error) {
+        //return sendServerError(res, error, '리그 정보 조회 중 문제가 발생했습니다. 다시 시도해주세요.');
+    }
+}
