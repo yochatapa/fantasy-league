@@ -85,6 +85,7 @@ import { LEAGUE_TYPES, LEAGUE_FORMATS, DRAFT_METHODS } from '@/utils/code/code';
 import { useRoute, useRouter } from 'vue-router';
 import { encryptData, decryptData } from '@/utils/common/crypto.js';
 import { commonFetch } from '@/utils/common/commonFetch';
+import { tr } from 'vuetify/locale';
 
 const route = useRoute();
 const router = useRouter();
@@ -92,8 +93,21 @@ const router = useRouter();
 // leagueId와 seasonId를 복호화하여 가져옵니다.
 const orgLeagueId = route.query.leagueId;
 const orgSeasonId = route.query.seasonId;
-const leagueId = decryptData(orgLeagueId);
-const seasonId = decryptData(orgSeasonId);
+let leagueId = null;
+let seasonId = null;
+
+try {
+    leagueId = decryptData(orgLeagueId);
+    seasonId = decryptData(orgSeasonId);
+} catch (error) {
+    alert("올바르지 않은 경로입니다.");
+    router.push("/");
+}
+
+if(!leagueId || !seasonId){
+    alert("올바르지 않은 경로입니다.");
+    router.push("/");
+}
 
 // 리그 정보 상태를 저장할 변수
 const leagueInfo = ref({
@@ -135,7 +149,7 @@ const loadLeagueInfo = async () => {
 
             console.log(leagueInfo.value)
         }else{
-            alert("리그 생성 도중 문제가 발생하였습니다.")
+            alert("리그 정보 조회 도중 문제가 발생하였습니다.");
             router.push("/");
         }
 

@@ -255,7 +255,7 @@ export const getLeagueInfo = async (req, res) => {
             });
         else return sendBadRequest(res, '리그 정보가 없습니다.');
     } catch (error) {
-        //return sendServerError(res, error, '리그 정보 조회 중 문제가 발생했습니다. 다시 시도해주세요.');
+        return sendServerError(res, error, '리그 정보 조회 중 문제가 발생했습니다. 다시 시도해주세요.');
     }
 }
 
