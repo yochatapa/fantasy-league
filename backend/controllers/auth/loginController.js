@@ -149,7 +149,7 @@ export const login = async (req, res) => {
             message: '로그인 성공',
             token : accessToken,
             user: {
-                id: user.user_id,
+                userId: user.user_id,
                 email: user.email,
                 nickname: user.nickname,
                 profileImage : base64Image, 

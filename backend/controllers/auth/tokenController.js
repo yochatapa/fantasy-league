@@ -1,7 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { query } from '../../db.js';  // DB 쿼리 함수
 import dotenv from 'dotenv';
-import fs from 'fs/promises'; // 비동기 파일 시스템 모듈
 import path from 'path'; // 경로 처리 모듈
 import { sendSuccess, sendBadRequest, sendServerError } from '../../utils/apiResponse.js'; // apiResponse에서 임포트
 import convertFileToBase64 from '../../utils/convertFileToBase64.js'; // apiResponse에서 임포트
@@ -55,7 +54,7 @@ export const checkToken = async (req, res) => {
         return sendSuccess(res, {
             message: '토큰 검증 성공',
             user: {
-                user_id: user.user_id,
+                userId: user.user_id,
                 email: user.email,
                 nickname: user.nickname,
                 profileImage : base64Image, // 파일 읽기 실패 시 null
