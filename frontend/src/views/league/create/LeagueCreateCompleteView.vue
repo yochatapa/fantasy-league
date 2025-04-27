@@ -83,7 +83,7 @@ import { ref, computed, onMounted } from 'vue';
 import dayjs from 'dayjs';
 import { LEAGUE_TYPES, LEAGUE_FORMATS, DRAFT_METHODS } from '@/utils/code/code';
 import { useRoute, useRouter } from 'vue-router';
-import { decryptData } from '@/utils/common/crypto.js';
+import { encryptData, decryptData } from '@/utils/common/crypto.js';
 import { commonFetch } from '@/utils/common/commonFetch';
 
 const route = useRoute();
@@ -150,15 +150,17 @@ onMounted(() => {
     loadLeagueInfo();
 });
 
-// 내 리그로 이동
+// 리그로 이동
 const goToMyLeague = () => {
-    leagueInfo.value = {
-        leagueName : "hihi"
-    }
-    //router.replace('/my-leagues');
+    router.push({
+        path: "/league/info",
+        query: {
+            leagueId : encryptData(leagueId),
+        }
+    })
 };
 
 const goToMyHome = () => {
-    router.replace("/")
+    router.push("/")
 }
 </script>
