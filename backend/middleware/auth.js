@@ -2,6 +2,8 @@ import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import {query} from '../db.js';
 import { sendSuccess, sendNoTokenRequest, sendInvalidTokenRequest } from '../utils/apiResponse.js';
+import path from 'path'; // 경로 처리 모듈
+import convertFileToBase64 from '../utils/convertFileToBase64.js'; // apiResponse에서 임포트
 
 dotenv.config();
 
@@ -43,7 +45,11 @@ const verifyToken = async (req, res, next) => {
         // refreshToken이 유효하면 새 accessToken 발급
         // DB에서 최신 사용자 정보 조회
         const userResult = await query(
-            'SELECT user_id, email, nickname FROM user_master WHERE user_id = $1 LIMIT 1',
+            `SELECT 
+                user_id, email, nickname, path, mimetype
+            FROM user_master um
+                LEFT JOIN file_table ft ON um.profile_image = ft.file_id and sn = 1
+            WHERE user_id = $1 LIMIT 1`,
             [decodedRefresh.userId]
         );
         
@@ -67,10 +73,19 @@ const verifyToken = async (req, res, next) => {
         // 새 토큰을 응답 헤더로 보내거나, 사용자에게 노출 (프론트에서 저장 필요)
         res.setHeader('x-access-token', newAccessToken);
 
+        let base64Image = null;
+
+        if(currentUser.path){
+            const filePath = path.join(process.cwd(), currentUser.path);
+
+            base64Image = await convertFileToBase64(filePath, currentUser.mimetype);
+        }
+
         req.user = {
             userId: currentUser.user_id,    // DB에서 가져온 ID
             email: currentUser.email,       // DB에서 가져온 최신 이메일
-            nickname: currentUser.nickname  // DB에서 가져온 최신 닉네임
+            nickname: currentUser.nickname, // DB에서 가져온 최신 닉네임
+            profileImage : base64Image, 
         };
         
         //next(); // 다음 라우터 실행
@@ -80,7 +95,8 @@ const verifyToken = async (req, res, next) => {
             user : {
                 userId: currentUser.user_id,    // DB에서 가져온 ID
                 email: currentUser.email,       // DB에서 가져온 최신 이메일
-                nickname: currentUser.nickname  // DB에서 가져온 최신 닉네임
+                nickname: currentUser.nickname, // DB에서 가져온 최신 닉네임
+                profileImage : base64Image, 
             }
         });
     } catch (err) {
