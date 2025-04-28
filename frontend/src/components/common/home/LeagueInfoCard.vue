@@ -91,8 +91,8 @@ const loadLeagueInfo = async () => {
         });
 
         if(response.success){            
-            leagues.value = response.data.leagueInfo;
-            
+            if(response.data.leagueInfo) leagues.value =response.data.leagueInfo;
+            else leagues.value = [];
         }        
     } catch (error) {
         console.error('리그 정보 조회 실패:', error);
