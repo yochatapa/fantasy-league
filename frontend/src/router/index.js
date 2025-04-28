@@ -8,7 +8,8 @@ import LeagueStartView from '@/views/league/create/LeagueStartView.vue'
 import LeagueCreateView from '@/views/league/create/LeagueCreateView.vue'
 import LeagueJoinView from '@/views/league/create/LeagueJoinView.vue'
 import LeagueCreateCompleteView from '@/views/league/create/LeagueCreateCompleteView.vue'
-import LeagueHome from '@/views/league/LeagueHome.vue'
+import LeagueLayoutView from '@/views/league/LeagueLayoutView.vue'
+import LeagueHomeView from '@/views/league/home/LeagueHomeView.vue'
 
 const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
@@ -29,34 +30,34 @@ const router = createRouter({
             component: SignupView,
         },
         {
+            path: '/league/start',
+            name: 'LeagueStart',
+            component: LeagueStartView,
+        },
+        {
+            path: '/league/create',
+            name: 'LeagueCreate',
+            component: LeagueCreateView,
+        },
+        {
+            path: '/league/create/complete',
+            name: 'LeagueCreateCompleteView',
+            component: LeagueCreateCompleteView,
+        },
+        {
+            path: '/league/join',
+            name: 'LeagueJoin',
+            component: LeagueJoinView,
+        },
+        {
             path: '/league',
-            component: RouterView ,
+            component: LeagueLayoutView ,
             children: [
                 {
-                    path: 'start',
-                    name: 'LeagueStart',
-                    component: LeagueStartView,
-                },
-                {
-                    path: 'create',
-                    name: 'LeagueCreate',
-                    component: LeagueCreateView,
-                },
-                {
-                    path: 'create/complete',
-                    name: 'LeagueCreateCompleteView',
-                    component: LeagueCreateCompleteView,
-                },
-                {
-                    path: 'join',
-                    name: 'LeagueJoin',
-                    component: LeagueJoinView,
-                },
-                {
                     path: 'home',
-                    name: 'LeagueHome',
-                    component: LeagueHome,
-                }
+                    name: 'LeagueHomeView',
+                    component: LeagueHomeView,
+                },
             ]
         }
     ],

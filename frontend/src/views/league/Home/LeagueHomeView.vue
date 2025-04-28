@@ -1,0 +1,3 @@
+<template>
+    League Home
+</template>
