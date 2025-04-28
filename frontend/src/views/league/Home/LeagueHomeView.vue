@@ -11,7 +11,7 @@
                 </v-icon>
             </v-col>
         </v-row>
-
+ 
         <v-card class="mb-6">
             <v-card-title>
                 공지사항
