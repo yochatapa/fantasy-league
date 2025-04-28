@@ -1,16 +1,16 @@
 <template>
-    <v-row v-if="isLoadedData">
+    <v-row>
         <v-col
             cols="12"
             class="d-flex justify-space-between align-center mb-2"
-            v-if="leagues.length > 0"
+            v-if="leagues.length > 0 && isLoggedIn && isLoadedData"
         >
             <span class="text-h6 font-weight-bold">내 리그 정보</span>
             <v-btn color="primary" @click="joinLeague">리그 참가하기</v-btn>
         </v-col>
 
         <v-col
-            v-if="leagues.length > 0"
+            v-if="leagues.length > 0 && isLoggedIn && isLoadedData"
             v-for="league in leagues"
             :key="league.id"
             cols="12"
@@ -33,9 +33,9 @@
                 </v-chip>
             </v-card>
         </v-col>
-
-        <v-col v-else cols="12">
-            <v-card class="pa-6 d-flex flex-column align-center" elevation="1">
+        
+        <v-col v-else-if="isLoadedData" cols="12">
+            <v-card  class="pa-6 d-flex flex-column align-center" elevation="1">
                 <v-icon size="48" color="grey">mdi-emoticon-sad-outline</v-icon>
                 <div class="text-h6 mt-2 mb-1">참가한 리그가 없습니다</div>
                 <div class="text-body-2 mb-4 text-center">
@@ -92,10 +92,12 @@ const loadLeagueInfo = async () => {
 
         if(response.success){            
             leagues.value = response.data.leagueInfo;
-            isLoadedData.value = true;
+            
         }        
     } catch (error) {
         console.error('리그 정보 조회 실패:', error);
+    }finally{
+        isLoadedData.value = true;
     }
 }
 
