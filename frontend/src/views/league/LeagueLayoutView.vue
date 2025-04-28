@@ -66,7 +66,7 @@
             </v-row>
         </v-col>
   
-        <v-col cols="12" :md="!mobile ? 9 : 12">
+        <v-col cols="12">
           <router-view></router-view>
         </v-col>
     </v-row>
