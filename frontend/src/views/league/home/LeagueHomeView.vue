@@ -3,29 +3,23 @@
         <!-- 리그명 + 공유 -->
         <v-row class="align-center mb-6">
             <v-col cols="auto">
-                <h1 class="text-h5">{{ leagueName }}</h1>
+                <h1 class="text-h4 font-weight-bold">{{ leagueName }}</h1>
             </v-col>
-            <v-col cols="auto">
-                <v-icon @click="copyLink" class="ml-2" color="primary" style="cursor: pointer;">
+            <v-col cols="auto" class="pa-0">
+                <v-icon @click="copyLink" color="primary" style="cursor: pointer;">
                     mdi-share-variant
                 </v-icon>
             </v-col>
         </v-row>
  
         <v-card class="mb-6">
-            <v-card-title>
-                공지사항
-            </v-card-title>
             <v-card-text>
                 <v-row class="align-center justify-space-between">
                     <v-col cols="auto">
                         {{ noticeSummary }}
                     </v-col>
                     <v-col cols="auto">
-                        <v-btn text @click="goToNotices" class="d-flex align-center">
-                            더보기
-                            <v-icon class="ml-2">mdi-chevron-right</v-icon>
-                        </v-btn>
+                        <v-icon @click="goToNotices" class="ml-2">mdi-chevron-right</v-icon>
                     </v-col>
                 </v-row>
             </v-card-text>
@@ -113,7 +107,24 @@
                 <v-card class="pa-4 mb-6" elevation="2" style="height: 100%;">
                     <v-card-title class="text-h6">리그 순위</v-card-title>
                     <v-divider class="my-2" />
-                    <p>여기에 리그 순위 테이블</p>
+
+                    <v-list dense nav>
+                        <v-list-item
+                            v-for="team in rankings"
+                            :key="team.rank"
+                            class="px-0"
+                        >
+                            <div class="d-flex align-center justify-space-between">
+                                <div class="d-flex align-center">
+                                    <span class="text-grey text-caption mr-2">{{ team.rank }}위</span>
+                                    <span>{{ team.name }}</span>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-body-2 font-weight-medium">{{ team.wins }}승 {{ team.losses }}패</span>
+                                </div>
+                            </div>
+                        </v-list-item>
+                    </v-list>
                 </v-card>
             </v-col>
         </v-row>
@@ -204,6 +215,19 @@ const waiverList = ref([
     { team: '팀B', type: 'add', player: '이강인' }
 ]);
 
+const rankings = ref([
+    { rank: 1, name: 'Team Alpha', wins: 8, losses: 1 },
+    { rank: 2, name: 'Team Bravo', wins: 7, losses: 2 },
+    { rank: 3, name: 'Team Charlie', wins: 6, losses: 3 },
+    { rank: 4, name: 'Team Delta', wins: 6, losses: 3 },
+    { rank: 5, name: 'Team Echo', wins: 5, losses: 4 },
+    { rank: 6, name: 'Team Foxtrot', wins: 5, losses: 4 },
+    { rank: 7, name: 'Team Golf', wins: 4, losses: 5 },
+    { rank: 8, name: 'Team Hotel', wins: 3, losses: 6 },
+    { rank: 9, name: 'Team India', wins: 2, losses: 7 },
+    { rank: 10, name: 'Team Juliet', wins: 1, losses: 8 },
+]);
+
 // 열림 여부
 const isDetailsOpen = ref(false);
 
@@ -242,6 +266,10 @@ const additionalMatches = computed(() => {
 const toggleDetails = () => {
     isDetailsOpen.value = !isDetailsOpen.value;
 };
+
+const goToNotices = () => {
+    console.log("hihi")
+}
 </script>
 
 <style scoped>

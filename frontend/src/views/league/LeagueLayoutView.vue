@@ -20,7 +20,7 @@
                     open-on-hover close-on-content-click
                     >
                     <template v-slot:activator="{ props }">
-                        <v-list-item-title v-bind="props">
+                        <v-list-item-title v-bind="props" class="d-flex align-center">
                         {{ menu.name }}
                         <v-icon right>mdi-menu-down</v-icon>
                         </v-list-item-title>
