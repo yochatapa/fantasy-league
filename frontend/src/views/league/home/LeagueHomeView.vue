@@ -14,14 +14,12 @@
  
         <v-card class="mb-6">
             <v-card-text>
-                <v-row class="align-center justify-space-between">
-                    <v-col cols="auto">
-                        {{ noticeSummary }}
-                    </v-col>
-                    <v-col cols="auto">
-                        <v-icon @click="goToNotices" class="ml-2">mdi-chevron-right</v-icon>
-                    </v-col>
-                </v-row>
+                <div class="d-flex align-center justify-space-between">
+                    <div>{{ noticeSummary }}</div>
+                    <v-icon @click="goToNotices" class="ml-2" style="cursor: pointer;">
+                        mdi-chevron-right
+                    </v-icon>
+                </div>
             </v-card-text>
         </v-card>
 
