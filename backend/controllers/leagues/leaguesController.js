@@ -1,7 +1,8 @@
 import jwt from 'jsonwebtoken';
 import { query, withTransaction } from '../../db.js';
 import { sendSuccess, sendBadRequest, sendServerError } from '../../utils/apiResponse.js';
-import { decryptData } from '../../utils/crypto.js';
+import { encryptData, decryptData } from '../../utils/crypto.js';
+import { v4 as uuidv4 } from 'uuid';
 
 export const createLeague = async (req, res) => {
     const { leagueName, leagueType, leagueFormat, draftMethod, isPublic, maxTeams, playoffTeams, seasonStartDate, draftDate } = req.body;
@@ -22,7 +23,7 @@ export const createLeague = async (req, res) => {
         await withTransaction(async (client) => {
             // league_master 테이블에 데이터 저장
             const insertLeagueMaster = `
-                INSERT INTO public.league_master 
+                INSERT INTO league_master 
                 (
                     league_name
                     , is_public
@@ -41,14 +42,14 @@ export const createLeague = async (req, res) => {
                     $1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 RETURNING league_id;
             `;
+
+            const invite_code = uuidv4();
             
             const leagueResult = await client.query(insertLeagueMaster, [
-                leagueName, isPublic || true, false, leagueType, leagueFormat, user.userId, isPublic?'open':'invite', null, 'active'
+                leagueName, isPublic || true, false, leagueType, leagueFormat, user.userId, isPublic?'open':'invite', invite_code, 'active'
             ]);
 
             const leagueId = leagueResult.rows[0].league_id;
-
-            console.log("leagueId",leagueId)
 
             // league_season 테이블에 데이터 저장
             const insertLeagueSeason = `
