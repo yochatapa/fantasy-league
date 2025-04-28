@@ -180,7 +180,7 @@ const isLoadedData = ref(false);
 
 // 링크 복사
 const copyLink = () => {
-    copy(window.location.origin+`/league/join?invite_code=${encodeURI(encryptData(leagueInfo.invite_code))}`);
+    copy(window.location.origin+`/league/join?inviteCode=${encodeURI(encryptData(leagueInfo.invite_code))}`);
     alert("초대코드가 복사되었습니다.")
 };
 

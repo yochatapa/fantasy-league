@@ -38,10 +38,20 @@
 
 <script setup>
 import { ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
+import { encryptData, decryptData } from '@/utils/common/crypto.js';
 
+const route = useRoute();
 const router = useRouter();
 const inviteCode = ref('');
+
+const inviteQuery = route.query.invite_code;
+
+try {
+    if(inviteQuery) inviteCode.value = decryptData(inviteQuery)    
+} catch (error) {
+    
+}
 
 const handleJoin = () => {
     if (!inviteCode.value) return;
