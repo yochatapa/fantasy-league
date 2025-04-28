@@ -3,7 +3,7 @@
         <!-- 리그명 + 공유 -->
         <v-row class="align-center mb-6">
             <v-col cols="auto d-flex align-center">
-                <h1 class="text-h4 font-weight-bold">{{ leagueInfo.league_name }}</h1>
+                <h1 class="text-h4 font-weight-bold mr-2">{{ leagueInfo.league_name }}</h1>
                 <h1 class="text-h6 ">({{ leagueInfo.season_year }}년)</h1>
             </v-col>
             <v-col cols="auto" class="pa-0">
@@ -159,6 +159,7 @@ import { useClipboard } from '@vueuse/core';
 import { useDisplay } from 'vuetify';
 import { commonFetch } from '@/utils/common/commonFetch';
 import { LEAGUE_TYPES, LEAGUE_FORMATS, DRAFT_METHODS } from '@/utils/code/code';
+import { encryptData } from '@/utils/common/crypto.js';
 
 const { copy } = useClipboard();
 const { mdAndDown } = useDisplay();
@@ -179,7 +180,8 @@ const isLoadedData = ref(false);
 
 // 링크 복사
 const copyLink = () => {
-    copy(window.location.href);
+    copy(window.location.origin+`/league/join?invite_code=${encodeURI(encryptData(leagueInfo.invite_code))}`);
+    alert("초대코드가 복사되었습니다.")
 };
 
 // 매치 데이터
@@ -258,8 +260,6 @@ const loadLeagueInfo = async () => {
                 formattedSeasonStartDate: dayjs(data.start_date).format('YYYY.MM.DD'),
                 formattedDraftDate: dayjs(data.draft_date).format('YYYY.MM.DD'),
             };
-
-            console.log(leagueInfo.value)
         }else{
             alert("리그 정보 조회 도중 문제가 발생하였습니다.");
             router.push("/");
