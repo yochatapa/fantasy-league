@@ -1,9 +1,10 @@
 <template>
-    <v-container>
+    <v-container v-if="isLoadedData">
         <!-- 리그명 + 공유 -->
         <v-row class="align-center mb-6">
-            <v-col cols="auto">
-                <h1 class="text-h4 font-weight-bold">{{ leagueName }}</h1>
+            <v-col cols="auto d-flex align-center">
+                <h1 class="text-h4 font-weight-bold">{{ leagueInfo.league_name }}</h1>
+                <h1 class="text-h6 ">({{ leagueInfo.season_year }}년)</h1>
             </v-col>
             <v-col cols="auto" class="pa-0">
                 <v-icon @click="copyLink" color="primary" style="cursor: pointer;">
@@ -152,17 +153,29 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
+import dayjs from 'dayjs';
+import { useRoute, useRouter } from 'vue-router';
 import { useClipboard } from '@vueuse/core';
 import { useDisplay } from 'vuetify';
+import { commonFetch } from '@/utils/common/commonFetch';
+import { LEAGUE_TYPES, LEAGUE_FORMATS, DRAFT_METHODS } from '@/utils/code/code';
 
 const { copy } = useClipboard();
 const { mdAndDown } = useDisplay();
 
+const route = useRoute();
+const router = useRouter();
+
 const isMobile = computed(() => mdAndDown.value);
 
-const leagueName = ref('판타지 리그 A');
 const currentWeek = ref(5);
-const noticeSummary = ref("공지사항 테스트입니다. 다들 주목하세요. 한국의 오타니~ 김혜성~~~!")
+const noticeSummary = ref("공지사항 테스트입니다. 다들 주목하세요. 한국의 오타니~ 김혜성~~~!");
+
+const orgLeagueId = route.query.leagueId;
+
+const leagueInfo = ref([])
+
+const isLoadedData = ref(false);
 
 // 링크 복사
 const copyLink = () => {
@@ -226,6 +239,40 @@ const rankings = ref([
     { rank: 10, name: 'Team Juliet', wins: 1, losses: 8 },
 ]);
 
+// 리그 정보를 가져오는 함수
+const loadLeagueInfo = async () => {
+    try {
+        // fetchLeagueInfo는 서버에서 리그 정보를 받아오는 API 호출 함수입니다.
+        const response = await commonFetch(`/api/league/info?leagueId=${encodeURIComponent(orgLeagueId)}}`, {
+            method : 'GET'
+        });
+
+        if(response.success){
+            const data = response.data.leagueInfo;
+            
+            leagueInfo.value = {
+                ...data,
+                leagueTypeLabel: LEAGUE_TYPES.find(item => item.id === data.league_type)?.label || '',
+                leagueFormatLabel: LEAGUE_FORMATS.find(item => item.id === data.league_format)?.label || '',
+                draftTypeLabel: DRAFT_METHODS.find(item => item.id === data.draft_type)?.label || '',
+                formattedSeasonStartDate: dayjs(data.start_date).format('YYYY.MM.DD'),
+                formattedDraftDate: dayjs(data.draft_date).format('YYYY.MM.DD'),
+            };
+
+            console.log(leagueInfo.value)
+        }else{
+            alert("리그 정보 조회 도중 문제가 발생하였습니다.");
+            router.push("/");
+        }
+
+        
+    } catch (error) {
+        console.error('리그 정보 조회 실패:', error);
+    }finally{
+        isLoadedData.value = true;
+    }
+};
+
 // 열림 여부
 const isDetailsOpen = ref(false);
 
@@ -233,6 +280,8 @@ onMounted(() => {
     if (!isMobile.value) {
         isDetailsOpen.value = true;
     }
+
+    loadLeagueInfo();
 });
 
 // 모바일/PC 전환 감지

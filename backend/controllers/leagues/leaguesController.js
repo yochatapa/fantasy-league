@@ -195,7 +195,7 @@ export const getLeagueInfo = async (req, res) => {
     let { leagueId, seasonId } = req.query;
 
     leagueId = decryptData(leagueId)
-    seasonId = decryptData(seasonId)
+    if(seasonId) seasonId = decryptData(seasonId)
 
     const accessToken = req.headers['authorization']?.split(' ')[1];  // 'Bearer <token>' 형식에서 토큰 추출
 
@@ -206,7 +206,7 @@ export const getLeagueInfo = async (req, res) => {
     const user = jwt.verify(accessToken, process.env.JWT_SECRET);
 
     try {
-        const leagueInfoQuery = `
+        let leagueInfoQuery = `
             SELECT
                 lm.league_id 
                 , lm.league_name 
@@ -241,12 +241,20 @@ export const getLeagueInfo = async (req, res) => {
                 , ls.season_status
             FROM league_master lm 
                 INNER JOIN league_season ls 
-                    ON lm.league_id = ls.league_id
-                    AND ls.season_id = $2
-            WHERE lm.league_id = $1
-        `;
+                    ON lm.league_id = ls.league_id`
+        if(seasonId){
+            leagueInfoQuery += ` AND ls.season_id = $2`
+        }
+        
+            leagueInfoQuery += ` WHERE lm.league_id = $1`;
 
-        const leagueInfo = await query(leagueInfoQuery, [leagueId, seasonId]);
+        if(!seasonId) leagueInfoQuery += ` ORDER BY season_year desc LIMIT 1`;
+
+        const param = [leagueId];
+
+        if(seasonId) param.push(seasonId)
+
+        const leagueInfo = await query(leagueInfoQuery, param);
 
         if(leagueInfo.rows[0])
             return sendSuccess(res, {
