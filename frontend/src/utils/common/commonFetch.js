@@ -52,6 +52,7 @@ export async function commonFetch(url, options = {}) {
 
         if(data.token && data.access){
             localStorage.setItem("token",data.token)
+            return commonFetch(url, options)
         }
 
         return {
