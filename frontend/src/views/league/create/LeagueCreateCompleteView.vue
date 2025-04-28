@@ -167,7 +167,7 @@ onMounted(() => {
 // 리그로 이동
 const goToMyLeague = () => {
     router.push({
-        path: "/league/info",
+        path: "/league/home",
         query: {
             leagueId : encryptData(leagueId),
         }

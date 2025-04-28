@@ -76,7 +76,7 @@ const joinLeague = () => {
 
 const goToLeague = (id) => {
     router.push({
-        path: "/league/info",
+        path: "/league/home",
         query: {
             leagueId : encryptData(id),
         }
