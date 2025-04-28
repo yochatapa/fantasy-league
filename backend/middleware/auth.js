@@ -48,7 +48,7 @@ export const verifyToken = async (req, res, next) => {
             const refreshTokenExpiresAt = result.rows[0].expires_at;
             const now = new Date();
             const remainingTime = refreshTokenExpiresAt - now; // 남은 시간 (밀리초 단위)
-            console.log("remainingTime",remainingTime)
+            
             if (remainingTime <= 7 * 24 * 60 * 60 * 1000) { // 7일 이하 남았으면 연장
                 // 새 refreshToken 발급 및 DB 갱신
                 
