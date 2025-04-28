@@ -4,7 +4,43 @@
         <v-row class="align-center mb-6">
             <v-col cols="auto d-flex align-center">
                 <h1 class="text-h4 font-weight-bold mr-2">{{ leagueInfo.league_name }}</h1>
-                <h1 class="text-h6 ">({{ leagueInfo.season_year }}년)</h1>
+                <v-list dense class="horizontal-list bg-transparent">
+                    <v-list-item
+                        v-if="seasonYears.length === 1"
+                        class="pa-0"
+                    >
+                        <v-list-item-title>({{ seasonYear }}년)</v-list-item-title>
+                    </v-list-item>
+        
+                    <v-list-item v-else link class="pa-0">
+                        <v-menu
+                        bottom
+                        offset-y
+                        transition="slide-y-transition"
+                        open-on-hover close-on-content-click
+                        >
+                            <template v-slot:activator="{ props }">
+                                <v-list-item-title v-bind="props" class="d-flex align-center">
+                                ({{ seasonYear }}년)
+                                <v-icon right>mdi-menu-down</v-icon>
+                                </v-list-item-title>
+                            </template>
+        
+                            <v-list>
+                                <v-list-item
+                                    v-for="(year, index) in seasonYears"
+                                    :key="index"
+                                >
+                                    <v-list-item-title
+                                        v-if="seasonYear !== year.season_year"    
+                                    >
+                                        {{ year.season_year }}년
+                                    </v-list-item-title>
+                                </v-list-item>
+                            </v-list>
+                        </v-menu>
+                    </v-list-item>
+                </v-list>
             </v-col>
             <v-col cols="auto" class="pa-0">
                 <v-icon @click="copyLink" color="primary" style="cursor: pointer;">
@@ -174,7 +210,9 @@ const noticeSummary = ref("공지사항 테스트입니다. 다들 주목하세�
 
 const orgLeagueId = route.query.leagueId;
 
-const leagueInfo = ref([])
+const leagueInfo = ref({});
+const seasonYears = ref([]);
+const seasonYear = ref(null);
 
 const isLoadedData = ref(false);
 
@@ -256,10 +294,13 @@ const loadLeagueInfo = async () => {
                 ...data,
                 leagueTypeLabel: LEAGUE_TYPES.find(item => item.id === data.league_type)?.label || '',
                 leagueFormatLabel: LEAGUE_FORMATS.find(item => item.id === data.league_format)?.label || '',
-                draftTypeLabel: DRAFT_METHODS.find(item => item.id === data.draft_type)?.label || '',
-                formattedSeasonStartDate: dayjs(data.start_date).format('YYYY.MM.DD'),
-                formattedDraftDate: dayjs(data.draft_date).format('YYYY.MM.DD'),
+                // draftTypeLabel: DRAFT_METHODS.find(item => item.id === data.draft_type)?.label || '',
+                // formattedSeasonStartDate: dayjs(data.start_date).format('YYYY.MM.DD'),
+                // formattedDraftDate: dayjs(data.draft_date).format('YYYY.MM.DD'),
             };
+
+            seasonYears.value = response.data.seasonYear
+            seasonYear.value = seasonYears.value[0].season_year;
         }else{
             alert("리그 정보 조회 도중 문제가 발생하였습니다.");
             router.push("/");

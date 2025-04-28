@@ -228,47 +228,36 @@ export const getLeagueInfo = async (req, res) => {
                 , lm.icon_url
                 , lm.banner_url
                 , lm.status
-                , ls.season_id 
-                , ls.season_year
-                , ls.max_teams
-                , ls.playoff_teams
-                , ls.foreign_player_limit 
-                , ls.start_date 
-                , ls.draft_date
-                , ls.draft_type
-                , ls.draft_timer 
-                , ls.allow_auto_draft
-                , ls.allow_trades
-                , ls.trade_deadline 
-                , ls.waiver_clear_days 
-                , ls.allow_matchup_reset 
-                , ls.injured_list_slots
-                , ls.tie_breaker
-                , ls.lineup_change_restriction 
-                , ls.season_status
-            FROM league_master lm 
-                INNER JOIN league_season ls 
-                    ON lm.league_id = ls.league_id`
-        if(seasonId){
-            leagueInfoQuery += ` AND ls.season_id = $2`
-        }
-        
-            leagueInfoQuery += ` WHERE lm.league_id = $1`;
-
-        if(!seasonId) leagueInfoQuery += ` ORDER BY season_year desc LIMIT 1`;
+            FROM league_master lm
+            WHERE lm.league_id = $1`;
 
         const param = [leagueId];
 
-        if(seasonId) param.push(seasonId)
-
         const leagueInfo = await query(leagueInfoQuery, param);
         
-        if(leagueInfo.rows[0])
-            return sendSuccess(res, {
-                message: '리그 정보가 조회되었습니다.',
-                leagueInfo : leagueInfo.rows[0]
-            });
-        else return sendBadRequest(res, '리그 정보가 없습니다.');
+        if(!leagueInfo.rows[0])
+            return sendBadRequest(res, '리그 정보가 없습니다.');
+
+        const leagueSeasonYearQuery = `
+            SELECT
+                ls.season_year
+            FROM league_master lm
+                INNER JOIN league_season ls
+                    ON lm.league_id = ls.league_id
+            WHERE lm.league_id = $1
+            ORDER BY ls.season_year DESC
+        `;
+
+        const leagueSeasonYearResult = await query(leagueSeasonYearQuery,[leagueId])
+
+        if(leagueSeasonYearResult.rows.length === 0)
+            return sendBadRequest(res, '리그 시즌 정보가 없습니다.');
+
+        return sendSuccess(res, {
+            message: '리그 정보가 조회되었습니다.',
+            leagueInfo : leagueInfo.rows[0]
+            , seasonYear : leagueSeasonYearResult.rows
+        });
     } catch (error) {
         return sendServerError(res, error, '리그 정보 조회 중 문제가 발생했습니다. 다시 시도해주세요.');
     }

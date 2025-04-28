@@ -76,16 +76,19 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'; // onMounted import 필요
 import { useDisplay } from 'vuetify';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 
 const { mobile } = useDisplay();
+const route = useRoute();
 const router = useRouter();
 
+const orgLeagueId = route.query.leagueId;
+console.log(orgLeagueId)
 // 샘플 데이터 (이전과 동일)
 const menus = [
     {
         name: '리그 홈',
-        path: '/league/home',
+        path: `/league/home?leagueId=${encodeURIComponent(orgLeagueId)}`,
         subMenu: []
     },
     {
