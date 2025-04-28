@@ -2,7 +2,7 @@ import jwt from 'jsonwebtoken';
 import { query, withTransaction } from '../../db.js';
 import { sendSuccess, sendBadRequest, sendServerError } from '../../utils/apiResponse.js';
 import { encryptData, decryptData } from '../../utils/crypto.js';
-import { v4 as uuidv4 } from 'uuid';
+import { generateUniqueCode } from '../../utils/randomCodeGenerator.js';
 
 export const createLeague = async (req, res) => {
     const { leagueName, leagueType, leagueFormat, draftMethod, isPublic, maxTeams, playoffTeams, seasonStartDate, draftDate } = req.body;
@@ -43,7 +43,15 @@ export const createLeague = async (req, res) => {
                 RETURNING league_id;
             `;
 
-            const invite_code = uuidv4();
+            const checkInviteCodeUnique = async (code) => {
+                const result = await client.query(
+                    'SELECT * FROM league_master WHERE invite_code = $1',
+                    [code]
+                );
+                return result.rows.length === 0; // true면 사용 가능
+            }
+
+            const invite_code = await generateUniqueCode(checkInviteCodeUnique);
             
             const leagueResult = await client.query(insertLeagueMaster, [
                 leagueName, isPublic || true, false, leagueType, leagueFormat, user.userId, isPublic?'open':'invite', invite_code, 'active'
@@ -100,8 +108,6 @@ export const createLeague = async (req, res) => {
             ]);
 
             const seasonId = seasonResult.rows[0].season_id;
-
-            console.log("seasonId",seasonId)
 
             // league_commissioner 저장 (리그 생성자가 커미셔너리 역할)
             const insertLeagueCommissioner = `
