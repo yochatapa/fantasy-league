@@ -180,7 +180,7 @@ const isLoadedData = ref(false);
 
 // 링크 복사
 const copyLink = () => {
-    copy(window.location.origin+`/league/join?inviteCode=${encodeURI(encryptData(leagueInfo.value.invite_code))}`);
+    copy(window.location.origin+`/league/join?inviteCode=${encodeURIComponent(encryptData(leagueInfo.value.invite_code))}`);
     alert("초대코드가 복사되었습니다.")
 };
 
@@ -245,7 +245,7 @@ const rankings = ref([
 const loadLeagueInfo = async () => {
     try {
         // fetchLeagueInfo는 서버에서 리그 정보를 받아오는 API 호출 함수입니다.
-        const response = await commonFetch(`/api/league/info?leagueId=${encodeURIComponent(orgLeagueId)}}`, {
+        const response = await commonFetch(`/api/league/info?leagueId=${encodeURIComponent(orgLeagueId)}`, {
             method : 'GET'
         });
 

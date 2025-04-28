@@ -147,7 +147,7 @@ export const verifyCommissioner = async (req, res, next) => {
     const accessToken = req.headers['authorization']?.split(' ')[1];  // 'Bearer <token>' 형식에서 토큰 추출
     let { leagueId } = req.query;
     
-    leagueId = decryptData(leagueId)
+    leagueId = decodeURIComponent(decryptData(leagueId))
     
     if(!accessToken){
         return sendBadRequest(res, '토큰이 제공되지 않았습니다.');
@@ -163,6 +163,40 @@ export const verifyCommissioner = async (req, res, next) => {
                 INNER JOIN league_commissioner lc on lm.league_id = lc.league_id
             WHERE lm.league_id = $1
                 AND lc.user_id = $2
+        `, [leagueId, user.userId]
+        )
+
+        if(commissionerList.rows.length>0){
+            next();
+        } else return sendBadRequest(res, '리그 정보가 없습니다.');
+    } catch (error) {
+        return sendServerError(res, error, '리그 커미셔너 정보 조회 중 문제가 발생했습니다. 다시 시도해주세요.');   
+    }
+}
+
+export const verifyTeams = async (req, res, next) => {
+    const accessToken = req.headers['authorization']?.split(' ')[1];  // 'Bearer <token>' 형식에서 토큰 추출
+    let { leagueId } = req.query;
+    
+    leagueId = decodeURIComponent(decryptData(leagueId))
+    
+    if(!accessToken){
+        return sendBadRequest(res, '토큰이 제공되지 않았습니다.');
+    }
+
+    const user = jwt.verify(accessToken, process.env.JWT_SECRET);
+
+    try {
+        const commissionerList = await query(`
+            SELECT 
+                *
+            FROM league_master lm
+                INNER JOIN league_season ls ON lm.league_id = ls.league_id
+                INNER JOIN league_season_team lst ON lm.league_id = lst.league_id AND ls.season_id = lst.season_id
+            WHERE lm.league_id = $1
+                AND lst.user_id = $2
+            ORDER BY ls.season_year DESC
+            LIMIT 1;
         `, [leagueId, user.userId]
         )
 

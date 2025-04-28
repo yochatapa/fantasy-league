@@ -262,7 +262,7 @@ export const getLeagueInfo = async (req, res) => {
         if(seasonId) param.push(seasonId)
 
         const leagueInfo = await query(leagueInfoQuery, param);
-
+        
         if(leagueInfo.rows[0])
             return sendSuccess(res, {
                 message: '리그 정보가 조회되었습니다.',
@@ -343,5 +343,125 @@ export const getLeagueList = async (req, res) => {
         else return sendBadRequest(res, '리그 목록이 없습니다.');
     } catch (error) {
         //return sendServerError(res, error, '리그 정보 조회 중 문제가 발생했습니다. 다시 시도해주세요.');
+    }
+}
+
+export const checkInviteCode = async (req, res) => {
+    const { inviteCode } = req.body;
+
+    if(!inviteCode){
+        return sendBadRequest(res, "초대 코드가 없습니다.")
+    }
+
+    try {
+        const inviteCodeQuery = `
+            SELECT
+                league_id
+            FROM league_master
+            WHERE invite_code = $1
+        `
+
+        const result = await query(inviteCodeQuery,[inviteCode])
+
+        if(result.rows.length !== 1){
+            return sendBadRequest(res, "초대 코드가 잘못되었습니다.");
+        }
+
+        return sendSuccess(res, {
+            message : "정상적인 초대 코드입니다."
+            , leagueId : result.rows[0].league_id
+        })
+    } catch (error) {
+        return sendServerError(res, error, '초대 코드 조회 중 문제가 발생했습니다. 다시 시도해주세요.');
+    }
+}
+
+export const joinLeague = async (req, res) => {
+    const { leagueId } = req.body;
+
+    if(!leagueId){
+        return sendBadRequest(res, "참여하려는 리그가 없습니다.");
+    }
+
+    const accessToken = req.headers['authorization']?.split(' ')[1];  // 'Bearer <token>' 형식에서 토큰 추출
+
+    if(!accessToken){
+        return sendBadRequest(res, '토큰이 제공되지 않았습니다.');
+    }
+
+    const user = jwt.verify(accessToken, process.env.JWT_SECRET);
+
+    try {
+        await withTransaction(async (client)=>{
+            const validLeagueQuery = `
+                SELECT
+                    lm.status
+                    , ls.season_id
+                    , ls.max_teams
+                    , ( SELECT 
+                            count(*) 
+                        FROM league_season_team 
+                        WHERE league_id = lm.league_id
+                            AND season_id = ls.season_id
+                    ) as teams_count
+                    , ( SELECT 
+                            count(*) 
+                        FROM league_season_team 
+                        WHERE league_id = lm.league_id
+                            AND season_id = ls.season_id
+                            AND user_id = $2
+                    ) as already_join
+                FROM league_master lm
+                    INNER JOIN league_season ls
+                        ON lm.league_id = ls.league_id
+                WHERE lm.league_id = $1
+                ORDER BY season_year desc LIMIT 1
+            `
+
+            const validLeagueResult = await client.query(validLeagueQuery,[leagueId, user.userId]);
+
+            if(validLeagueResult.rows[0].status !== "active") 
+                return sendBadRequest(res, {
+                    message : "현재 가입할 수 없는 리그입니다."
+                    , code : -2
+                });
+
+            if(validLeagueResult.rows[0].teams_count >= validLeagueResult.rows[0].max_teams) 
+                return sendBadRequest(res, {
+                    message : "가입 인원을 초과하였습니다."
+                    , code : -3
+                });
+
+            if(validLeagueResult.rows[0].already_join > 0)
+                return sendBadRequest(res, {
+                    message : "이미 가입된 리그입니다."
+                    , code : -4
+                });
+
+            const leagueJoinQuery = `
+                INSERT INTO league_season_team(
+                    league_id
+                    , season_id
+                    , user_id
+                    , team_name
+                )
+                VALUES(
+                    $1, $2, $3, $4
+                )
+            `
+
+            await client.query(leagueJoinQuery,[
+                leagueId
+                , validLeagueResult.rows[0].season_id
+                , user.userId
+                , user.nickname
+            ])
+
+            return sendSuccess(res, {
+                message : "성공적으로 리그 가입이 되었습니다!"
+            })
+        })
+    } catch (error) {
+        return sendServerError(res, error, '리그 가입 중 문제가 발생했습니다. 다시 시도해주세요.');
     }
 }

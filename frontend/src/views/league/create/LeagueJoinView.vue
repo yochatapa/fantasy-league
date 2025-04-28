@@ -13,10 +13,9 @@
                         <v-text-field
                             v-model="inviteCode"
                             label="초대 코드"
-                            variant="outlined"
-                            density="comfortable"
                             required
                             hide-details
+                            maxLength="6"
                         ></v-text-field>
 
                         <v-btn
@@ -25,7 +24,7 @@
                             size="large"
                             class="mt-4"
                             block
-                            :disabled="!inviteCode"
+                            :disabled="!inviteCode || inviteCode.length!==6"
                         >
                             참가하기
                         </v-btn>
@@ -35,17 +34,22 @@
         </v-row>
     </v-container>
 </template>
-
+     
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { encryptData, decryptData } from '@/utils/common/crypto.js';
+import { useUserStore } from '@/stores/userStore.js'
+import { commonFetch } from '@/utils/common/commonFetch';
 
 const route = useRoute();
 const router = useRouter();
 const inviteCode = ref('');
+const userStore = useUserStore();
 
-const inviteQuery = route.query.invite_code;
+const isLoggedIn = computed(() => userStore.isLoggedIn);
+
+const inviteQuery = decodeURIComponent(route.query.inviteCode);
 
 try {
     if(inviteQuery) inviteCode.value = decryptData(inviteQuery)    
@@ -53,9 +57,49 @@ try {
     
 }
 
-const handleJoin = () => {
-    if (!inviteCode.value) return;
-    // 실제 로직은 여기서 API 확인 후 리다이렉트
-    router.push(`/league/${inviteCode.value}/detail`);
+const handleJoin = async () => {
+    if (!inviteCode.value){
+        return alert("초대코드를 입력하지 않았습니다.", "error")
+    };
+
+    if(inviteCode.value.length!==6){
+        return alert("초대코드의 길이가 올바르지 않습니다.", "error")
+    }
+    
+    if(!isLoggedIn.value){
+        router.push("/login");
+        return alert("로그인이 먼저 필요합니다.");
+    }
+    
+    try{
+        const response = await commonFetch(`/api/league/check-invite-code`,{
+            method : "POST"
+            , body : {
+                inviteCode : inviteCode.value
+            }
+        })
+
+        if(response.success){
+            const leagueId = response.data.leagueId
+            
+            if(leagueId){
+                const response2 = await commonFetch(`/api/league/join`,{
+                    method : "POST"
+                    , body : { leagueId }
+                })
+
+                if(response2.success){
+                    alert(response2.message);
+                    router.push(`/league/home?leagueId=${encodeURIComponent(encryptData(leagueId))}`)
+                }else{
+                    return alert(response2.message)
+                }
+            }
+        }else{
+            alert("올바르지 않은 초대 코드 입니다.")
+        }
+    }catch(error){
+
+    }
 };
 </script>
