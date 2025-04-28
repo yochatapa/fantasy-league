@@ -8,6 +8,7 @@ import LeagueStartView from '@/views/league/create/LeagueStartView.vue'
 import LeagueCreateView from '@/views/league/create/LeagueCreateView.vue'
 import LeagueJoinView from '@/views/league/create/LeagueJoinView.vue'
 import LeagueCreateCompleteView from '@/views/league/create/LeagueCreateCompleteView.vue'
+import LeagueHome from '@/views/league/LeagueHome.vue'
 
 const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
@@ -51,6 +52,11 @@ const router = createRouter({
                     name: 'LeagueJoin',
                     component: LeagueJoinView,
                 },
+                {
+                    path: 'home',
+                    name: 'LeagueHome',
+                    component: LeagueHome,
+                }
             ]
         }
     ],
