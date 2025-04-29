@@ -202,7 +202,7 @@ export const getLeagueInfo = async (req, res) => {
     let { leagueId } = req.query;
 
     leagueId = decryptData(leagueId)
-    console.log("leagueId",leagueId)
+    
     try {
         let leagueInfoQuery = `
             SELECT
