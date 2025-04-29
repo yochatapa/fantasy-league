@@ -28,7 +28,7 @@
 
                             <div v-if="openDropdownIndex === index" class="dropdown">
                                 <router-link
-                                    v-for="(subItem, subIndex) in menu.subMenu"
+                                    v-for="(subItem, subIndex) in menu.subMenu.filter((sub)=>sub.visible!==false)"
                                     :key="subIndex"
                                     :to="subItem.path"
                                     class="dropdown-item"
@@ -107,7 +107,8 @@ const menus = [
         name: 'KBO 리그 관리',
         subMenu: [
             { name: 'KBO 팀 관리', path: '/admin/team/management' },
-            { name: 'KBO 선수 관리', path: '/league/kbo/players' }
+            { name: 'KBO 팀 추가', path: '/admin/team/add', visible: false},
+            { name: 'KBO 선수 관리', path: '/league/kbo/players' },
         ]
     },
     {

@@ -28,7 +28,7 @@
 
                             <div v-if="openDropdownIndex === index" class="dropdown">
                                 <router-link
-                                    v-for="(subItem, subIndex) in menu.subMenu"
+                                    v-for="(subItem, subIndex) in menu.subMenu.filter((sub)=>sub.visible!==false)"
                                     :key="subIndex"
                                     :to="subItem.path"
                                     class="dropdown-item"
