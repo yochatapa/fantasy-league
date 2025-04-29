@@ -199,19 +199,10 @@ export const createLeague = async (req, res) => {
 
 
 export const getLeagueInfo = async (req, res) => {
-    let { leagueId, seasonId } = req.query;
+    let { leagueId } = req.query;
 
     leagueId = decryptData(leagueId)
-    if(seasonId) seasonId = decryptData(seasonId)
-
-    const accessToken = req.headers['authorization']?.split(' ')[1];  // 'Bearer <token>' 형식에서 토큰 추출
-
-    if(!accessToken){
-        return sendBadRequest(res, '토큰이 제공되지 않았습니다.');
-    }
-
-    const user = jwt.verify(accessToken, process.env.JWT_SECRET);
-
+    console.log("leagueId",leagueId)
     try {
         let leagueInfoQuery = `
             SELECT
@@ -264,8 +255,6 @@ export const getLeagueInfo = async (req, res) => {
 }
 
 export const getLeagueList = async (req, res) => {
-    let { leagueId, seasonId } = req.query;
-
     const accessToken = req.headers['authorization']?.split(' ')[1];  // 'Bearer <token>' 형식에서 토큰 추출
 
     if(!accessToken){
@@ -452,5 +441,56 @@ export const joinLeague = async (req, res) => {
         })
     } catch (error) {
         return sendServerError(res, error, '리그 가입 중 문제가 발생했습니다. 다시 시도해주세요.');
+    }
+}
+
+
+export const getSeasonInfo = async (req, res) => {
+    let { leagueId, seasonId } = req.query;
+
+    leagueId = decryptData(leagueId)
+    seasonId = decryptData(seasonId)
+
+    try {
+        let leagueInfoQuery = `
+            SELECT
+                ls.season_id 
+                , ls.season_year
+                , ls.max_teams
+                , ls.playoff_teams
+                , ls.foreign_player_limit 
+                , ls.start_date 
+                , ls.draft_date
+                , ls.draft_type
+                , ls.draft_timer 
+                , ls.allow_auto_draft
+                , ls.allow_trades
+                , ls.trade_deadline 
+                , ls.waiver_clear_days 
+                , ls.allow_matchup_reset 
+                , ls.injured_list_slots
+                , ls.tie_breaker
+                , ls.lineup_change_restriction 
+                , ls.season_status
+            FROM league_master lm
+                INNER JOIN league_season ls
+                    ON lm.league_id = ls.league_id
+            WHERE lm.league_id = $1
+                AND ls.season_id = $2
+        `;
+
+        const param = [leagueId, seasonId];
+
+        const seasonInfo = await query(leagueInfoQuery, param);
+        
+        if(!seasonInfo.rows[0])
+            return sendBadRequest(res, '시즌 정보가 없습니다.');
+
+        return sendSuccess(res, {
+            message: '시즌 정보가 조회되었습니다.',
+            seasonInfo : seasonInfo.rows[0]
+        });
+    } catch (error) {
+        return sendServerError(res, error, '시즌 정보 조회 중 문제가 발생했습니다. 다시 시도해주세요.');
     }
 }

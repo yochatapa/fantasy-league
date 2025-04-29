@@ -131,28 +131,34 @@ const leagueInfo = ref({
 const loadLeagueInfo = async () => {
     try {
         // fetchLeagueInfo는 서버에서 리그 정보를 받아오는 API 호출 함수입니다.
-        const response = await commonFetch(`/api/league/info?leagueId=${encodeURIComponent(orgLeagueId)}&seasonId=${encodeURIComponent(orgSeasonId)}`, {
-            method : 'GET'
-        });
 
-        if(response.success){
-            const data = response.data.leagueInfo;
-            
-            leagueInfo.value = {
-                ...data,
-                leagueTypeLabel: LEAGUE_TYPES.find(item => item.id === data.league_type)?.label || '',
-                leagueFormatLabel: LEAGUE_FORMATS.find(item => item.id === data.league_format)?.label || '',
-                draftTypeLabel: DRAFT_METHODS.find(item => item.id === data.draft_type)?.label || '',
-                formattedSeasonStartDate: dayjs(data.start_date).format('YYYY.MM.DD'),
-                formattedDraftDate: dayjs(data.draft_date).format('YYYY.MM.DD'),
-            };
+        Promise.all([
+            commonFetch(`/api/league/info?leagueId=${encodeURIComponent(orgLeagueId)}`, {
+                method : 'GET'
+            }),
+            commonFetch(`/api/league/season/info?leagueId=${encodeURIComponent(orgLeagueId)}&seasonId=${encodeURIComponent(orgSeasonId)}`, {
+                method : 'GET'
+            })  
+        ]).then(([leagueResponse, seasonResponse]) => {
+            if(leagueResponse.success && seasonResponse.success){
+                const leagueData = leagueResponse.data.leagueInfo;
+                const seasonData = seasonResponse.data.seasonInfo;
 
-            console.log(leagueInfo.value)
-        }else{
-            alert("리그 정보 조회 도중 문제가 발생하였습니다.");
-            router.push("/");
-        }
+                const totalData = {...leagueData, ...seasonData}
 
+                leagueInfo.value = {
+                    ...totalData,
+                    leagueTypeLabel: LEAGUE_TYPES.find(item => item.id === totalData.league_type)?.label || '',
+                    leagueFormatLabel: LEAGUE_FORMATS.find(item => item.id === totalData.league_format)?.label || '',
+                    draftTypeLabel: DRAFT_METHODS.find(item => item.id === totalData.draft_type)?.label || '',
+                    formattedSeasonStartDate: dayjs(totalData.start_date).format('YYYY.MM.DD'),
+                    formattedDraftDate: dayjs(totalData.draft_date).format('YYYY.MM.DD'),
+                };
+            }else{
+                alert("리그 정보 조회 도중 문제가 발생하였습니다.");
+                router.push("/");
+            }
+        })
         
     } catch (error) {
         console.error('리그 정보 조회 실패:', error);
