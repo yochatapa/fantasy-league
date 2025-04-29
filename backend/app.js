@@ -8,6 +8,7 @@ import testRoutes from './routes/testRoutes.js';
 import usersRoutes from './routes/usersRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import leagueRoutes from './routes/leagueRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
 
 dotenv.config();
 
@@ -33,6 +34,7 @@ app.use('/api/test' , testRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/auth' , authRoutes);
 app.use('/api/league', leagueRoutes);
+app.use('/api/admin', adminRoutes);
 
 if(process.env.SERVE_FRONTEND === 'true'){
     app.get(/^\/(.*)?$/, (req, res) => {
