@@ -28,12 +28,10 @@
         
                             <v-list>
                                 <v-list-item
-                                    v-for="(year, index) in seasonYears"
+                                    v-for="(year, index) in filteredSeasonYears"
                                     :key="index"
                                 >
-                                    <v-list-item-title
-                                        v-if="seasonYear !== year.season_year"    
-                                    >
+                                    <v-list-item-title>
                                         {{ year.season_year }}년
                                     </v-list-item-title>
                                 </v-list-item>
@@ -212,7 +210,10 @@ const orgLeagueId = route.query.leagueId;
 
 const leagueInfo = ref({});
 const seasonYears = ref([]);
+const filteredSeasonYears = ref([]);
+
 const seasonYear = ref(null);
+watch([seasonYears,seasonYear],()=>{filteredSeasonYears.value = seasonYears.value.filter((sy)=>sy.season_year!==seasonYear.value); console.log(filteredSeasonYears.value)})
 
 const isLoadedData = ref(false);
 
