@@ -25,7 +25,7 @@
                             bottom
                             offset-y
                             transition="slide-y-transition"
-                            open-on-hover
+                            :open-on-hover="!isMobile"
                             close-on-content-click
                         >
                             <template v-slot:activator="{ props }">
@@ -200,12 +200,12 @@ import { LEAGUE_TYPES, LEAGUE_FORMATS, DRAFT_METHODS } from '@/utils/code/code';
 import { encryptData } from '@/utils/common/crypto.js';
 
 const { copy } = useClipboard();
-const { mdAndDown } = useDisplay();
+const { mobile } = useDisplay();
 
 const route = useRoute();
 const router = useRouter();
 
-const isMobile = computed(() => mdAndDown.value);
+const isMobile = computed(() => mobile.value);
 
 const currentWeek = ref(5);
 const noticeSummary = ref("공지사항 테스트입니다. 다들 주목하세요. 한국의 오타니~ 김혜성~~~!");
