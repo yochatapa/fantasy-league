@@ -172,7 +172,12 @@ onMounted(() => {
 });
 
 // 현재 경로가 해당 path와 일치하는지 확인
-const isActive = (path) => route.path === path;
+const isActive = (path) => {
+    const cleanRoutePath = route.path.split('?')[0]; // ? 뒤의 파라미터를 제거한 경로
+    const cleanPath = path.split('?')[0]; // path에서 ? 뒤의 파라미터를 제거한 경로
+    return cleanRoutePath === cleanPath;
+};
+
 
 // 서브메뉴 중 하나라도 활성화돼 있으면 부모도 활성화 처리
 const isParentActive = (menu) => {
