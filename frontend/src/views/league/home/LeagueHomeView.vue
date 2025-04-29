@@ -1,31 +1,40 @@
 <template>
     <v-container v-if="isLoadedData">
         <!-- 리그명 + 공유 -->
-        <v-row class="align-center mb-6">
-            <v-col cols="auto d-flex align-center">
+        <v-row class="align-center mb-6" no-gutters>
+            <!-- 리그명 + 공유 버튼 -->
+            <v-col cols="12" class="d-flex align-center justify-space-between">
                 <h1 class="text-h4 font-weight-bold mr-2">{{ leagueInfo.league_name }}</h1>
-                <v-list dense class="horizontal-list bg-transparent">
+                <v-icon @click="copyLink" color="primary" style="cursor: pointer;">
+                    mdi-share-variant
+                </v-icon>
+            </v-col>
+
+            <!-- 시즌 년도 -->
+            <v-col cols="12" class="d-flex">
+                <v-list dense class="horizontal-list bg-transparent pa-0">
                     <v-list-item
                         v-if="seasonYears.length === 1"
                         class="pa-0"
                     >
                         <v-list-item-title>({{ seasonYear }}년)</v-list-item-title>
                     </v-list-item>
-        
+
                     <v-list-item v-else link class="pa-0">
                         <v-menu
-                        bottom
-                        offset-y
-                        transition="slide-y-transition"
-                        open-on-hover close-on-content-click
+                            bottom
+                            offset-y
+                            transition="slide-y-transition"
+                            open-on-hover
+                            close-on-content-click
                         >
                             <template v-slot:activator="{ props }">
                                 <v-list-item-title v-bind="props" class="d-flex align-center">
-                                ({{ seasonYear }}년)
-                                <v-icon right>mdi-menu-down</v-icon>
+                                    ({{ seasonYear }}년)
+                                    <v-icon right>mdi-menu-down</v-icon>
                                 </v-list-item-title>
                             </template>
-        
+
                             <v-list>
                                 <v-list-item
                                     v-for="(year, index) in filteredSeasonYears"
@@ -39,11 +48,6 @@
                         </v-menu>
                     </v-list-item>
                 </v-list>
-            </v-col>
-            <v-col cols="auto" class="pa-0">
-                <v-icon @click="copyLink" color="primary" style="cursor: pointer;">
-                    mdi-share-variant
-                </v-icon>
             </v-col>
         </v-row>
  
