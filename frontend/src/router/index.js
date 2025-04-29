@@ -41,25 +41,40 @@ const router = createRouter({
                     path: 'league/start',
                     name: 'LeagueStart',
                     component: LeagueStartView,
+                    meta : {
+                        requiresAuth : true
+                    }
                 },
                 {
                     path: 'league/create',
                     name: 'LeagueCreate',
                     component: LeagueCreateView,
+                    meta : {
+                        requiresAuth : true
+                    }
                 },
                 {
                     path: 'league/create/complete',
                     name: 'LeagueCreateCompleteView',
                     component: LeagueCreateCompleteView,
+                    meta : {
+                        requiresAuth : true
+                    }
                 },
                 {
                     path: 'league/join',
                     name: 'LeagueJoin',
                     component: LeagueJoinView,
+                    meta : {
+                        requiresAuth : true
+                    }
                 },
                 {
                     path: 'league',
                     component: LeagueLayoutView, // 서브 레이아웃 또는 view
+                    meta : {
+                        requiresAuth : true
+                    },
                     children: [
                         {
                             path: 'home',
@@ -73,6 +88,7 @@ const router = createRouter({
         {
             path: '/admin',
             component: RouterView,
+            meta: { requiresAuth: true, requiresAdmin: true },
             children: [
                 {
                     path: '',
@@ -95,23 +111,22 @@ const router = createRouter({
         }
     ],
     scrollBehavior(to, from, savedPosition) {
-        // savedPosition은 뒤로가기/앞으로가기 버튼으로 이동했을 때
-        // 브라우저에 의해 저장된 스크롤 위치입니다.
+        // 1. 브라우저 저장 위치가 있으면 (뒤로/앞으로가기)
         if (savedPosition) {
-            return savedPosition; // 저장된 위치가 있으면 그 위치로 이동
-        } else {
-            // 저장된 위치가 없으면 (새로운 경로로 이동할 때)
-            // 항상 페이지 맨 위 (0, 0)로 스크롤
-            return { top: 0, left: 0 };
+            return savedPosition;
         }
-        // 만약 URL에 해시(#)가 있다면 해당 요소로 스크롤되게 할 수도 있습니다.
+
+        // 2. 해시가 있는 경우 (#anchor)
         if (to.hash) {
             return {
-                el: to.hash, // 해시에 해당하는 요소를 찾아서 스크롤
-                behavior: 'smooth', // 부드럽게 스크롤 (선택 사항)
+                el: to.hash,
+                behavior: 'smooth', // 선택: 부드러운 스크롤
             };
         }
-      },
+
+        // 3. 그 외엔 항상 맨 위로
+        return { top: 0, left: 0 };    
+    },
 })
 
 router.beforeEach(async (to, from, next) => {
@@ -121,9 +136,22 @@ router.beforeEach(async (to, from, next) => {
     // 아직 로그인 안 되어 있으면 인증 확인
         if (!userStore.isLoggedIn) {
             const ok = await userStore.checkAuth()
-            if (!ok) return next('/login')
+            if (!ok){
+                alert("로그인을 먼저 해주세요.")
+                return next('/login')
+            }
         }
     }
+
+    if (to.meta.requiresAdmin) {
+            if (!userStore.isAdmin) {
+                const ok = await userStore.checkAdmin()
+                if (!ok){
+                    alert("관리자만 접근할 수 있습니다.")
+                    return next('/')
+                }
+            }
+        }
 
     next()
 })

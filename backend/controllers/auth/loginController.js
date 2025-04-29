@@ -29,7 +29,7 @@ export const login = async (req, res) => {
         await withTransaction(async (client) => {
             const checkUser = await client.query(
                 `SELECT 
-                    user_id, password_hash, email, nickname, path, mimetype
+                    user_id, password_hash, email, nickname, path, mimetype, is_admin
                 FROM user_master um
                     LEFT JOIN file_table ft ON um.profile_image = ft.file_id and sn = 1
                 WHERE email = $1
@@ -153,6 +153,7 @@ export const login = async (req, res) => {
                     userId: user.user_id,
                     email: user.email,
                     nickname: user.nickname,
+                    isAdmin : user.is_admin,
                     profileImage : base64Image, 
                 }
             });

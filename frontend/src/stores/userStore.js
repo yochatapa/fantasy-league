@@ -7,12 +7,14 @@ export const useUserStore = defineStore('user', {
     state: () => ({
         user: null, // user 정보
         isLoggedIn: false,
-        isAuthChecked: false
+        isAuthChecked: false,
+        isAdmin : false,
     }),
     actions: {
         setUser(userData) {
             this.user = userData;
             this.isLoggedIn = true;
+            this.isAdmin = this.user.isAdmin;
         },
         async logout() {
             try {
@@ -24,6 +26,7 @@ export const useUserStore = defineStore('user', {
                     this.user = null;
                     this.isLoggedIn = false;
                     this.isAuthChecked = true;
+                    this.isAdmin = false;
                     localStorage.removeItem('token');
                     router.push("/")
                 } else {
@@ -50,11 +53,20 @@ export const useUserStore = defineStore('user', {
             } catch (e) {
                 this.user = null;
                 this.isLoggedIn = false;
+                this.isAdmin = false;
                 this.isAuthChecked = true;
                 localStorage.removeItem('token');
                 return false;
             } finally {
                 this.isAuthChecked = true
+            }
+        },
+        async checkAdmin() {
+            try {
+                const response = await commonFetch('/api/auth/check-admin', { method: 'GET' });
+                return response.success && response.data.isAdmin === true;
+            } catch {
+                return false;
             }
         },
     },
