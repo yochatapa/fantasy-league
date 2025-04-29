@@ -1,21 +1,25 @@
 <script setup>
+import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useUserStore } from '@/stores/userStore'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
+const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 const { isLoggedIn, user } = storeToRefs(userStore)
 
 const goToLogin = () => router.push('/login')
 const logout = () => userStore.logout()
+
+const isAdminRoute = computed(() => route.path.startsWith('/admin'))
 </script>
 
 <template>
     <v-app-bar flat height="64" class="bg-white border-b">
         <v-container class="d-flex align-center justify-space-between" style="max-width: 1200px;">
             <!-- 로고 및 타이틀 -->
-            <div class="d-flex align-center cursor-pointer" @click="router.push('/')">
+            <div class="d-flex align-center cursor-pointer" @click="isAdminRoute?router.push('/admin'):router.push('/')">
                 <v-icon size="28" color="primary" class="mr-2">mdi-baseball</v-icon>
                 <span class="text-h6 font-weight-bold text-primary">KBO Fantasy League</span>
             </div>

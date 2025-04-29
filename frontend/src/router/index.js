@@ -16,50 +16,72 @@ const router = createRouter({
     routes: [
         {
             path: '/',
-            name: 'home',
-            component: HomeView,
-        },
-        {
-            path: '/login',
-            name: 'login',
-            component: LoginView,
-        },
-        {
-            path: '/signup',
-            name: 'signup',
-            component: SignupView,
-        },
-        {
-            path: '/league/start',
-            name: 'LeagueStart',
-            component: LeagueStartView,
-        },
-        {
-            path: '/league/create',
-            name: 'LeagueCreate',
-            component: LeagueCreateView,
-        },
-        {
-            path: '/league/create/complete',
-            name: 'LeagueCreateCompleteView',
-            component: LeagueCreateCompleteView,
-        },
-        {
-            path: '/league/join',
-            name: 'LeagueJoin',
-            component: LeagueJoinView,
-        },
-        {
-            path: '/league',
-            component: LeagueLayoutView ,
+            component: RouterView,
             children: [
                 {
-                    path: 'home',
-                    name: 'LeagueHomeView',
-                    component: LeagueHomeView,
+                    path: '',
+                    name: 'home',
+                    component: HomeView,
                 },
+                {
+                    path: 'login',
+                    name: 'login',
+                    component: LoginView,
+                },
+                {
+                    path: 'signup',
+                    name: 'signup',
+                    component: SignupView,
+                },
+                {
+                    path: 'league/start',
+                    name: 'LeagueStart',
+                    component: LeagueStartView,
+                },
+                {
+                    path: 'league/create',
+                    name: 'LeagueCreate',
+                    component: LeagueCreateView,
+                },
+                {
+                    path: 'league/create/complete',
+                    name: 'LeagueCreateCompleteView',
+                    component: LeagueCreateCompleteView,
+                },
+                {
+                    path: 'league/join',
+                    name: 'LeagueJoin',
+                    component: LeagueJoinView,
+                },
+                {
+                    path: 'league',
+                    component: LeagueLayoutView, // 서브 레이아웃 또는 view
+                    children: [
+                        {
+                            path: 'home',
+                            name: 'LeagueHomeView',
+                            component: LeagueHomeView,
+                        }
+                    ]
+                }
             ]
-        }
+        },
+        /*{
+            path: '/admin',
+            component: RouterView,
+            children: [
+                {
+                    path: '',
+                    name: 'AdminHome',
+                    component: AdminHomeView,
+                },
+                {
+                    path: 'users',
+                    name: 'AdminUsers',
+                    component: AdminUsersView,
+                }
+            ]
+        }*/
     ],
     scrollBehavior(to, from, savedPosition) {
         // savedPosition은 뒤로가기/앞으로가기 버튼으로 이동했을 때
