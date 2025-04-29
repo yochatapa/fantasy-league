@@ -13,6 +13,7 @@ import LeagueHomeView from '@/views/league/home/LeagueHomeView.vue'
 
 import AdminLayoutView from '@/views/admin/AdminLayoutView.vue'
 import KboTeamManagementView from '@/views/admin/kbo/team/KboTeamManagementView.vue'
+import KboTeamAddView from '@/views/admin/kbo/team/KboTeamAddView.vue'
 
 const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
@@ -82,6 +83,11 @@ const router = createRouter({
                             path: 'team/management',
                             name: 'KboTeamManagementView',
                             component: KboTeamManagementView,
+                        },
+                        {
+                            path: 'team/add',
+                            name: 'KboTeamAddView',
+                            component: KboTeamAddView,
                         }
                     ]
                 }
