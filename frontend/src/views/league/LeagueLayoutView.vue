@@ -17,7 +17,8 @@
                     bottom
                     offset-y
                     transition="slide-y-transition"
-                    open-on-hover close-on-content-click
+                    :open-on-hover="!isMobile"
+                    close-on-content-click
                     >
                     <template v-slot:activator="{ props }">
                         <v-list-item-title v-bind="props" class="d-flex align-center">
@@ -81,6 +82,8 @@ import { useRoute, useRouter } from 'vue-router';
 const { mobile } = useDisplay();
 const route = useRoute();
 const router = useRouter();
+
+const isMobile = computed(() => mobile.value);
 
 const orgLeagueId = route.query.leagueId;
 console.log(orgLeagueId)
@@ -206,14 +209,31 @@ watch(mobile, (newValue)=>{
 
 // 컴포넌트가 마운트된 후 초기 선택값 설정
 onMounted(() => {
-    if (mobile.value && menus.length > 0) {
-        // 모바일 환경이고 메뉴 데이터가 있다면 첫 번째 메인 메뉴를 기본 선택
-        selectedMainMenu.value = menus[0];
-        // selectedMainMenu watcher에 의해 selectedSubMenu도 자동으로 설정되고 라우팅될 것입니다.
+    const currentPath = route.path;
+
+    // 현재 path에 해당하는 메뉴를 찾기
+    for (const menu of menus) {
+        // 서브 메뉴가 있는 경우
+        if (menu.subMenu.length > 0) {
+            const matchedSub = menu.subMenu.find(sub => sub.path === currentPath);
+            if (matchedSub) {
+                selectedMainMenu.value = menu;
+                selectedSubMenu.value = matchedSub;
+                return;
+            }
+        } else if (menu.path === currentPath) {
+            selectedMainMenu.value = menu;
+            selectedSubMenu.value = null;
+            return;
+        }
     }
-     // PC 환경에서는 별도의 초기 라우팅 로직이 필요할 수 있습니다 (예: 현재 URL에 맞는 메뉴 항목 활성화)
-     // 이 예제에서는 모바일 초기값만 다룹니다.
+
+    // 경로가 매칭되지 않았고 모바일이면 기본 선택
+    if (mobile.value && menus.length > 0) {
+        selectedMainMenu.value = menus[0];
+    }
 });
+
 
 </script>
 
