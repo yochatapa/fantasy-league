@@ -27,7 +27,15 @@ const isAdminRoute = computed(() => route.path.startsWith('/admin'))
             <!-- ✅ Admin Route인 경우: 관리자 레이아웃만 표시 -->
             <template v-if="isAdminRoute">
                 <AppHeader />
-                <RouterView />
+                <v-main class="bg-grey-lighten-5">
+                    <v-container
+                        class="pt-6"
+                        style="max-width: 1200px; margin: 0 auto;"
+                        fluid
+                    >
+                        <RouterView />
+                    </v-container>
+                </v-main>
             </template>
 
             <!-- ✅ 일반 사용자 레이아웃 -->

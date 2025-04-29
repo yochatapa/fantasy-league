@@ -11,6 +11,8 @@ import LeagueCreateCompleteView from '@/views/league/create/LeagueCreateComplete
 import LeagueLayoutView from '@/views/league/LeagueLayoutView.vue'
 import LeagueHomeView from '@/views/league/home/LeagueHomeView.vue'
 
+import AdminLayoutView from '@/views/admin/AdminLayoutView.vue'
+
 const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
     routes: [
@@ -66,22 +68,22 @@ const router = createRouter({
                 }
             ]
         },
-        /*{
+        {
             path: '/admin',
             component: RouterView,
             children: [
                 {
                     path: '',
                     name: 'AdminHome',
-                    component: AdminHomeView,
+                    component: AdminLayoutView,
                 },
-                {
+                /*{
                     path: 'users',
                     name: 'AdminUsers',
                     component: AdminUsersView,
-                }
+                }*/
             ]
-        }*/
+        }
     ],
     scrollBehavior(to, from, savedPosition) {
         // savedPosition은 뒤로가기/앞으로가기 버튼으로 이동했을 때
