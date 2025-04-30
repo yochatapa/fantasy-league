@@ -245,6 +245,7 @@ const isParentActive = (menu) => {
                 0px 8px 10px 1px rgba(0, 0, 0, 0.14),
                 0px 3px 14px 2px rgba(0, 0, 0, 0.12);
     z-index: 10;
+    overflow: hidden;
 }
 
 .dropdown-item {
