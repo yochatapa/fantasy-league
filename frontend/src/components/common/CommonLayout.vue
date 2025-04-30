@@ -132,7 +132,19 @@ watch(selectedSubMenu, (newValue) => {
 
 watch(mobile, (newValue) => {
     if (newValue && menus.length > 0) {
-        selectedMainMenu.value = menus[0];
+        const currentPath = route.path.split("?")[0];
+
+        const alreadyMatched = menus.some(menu => {
+            if (menu.subMenu.length > 0) {
+                return menu.subMenu.some(sub => sub.path.startsWith(currentPath));
+            } else {
+                return menu.path.startsWith(currentPath);
+            }
+        });
+
+        if (!alreadyMatched) {
+            selectedMainMenu.value = menus[0];
+        }
     }
 });
 
