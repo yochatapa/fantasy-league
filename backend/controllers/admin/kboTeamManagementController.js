@@ -7,6 +7,7 @@ export const getKboTeamList = async (req, res) => {
             SELECT
                 *
             FROM team_master
+            ORDER BY status, founding_year, disband_year, id
         `,[])
 
         if(kboTeamList.rows.length>0) 
