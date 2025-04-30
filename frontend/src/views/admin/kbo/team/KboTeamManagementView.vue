@@ -47,10 +47,11 @@
                 :loading="loading"
                 v-model:page="page"
                 v-model:items-per-page="itemsPerPage"
-                class="elevation-1 mt-2"
+                class="mt-2"
                 loading-text="팀 목록을 불러오는 중입니다..."
                 mobile
                 hide-default-header
+                style="background: transparent;border: 0;"
             >
                 <template #item="{ item, index }">
                     <v-card class="mb-2 pa-3">
