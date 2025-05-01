@@ -133,7 +133,7 @@ const submitForm = async () => {
     }
 
     try {
-        const res = await commonFetch(isEditMode.value ? `/api/admin/team/update/${id.value}` : '/api/admin/team/create', {
+        const res = await commonFetch(isEditMode.value ? `/api/admin/team/update/${encodeURIComponent(teamId.value)}` : '/api/admin/team/create', {
             method: isEditMode.value ? 'PUT' : 'POST',
             body: formData,
         });

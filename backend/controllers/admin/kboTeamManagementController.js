@@ -64,9 +64,65 @@ export const createKboTeam = async (req, res) => {
     }
 };
 
+export const updateKboTeam = async (req, res) => {
+    const { name, code, founding_year, logo_url, status, disband_year } = req.body;
+
+    let { teamId } = req.params;
+    
+    teamId = decryptData(teamId)
+
+    if(!teamId){
+        return sendBadRequest(res, "팀 정보가 잘못되었습니다.");
+    }
+
+    // 필수값 확인
+    if (!teamId || !name || !code || !founding_year || !status) {
+        return sendBadRequest(res, "필수 입력값을 모두 입력해주세요.");
+    }
+
+    // status 값 유효성 확인
+    const validStatuses = ['active', 'inactive'];
+    if (!validStatuses.includes(status)) {
+        return sendBadRequest(res, "status 값이 올바르지 않습니다.");
+    }
+
+    try {
+        await withTransaction(async (client) => {
+            // 중복 코드 확인
+            const { rows: existing } = await client.query(
+                'SELECT id FROM team_master WHERE code = $1',
+                [code]
+            );
+            
+            if (existing.length > 0 && existing.find((row)=>row.id !== teamId)) {
+                return sendBadRequest(res, "이미 존재하는 팀 코드입니다.");
+            }
+
+            // UPDATE 쿼리 실행
+            const updateQuery = `
+                UPDATE team_master SET
+                    name = $2
+                    , code = $3
+                    , founding_year = $4
+                    , logo_url = $5
+                    , status = $6
+                    , disband_year = $7
+                where id = $1
+            `;
+            const params = [teamId, name, code, founding_year, logo_url || null, status, disband_year || null];
+            console.log(params)
+            await client.query(updateQuery, params);
+
+            return sendSuccess(res, "팀이 성공적으로 수정되었습니다.");
+        });
+    } catch (error) {
+        return sendServerError(res, error, "팀 수정 중 오류가 발생했습니다. 다시 시도해주세요.");
+    }
+}
+
 export const getKboTeamDetail = async (req, res) => {
     let { teamId } = req.params;
-    console.log("teamId",teamId)
+    
     teamId = decryptData(teamId)
 
     if(!teamId){
