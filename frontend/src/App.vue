@@ -52,32 +52,32 @@ const isAdminRoute = computed(() => route.path.startsWith('/admin'))
                         <RouterView />
                     </v-container>
                 </v-main>
-
-                <!-- Snackbar Alert -->
-                <v-snackbar
-                    v-model="alert.snackbar"
-                    :color="alert.snackbarColor"
-                    timeout="3000"
-                    location="top center"
-                >
-                    <div style="white-space: pre-line;">
-                        {{ alert.snackbarMessage }}
-                    </div>
-                </v-snackbar>
-
-                <!-- Confirm Dialog -->
-                <v-dialog v-model="alert.dialog" width="400">
-                    <v-card>
-                        <v-card-title class="text-h6">확인</v-card-title>
-                        <v-card-text v-html="alert.dialogMessage"></v-card-text>
-                        <v-card-actions>
-                            <v-spacer />
-                            <v-btn text @click="alert.confirmNo()">취소</v-btn>
-                            <v-btn color="primary" text @click="alert.confirmYes()">확인</v-btn>
-                        </v-card-actions>
-                    </v-card>
-                </v-dialog>
             </template>
+
+            <!-- Snackbar Alert -->
+            <v-snackbar
+                v-model="alert.snackbar"
+                :color="alert.snackbarColor"
+                timeout="3000"
+                location="top center"
+            >
+                <div style="white-space: pre-line;">
+                    {{ alert.snackbarMessage }}
+                </div>
+            </v-snackbar>
+
+            <!-- Confirm Dialog -->
+            <v-dialog v-model="alert.dialog" width="400">
+                <v-card>
+                    <v-card-title class="text-h6">확인</v-card-title>
+                    <v-card-text v-html="alert.dialogMessage"></v-card-text>
+                    <v-card-actions>
+                        <v-spacer />
+                        <v-btn text @click="alert.confirmNo()">취소</v-btn>
+                        <v-btn color="primary" text @click="alert.confirmYes()">확인</v-btn>
+                    </v-card-actions>
+                </v-card>
+            </v-dialog>
         </template>
     </v-app>
 </template>
