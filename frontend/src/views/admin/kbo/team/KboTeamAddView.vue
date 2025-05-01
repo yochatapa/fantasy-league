@@ -61,12 +61,15 @@
 import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { commonFetch } from '@/utils/common/commonFetch';
+import { decryptData } from '@/utils/common/crypto'
+import { tr } from 'vuetify/locale';
 
 const route = useRoute();
 const router = useRouter();
 
-const id = computed(() => route.query.id);
-const isEditMode = computed(() => !!id.value);
+const teamId = computed(() => route.query.teamId);
+
+const isEditMode = computed(() => !!teamId.value);
 
 const currentYear = new Date().getFullYear();
 
@@ -89,20 +92,27 @@ const statusOptions = [
 
 const fetchTeam = async () => {
     try {
-        const res = await fetch(`/api/teams/${id.value}`);
-        if (!res.ok) throw new Error('팀 정보를 불러오지 못했습니다.');
-        const data = await res.json();
-        form.value = {
-            name: data.name,
-            code: data.code,
-            founding_year: data.founding_year,
-            disband_year: data.disband_year,
-            status: data.status,
-            logo: null, // 수정 시 로고는 별도로 업로드
-        };
+        const res = await commonFetch(`/api/admin/team/${encodeURIComponent(teamId.value)}`, {
+            method: 'GET'
+        });
+
+        if (res.success){
+            const teamInfo = await res.data.teamInfo;
+            form.value = {
+                name: teamInfo.name,
+                code: teamInfo.code,
+                founding_year: teamInfo.founding_year,
+                disband_year: teamInfo.disband_year,
+                status: teamInfo.status,
+                logo: null, // 수정 시 로고는 별도로 업로드
+            };
+        }else{
+            alert(res.message);
+        }
+       
     } catch (err) {
-        alert(err.message);
-        router.push('/teams'); // 잘못된 ID 접근 시 목록으로
+        router.push('/admin/team/management'); // 잘못된 ID 접근 시 목록으로
+        alert("팀 정보 조회 과정에서 오류가 발생했습니다.");
     }
 };
 

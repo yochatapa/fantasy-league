@@ -117,7 +117,10 @@ watch(selectedMainMenu, (newValue) => {
     selectedSubMenu.value = null;
     if (newValue) {
         if (newValue.subMenu?.length > 0) {
-            selectedSubMenu.value = newValue.subMenu[0];
+            const matchedSub = newValue.subMenu.find(sub => route.path.startsWith(sub.path));
+            
+            selectedSubMenu.value = matchedSub || newValue.subMenu[0];
+            if(!route.path.startsWith(selectedSubMenu.value.path)) router.push(selectedSubMenu.value.path);
         } else if (newValue.path) {
             router.push(newValue.path);
         }
@@ -125,7 +128,7 @@ watch(selectedMainMenu, (newValue) => {
 });
 
 watch(selectedSubMenu, (newValue) => {
-    if (newValue?.path) {
+    if (newValue?.path && !route.path.startsWith(newValue?.path)) {
         router.push(newValue.path);
     }
 });

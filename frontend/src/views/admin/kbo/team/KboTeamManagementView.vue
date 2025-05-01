@@ -23,6 +23,7 @@
                 v-model:items-per-page="itemsPerPage"
                 class="elevation-1 mt-2"
                 loading-text="팀 목록을 불러오는 중입니다..."
+                @click:row="handleRowClick"
             >
                 <template #item.index="{ index }">
                     {{ (page - 1) * itemsPerPage + index + 1 }}
@@ -54,7 +55,7 @@
                 style="background: transparent;border: 0;"
             >
                 <template #item="{ item, index }">
-                    <v-card class="mb-2 pa-3">
+                    <v-card class="mb-2 pa-3" @click="(event)=>handleRowClick(event,{item})">
                         <div class="d-flex justify-space-between align-center mb-2">
                             <div class="text-subtitle-1 font-weight-bold">
                                 #{{ (page - 1) * itemsPerPage + index + 1 }}
@@ -80,9 +81,10 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import { commonFetch } from '@/utils/common/commonFetch'; // 경로는 실제 commonFetch 위치에 맞게 수정
+import { commonFetch } from '@/utils/common/commonFetch';
 import { useRouter } from 'vue-router';
 import { useDisplay } from 'vuetify';
+import { encryptData } from '@/utils/common/crypto'
 
 const { mobile } = useDisplay();
 
@@ -122,6 +124,10 @@ const fetchTeamList = async () => {
 const goToAddTeam = () => {
     router.push("/admin/team/add")
 }
+
+const handleRowClick = (e,{item}) => {
+    router.push(`/admin/team/add?teamId=${encodeURIComponent(encryptData(item.id))}`);
+};
 
 onMounted(() => {
     fetchTeamList();

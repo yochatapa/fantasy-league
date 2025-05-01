@@ -1,5 +1,6 @@
 import { query, withTransaction } from '../../db.js'
 import { sendSuccess, sendBadRequest, sendServerError } from '../../utils/apiResponse.js'
+import { encryptData, decryptData } from '../../utils/crypto.js';
 
 export const getKboTeamList = async (req, res) => {
     try {
@@ -62,3 +63,36 @@ export const createKboTeam = async (req, res) => {
         return sendServerError(res, error, "팀 생성 중 오류가 발생했습니다. 다시 시도해주세요.");
     }
 };
+
+export const getKboTeamDetail = async (req, res) => {
+    let { teamId } = req.params;
+    console.log("teamId",teamId)
+    teamId = decryptData(teamId)
+
+    if(!teamId){
+        return sendBadRequest(res, "팀 정보가 잘못되었습니다.");
+    }
+
+    try {
+        let teamInfoQuery = `
+            SELECT
+                *
+            FROM team_master tm
+            WHERE tm.id = $1
+        `;
+
+        const param = [teamId];
+
+        const teamInfo = await query(teamInfoQuery, param);
+        
+        if(!teamInfo.rows[0])
+            return sendBadRequest(res, '팀 정보가 없습니다.');
+
+        return sendSuccess(res, {
+            message: '팀 정보가 조회되었습니다.',
+            teamInfo : teamInfo.rows[0]
+        });
+    } catch (error) {
+        return sendServerError(res, error, '팀 정보 조회 중 문제가 발생했습니다. 다시 시도해주세요.');
+    }
+}
