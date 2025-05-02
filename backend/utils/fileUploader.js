@@ -51,6 +51,33 @@ export const saveUploadedFile = async (fileInfo, targetDir) => {
     }
 };
 
+/**
+ * 지정된 경로의 파일을 삭제합니다.
+ *
+ * @param {string} filePath - 삭제할 파일의 전체 경로
+ * @returns {Promise<void>}
+ * @throws {Error} - 파일 삭제 중 오류 발생 시
+ */
+export const deleteFile = async (filePath) => {
+    if (!filePath) {
+        throw new Error("No file path provided for deletion.");
+    }
+
+    try {
+        // 파일 존재 여부 확인 후 삭제
+        await fs.access(filePath); // 파일이 존재하는지 확인
+        await fs.unlink(filePath); // 파일 삭제
+        console.log(`파일 삭제 완료 : ${filePath}`);
+    } catch (error) {
+        if (error.code === 'ENOENT') {
+            console.warn(`파일이 존재하지 않습니다. : ${filePath}`);
+        } else {
+            console.error(`Error deleting file ${filePath}:`, error);
+            throw error; // 다른 오류는 그대로 던짐
+        }
+    }
+};
+
+
 // (필요하다면 다른 파일 처리 관련 유틸 함수 추가)
-// export const deleteFile = async (filePath) => { ... }
 // export const getFileUrl = (filePath) => { ... } // 서버 경로 기반 URL 생성

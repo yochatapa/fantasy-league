@@ -1,6 +1,6 @@
 <template>
     <v-container>
-        <v-card class="pa-4 mx-auto max-w-xl">
+        <v-card class="pa-4 mx-auto">
             <v-card-title class="text-h6 mb-4">
                 {{ isEditMode ? 'KBO 팀 수정' : 'KBO 팀 추가' }}
             </v-card-title>
@@ -39,11 +39,13 @@
                         :rules="[v => !!v || '상태를 선택해주세요.']"
                         required
                     />
-                    <v-file-input
+
+                    <FileUploader
                         v-model="form.logo"
                         label="로고 이미지"
                         accept="image/*"
-                        prepend-icon="mdi-image"
+                        :initial-files="initialLogo ? initialLogo : []"
+                        ref="fileUploader"
                     />
                 </v-form>
             </v-card-text>
@@ -61,16 +63,13 @@
 import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { commonFetch } from '@/utils/common/commonFetch';
-import { decryptData } from '@/utils/common/crypto'
-import { tr } from 'vuetify/locale';
+import FileUploader from '@/components/common/FileUploader.vue';
 
 const route = useRoute();
 const router = useRouter();
 
 const teamId = computed(() => route.query.teamId);
-
 const isEditMode = computed(() => !!teamId.value);
-
 const currentYear = new Date().getFullYear();
 
 const form = ref({
@@ -82,8 +81,10 @@ const form = ref({
     logo: null,
 });
 
+const initialLogo = ref(null);
 const formRef = ref(null);
 const formValid = ref(false);
+const fileUploader = ref(null);
 
 const statusOptions = [
     { label: '활성', value: 'active' },
@@ -93,26 +94,30 @@ const statusOptions = [
 const fetchTeam = async () => {
     try {
         const res = await commonFetch(`/api/admin/team/${encodeURIComponent(teamId.value)}`, {
-            method: 'GET'
+            method: 'GET',
         });
 
-        if (res.success){
-            const teamInfo = await res.data.teamInfo;
+        if (res.success) {
+            const teamInfo = res.data.teamInfo;
+            const logoInfo = res.data.logoInfo;
+
             form.value = {
                 name: teamInfo.name,
                 code: teamInfo.code,
                 founding_year: teamInfo.founding_year,
                 disband_year: teamInfo.disband_year,
                 status: teamInfo.status,
-                logo: null, // 수정 시 로고는 별도로 업로드
             };
-        }else{
+
+            if (logoInfo) {
+                initialLogo.value = logoInfo
+            }
+        } else {
             alert(res.message);
         }
-       
     } catch (err) {
-        router.push('/admin/team/management'); // 잘못된 ID 접근 시 목록으로
         alert("팀 정보 조회 과정에서 오류가 발생했습니다.");
+        router.push('/admin/team/management');
     }
 };
 
@@ -126,26 +131,40 @@ const submitForm = async () => {
     if (!formRef.value?.validate()) return;
 
     const formData = new FormData();
+
     for (const key in form.value) {
-        if (form.value[key] !== null) {
-            formData.append(key, form.value[key]);
+        if (form.value[key] !== null && key !== 'logo') {
+            formData.append(key, form.value[key]??'');
         }
     }
 
-    try {
-        const res = await commonFetch(isEditMode.value ? `/api/admin/team/update/${encodeURIComponent(teamId.value)}` : '/api/admin/team/create', {
-            method: isEditMode.value ? 'PUT' : 'POST',
-            body: formData,
-        });
+    const newFiles = fileUploader.value?.getNewFiles() || [];
+    newFiles.forEach(file => {
+        formData.append('newFiles', file);
+    });
 
-        if (res.success){
-            router.push('/admin/team/management');
+    const deletedFiles = fileUploader.value?.getDeletedFiles() || [];
+    formData.append('deletedFiles', JSON.stringify(deletedFiles));
+
+    try {
+        const res = await commonFetch(
+            isEditMode.value
+                ? `/api/admin/team/update/${encodeURIComponent(teamId.value)}`
+                : '/api/admin/team/create',
+            {
+                method: isEditMode.value ? 'PUT' : 'POST',
+                body: formData,
+            }
+        );
+
+        if (res.success) {
             alert(isEditMode.value ? '팀 정보가 수정되었습니다!' : '팀 정보가 등록되었습니다!');
-        }else{
+            router.push('/admin/team/management');
+        } else {
             alert(res.message);
         }
     } catch (err) {
-        alert('서버에서 에러가 발생하였습니다.\n 다시 시도해주세요.');
+        alert('서버에서 에러가 발생하였습니다.\n다시 시도해주세요.');
     }
 };
 </script>

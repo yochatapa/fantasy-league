@@ -71,7 +71,7 @@ export const signup = async (req, res) => {
 
                 // saveUploadedFile 함수를 호출하여 파일 복사
                 finalFileSavedInfo = await saveUploadedFile(profileImageInfo, userSpecificUploadDir);
-                console.log('파일 복사 및 임시 삭제 완료:', finalFileSavedInfo);
+                console.log('파일 복사 완료 :', finalFileSavedInfo);
 
                 // DB에 저장할 파일 경로/URL 구성 (예: 프로젝트 루트 기준 상대 경로)
                 finalFileUrlForDB = path.join('uploads', 'users', createdUserId.toString(), 'profile', finalFileSavedInfo.finalFileName);
