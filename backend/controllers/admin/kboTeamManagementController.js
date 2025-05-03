@@ -295,7 +295,7 @@ export const updateKboTeam = async (req, res) => {
                 }
             }
 
-            if(existing.logo_url){
+            if(!existing.logo_url){
                 // 3. user_master 테이블에 profile_image 컬럼 업데이트
                 const updateUserQuery = `
                     UPDATE kbo_team_master
