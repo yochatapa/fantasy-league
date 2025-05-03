@@ -74,7 +74,7 @@
                                 </v-chip>
                             </div>
                             <div class="text-body-2">
-                                <div><strong>팀명:</strong> {{ item.name }}</div>
+                                <div class="d-flex align-center"><strong>팀명:</strong> <img :src="item.path" v-if="item.path" class="mx-1 mb-1" style="height: 24px;" :alt="item.name+'로고'">{{ item.name }}</div>
                                 <div><strong>창단:</strong> {{ item.founding_year }}년</div>
                                 <div>
                                     <strong>해체:</strong>
