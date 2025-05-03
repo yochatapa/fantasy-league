@@ -47,19 +47,42 @@ export async function commonFetch(url, options = {}) {
                 data : errorDetail
             };
         }
-    
-        const data = await response.json();
+        
+        if(options.responseType === "fileDownload"){
+            const data = await response.blob();
 
-        if(data.token && data.access){
-            localStorage.setItem("token",data.token)
-            return commonFetch(url, options)
+            const disposition = response.headers.get('Content-Disposition');
+            let filename = 'downloaded_file';
+            if (disposition && disposition.includes('filename=')) {
+                filename = decodeURIComponent(disposition.split('filename=')[1].replace(/"/g, ''));
+            }
+            console.log(filename);
+            const url = window.URL.createObjectURL(data);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            window.URL.revokeObjectURL(url);
+
+            return {
+                success: true,
+                message : data?.message || "요청이 정상적으로 처리되었습니다.",
+            };
         }
+        else{
+            const data = await response.json();
+        
+            if(data.token && data.access){
+                localStorage.setItem("token",data.token)
+                return commonFetch(url, options)
+            }
 
-        return {
-            success: true,
-            message : data?.message || "요청이 정상적으로 처리되었습니다.",
-            data
-        };
+            return {
+                success: true,
+                message : data?.message || "요청이 정상적으로 처리되었습니다.",
+                data
+            };
+        }
     } catch (error) {
         console.error('Fetch Error:', error);
         return {

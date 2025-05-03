@@ -29,11 +29,11 @@
         <v-list v-if="existingFiles.length > 0" class="pa-0">
             <v-list-item
                 v-for="(file, index) in existingFiles"
-                :key="'existing-' + file.id"
+                :key="'existing-' + file.file_id"
                 :title="file.original_name"
             >
                 <template #append>
-                    <v-icon class="mr-2">mdi-download</v-icon>
+                    <v-icon class="mr-2" @click="downloadFile(file.file_id,file.sn)">mdi-download</v-icon>
                     <v-icon @click="removeExistingFile(index)">mdi-delete</v-icon>
                 </template>
             </v-list-item>
@@ -43,6 +43,7 @@
 
 <script setup>
 import { ref, defineExpose, computed } from 'vue'
+import { commonFetch } from '@/utils/common/commonFetch';
 
 const props = defineProps({
     initialFiles: {
@@ -145,6 +146,19 @@ function removeExistingFile(index) {
         sn: removed.sn
     })
 }
+
+const downloadFile = async (fileId, sn) => {
+    try {
+        const response = await commonFetch(`/api/file/download/${fileId}/${sn}`, {
+            method: 'GET',
+            responseType : "fileDownload"
+        });
+    } catch (err) {
+        console.error(err);
+        alert('파일 다운로드 중 오류가 발생했습니다.');
+    }
+};
+
 
 defineExpose({
     getNewFiles: () => newFiles.value,
