@@ -13,23 +13,46 @@ const finalUploadsBaseDir = path.join(process.cwd(), 'uploads');
 
 export const getKboTeamList = async (req, res) => {
     try {
+        let { page = 1, itemsPerPage = 10 } = req.query;
+
+        // 페이지 및 항목 수를 숫자로 변환하고 최소값을 설정
+        page = Math.max(1, parseInt(page, 10));
+        itemsPerPage = Math.max(1, parseInt(itemsPerPage, 10));
+
+        const offset = (page - 1) * itemsPerPage;
+
+        // 팀 목록 조회 쿼리 (LIMIT, OFFSET 사용)
         const kboTeamList = await query(`
             SELECT
                 *
             FROM kbo_team_master
             ORDER BY status, founding_year, disband_year, id
-        `,[])
+            LIMIT $1 OFFSET $2
+        `, [itemsPerPage, offset]);
 
-        if(kboTeamList.rows.length>0) 
+        // 총 팀 수 조회
+        const totalTeams = await query(`
+            SELECT COUNT(*) as total
+            FROM kbo_team_master
+        `);
+
+        const total = totalTeams.rows[0].total;
+
+        if (kboTeamList.rows.length > 0) {
             return sendSuccess(res, {
-                message : "팀 목록을 성공적으로 조회하였습니다.",
-                teamList : kboTeamList.rows
-            })
-        else return sendBadRequest(res, "팀 목록 조회 중 문제가 발생하였습니다.")
+                message: "팀 목록을 성공적으로 조회하였습니다.",
+                teamList: kboTeamList.rows,
+                total 
+            });
+        } else {
+            return sendBadRequest(res, "팀 목록 조회 중 문제가 발생하였습니다.");
+        }
     } catch (error) {
         return sendServerError(res, error, '팀 목록 조회 중 문제가 발생하였습니다. 다시 시도해주세요.');
     }
-}
+};
+
+
 
 export const createKboTeam = async (req, res) => {
     const { name, code, founding_year, logo_url, status, disband_year } = req.body;
