@@ -28,6 +28,7 @@ export const getKboTeamList = async (req, res) => {
                 , ktm.name
                 , ktm.code
                 , ktm.founding_year
+                , ktm.disband_year
                 , ktm.status
                 , ft.file_id
                 , ft.sn
@@ -187,9 +188,24 @@ export const createKboTeam = async (req, res) => {
                 console.log("No Kbo Team Logo Uploaded.");
             }
 
+            const rowNumerQuery = `
+                SELECT row_number
+                FROM (
+                    SELECT 
+                        id,
+                        ROW_NUMBER() OVER (ORDER BY status, founding_year, disband_year, id) AS row_number
+                    FROM public.kbo_team_master
+                ) AS ordered_teams
+                WHERE id = $1`
+
+            const rowNumber = await client.query(rowNumerQuery, [teamId]);
+            
+            const page = Math.ceil(rowNumber.rows[0].row_number/10)
+
             return sendSuccess(res,{
                 message : "팀이 성공적으로 생성되었습니다.",
-                teamId
+                teamId,
+                page
             });
         });
     } catch (error) {
@@ -336,7 +352,25 @@ export const updateKboTeam = async (req, res) => {
                 ]);
             }
 
-            return sendSuccess(res, "팀이 성공적으로 수정되었습니다.");
+            const rowNumerQuery = `
+                SELECT row_number
+                FROM (
+                    SELECT 
+                        id,
+                        ROW_NUMBER() OVER (ORDER BY status, founding_year, disband_year, id) AS row_number
+                    FROM public.kbo_team_master
+                ) AS ordered_teams
+                WHERE id = $1`
+
+            const rowNumber = await client.query(rowNumerQuery, [teamId]);
+            
+            const page = Math.ceil(rowNumber.rows[0].row_number/10)
+
+            return sendSuccess(res, 
+            {
+                message : "팀이 성공적으로 수정되었습니다.",
+                page
+            });
         });
     } catch (error) {
         return sendServerError(res, error, "팀 수정 중 오류가 발생했습니다. 다시 시도해주세요.");
@@ -360,6 +394,7 @@ export const getKboTeamDetail = async (req, res) => {
                 , ktm.code
                 , ktm.founding_year
                 , ktm.status
+                , ktm.disband_year
                 , ft.file_id
                 , ft.sn
                 , ft.original_name

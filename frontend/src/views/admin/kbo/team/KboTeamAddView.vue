@@ -168,7 +168,7 @@ const submitForm = async () => {
         );
 
         if (res.success) {
-            router.push('/admin/team/management');
+            router.push('/admin/team/management'+(res.data.page?`?page=${res.data.page}`:''));
             alert(isEditMode.value ? '팀 정보가 수정되었습니다!' : '팀 정보가 등록되었습니다!');
         } else {
             alert(res.message, "error");
