@@ -114,9 +114,14 @@ const fetchTeam = async () => {
                 status: teamInfo.status,
             };
 
-            if (logoInfo) {
-                initialLogo.value = logoInfo
-            }
+            initialLogo.value = [{
+                file_id             : teamInfo.file_id
+                , sn                : teamInfo.sn
+                , original_name     : teamInfo.original_name
+                , size              : teamInfo.size
+                , path              : teamInfo.path
+                , mimetype          : teamInfo.mimetype
+            }]
         } else {
             alert(res.message, "error");
         }

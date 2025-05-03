@@ -24,9 +24,20 @@ export const getKboTeamList = async (req, res) => {
         // 팀 목록 조회 쿼리 (LIMIT, OFFSET 사용)
         const kboTeamList = await query(`
             SELECT
-                *
-            FROM kbo_team_master
-            ORDER BY status, founding_year, disband_year, id
+                ktm.id
+                , ktm.name
+                , ktm.code
+                , ktm.founding_year
+                , ktm.status
+                , ft.file_id
+                , ft.sn
+                , ft.original_name
+                , ft.size
+                , ft.path
+                , ft.mimetype
+            FROM kbo_team_master ktm
+                left join file_table ft on ft.file_id = ktm.logo_url::uuid and ft.sn = 1
+            ORDER BY ktm.status, ktm.founding_year, ktm.disband_year, ktm.id
             LIMIT $1 OFFSET $2
         `, [itemsPerPage, offset]);
 
@@ -37,6 +48,20 @@ export const getKboTeamList = async (req, res) => {
         `);
 
         const total = totalTeams.rows[0].total;
+
+        for(let idx=0;idx<kboTeamList.rows.length;idx++){
+            const teamLogo = kboTeamList.rows[idx]
+            
+            let base64Image = null;
+        
+            if(teamLogo.path){
+                const filePath = path.join(process.cwd(), teamLogo.path);
+
+                base64Image = await convertFileToBase64(filePath, teamLogo.mimetype);
+            }
+            
+            kboTeamList.rows[idx].path = base64Image
+        }
 
         if (kboTeamList.rows.length > 0) {
             return sendSuccess(res, {
@@ -335,7 +360,14 @@ export const getKboTeamDetail = async (req, res) => {
                 , ktm.code
                 , ktm.founding_year
                 , ktm.status
+                , ft.file_id
+                , ft.sn
+                , ft.original_name
+                , ft.size
+                , ft.path
+                , ft.mimetype
             FROM kbo_team_master ktm
+                left join file_table ft on ft.file_id = ktm.logo_url::uuid and ft.sn = 1
             WHERE ktm.id = $1
         `;
 
@@ -343,41 +375,23 @@ export const getKboTeamDetail = async (req, res) => {
 
         const teamInfo = await query(teamInfoQuery, param);
 
-        let teamLogoInfoQuery = `
-            SELECT
-                ft.file_id
-                , ft.sn
-                , ft.original_name
-                , ft.size
-                , ft.path
-                , ft.mimetype
-            FROM file_table ft
-                inner join kbo_team_master ktm on ft.file_id = ktm.logo_url::uuid
-            WHERE ktm.id = $1
-        `;
-
-        const teamLogoInfo = await query(teamLogoInfoQuery, param);
-
-        for(let idx=0;idx<teamLogoInfo.rows.length;idx++){
-            const teamLogo = teamLogoInfo.rows[idx]
-            let base64Image = null;
-        
-            if(teamLogo.path){
-                const filePath = path.join(process.cwd(), teamLogo.path);
+        const teamLogo = teamInfo.rows[0]
+        let base64Image = null;
     
-                base64Image = await convertFileToBase64(filePath, teamLogo.mimetype);
-            }
-            
-            teamLogoInfo.rows[idx].path = base64Image
+        if(teamLogo.path){
+            const filePath = path.join(process.cwd(), teamLogo.path);
+
+            base64Image = await convertFileToBase64(filePath, teamLogo.mimetype);
         }
+        
+        teamInfo.rows[0].path = base64Image
         
         if(!teamInfo.rows[0])
             return sendBadRequest(res, '팀 정보가 없습니다.');
 
         return sendSuccess(res, {
             message: '팀 정보가 조회되었습니다.',
-            teamInfo : teamInfo.rows[0],
-            logoInfo : teamLogoInfo.rows
+            teamInfo : teamInfo.rows[0]
         });
     } catch (error) {
         return sendServerError(res, error, '팀 정보 조회 중 문제가 발생했습니다. 다시 시도해주세요.');

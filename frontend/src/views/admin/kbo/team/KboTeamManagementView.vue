@@ -30,6 +30,11 @@
                     <template #item.index="{ index }">
                         {{ (page - 1) * itemsPerPage + index + 1 }}
                     </template>
+                    <template #item.name="{ item }">
+                        <div class="d-flex align-center justify-center">
+                            <img :src="item.path" class="mr-2" style="height: 30px;">{{ item.name }}
+                        </div>
+                    </template>
                     <template #item.status="{ item }">
                         <v-chip :color="item.status === 'active' ? 'green' : 'red'" label>
                             {{ item.status === 'active' ? '활성' : '해체' }}
@@ -102,10 +107,10 @@ const itemsPerPage = ref(10);
 const totalItems = ref(0);
 
 const headers = [
-    { title: '번호', value: 'index', width: 80 },
-    { title: '팀명', value: 'name' },
-    { title: '상태', value: 'status' },
-    { title: '기간', value: 'founding_year' },
+    { title: '번호', value: 'index', width: 80, align: 'center' },
+    { title: '팀명', value: 'name', align: 'center' },
+    { title: '상태', value: 'status', align: 'center' },
+    { title: '기간', value: 'founding_year', align: 'center' },
 ];
 
 const fetchTeamList = async () => {
