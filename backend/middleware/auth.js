@@ -207,3 +207,33 @@ export const verifyTeams = async (req, res, next) => {
         return sendServerError(res, error, '리그 커미셔너 정보 조회 중 문제가 발생했습니다. 다시 시도해주세요.');   
     }
 }
+
+
+export const verifyAdmin = async (req, res, next) => {
+    const accessToken = req.headers['authorization']?.split(' ')[1];  // 'Bearer <token>' 형식에서 토큰 추출
+    
+    if(!accessToken){
+        return sendBadRequest(res, '토큰이 제공되지 않았습니다.');
+    }
+
+    const user = jwt.verify(accessToken, process.env.JWT_SECRET);
+
+    try {
+        const adminResult = await query(`
+            SELECT 
+                is_admin
+            FROM user_master
+            WHERE user_id = $1
+        `, [user.userId]
+        )
+
+        if(adminResult.rows[0].is_admin){
+            next();
+        } else return sendBadRequest(res, {
+            message : '관리자가 아닙니다.'
+            , code : -99
+        });
+    } catch (error) {
+        return sendServerError(res, error, '관리자 정보 조회 중 문제가 발생했습니다. 다시 시도해주세요.');   
+    }
+}
