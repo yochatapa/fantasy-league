@@ -46,6 +46,8 @@
                         accept="image/*"
                         :initial-files="initialLogo ? initialLogo : []"
                         ref="fileUploader"
+                        :multiple="false"
+                        type="image"
                     />
                 </v-form>
             </v-card-text>
