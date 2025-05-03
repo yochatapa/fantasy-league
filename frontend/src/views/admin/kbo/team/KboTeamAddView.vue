@@ -56,6 +56,9 @@
                 <v-btn :disabled="!formValid" color="primary" @click="submitForm">
                     {{ isEditMode ? '수정' : '등록' }}
                 </v-btn>
+                <v-btn v-if="isEditMode" color="primary" @click="deleteForm">
+                    삭제
+                </v-btn>
             </v-card-actions>
         </v-card>
     </v-container>
@@ -115,11 +118,11 @@ const fetchTeam = async () => {
                 initialLogo.value = logoInfo
             }
         } else {
-            alert(res.message);
+            alert(res.message, "error");
         }
     } catch (err) {
-        alert("팀 정보 조회 과정에서 오류가 발생했습니다.");
         router.push('/admin/team/management');
+        alert("팀 정보 조회 과정에서 오류가 발생했습니다.", "error");
     }
 };
 
@@ -160,15 +163,48 @@ const submitForm = async () => {
         );
 
         if (res.success) {
-            alert(isEditMode.value ? '팀 정보가 수정되었습니다!' : '팀 정보가 등록되었습니다!');
             router.push('/admin/team/management');
+            alert(isEditMode.value ? '팀 정보가 수정되었습니다!' : '팀 정보가 등록되었습니다!');
         } else {
-            alert(res.message);
+            alert(res.message, "error");
         }
     } catch (err) {
-        alert('서버에서 에러가 발생하였습니다.\n다시 시도해주세요.');
+        alert('서버에서 에러가 발생하였습니다.\n다시 시도해주세요.', "error");
     }
 };
+
+const deleteForm = async () => {
+    if (!teamId.value) {
+        alert('삭제할 팀이 존재하지 않습니다.'), "error";
+        return;
+    }
+
+    const confirmed = await confirm('정말 이 팀을 삭제하시겠습니까?');
+
+    if (!confirmed) return;
+
+    try {
+        const res = await commonFetch(
+            `/api/admin/team/delete`,
+            {
+                method: 'DELETE',
+                body : {
+                    teamId : teamId.value
+                }
+            }
+        );
+
+        if (res.success) {
+            router.push('/admin/team/management');
+            alert('팀 정보가 삭제되었습니다.');
+        } else {
+            alert(res.message || '삭제에 실패했습니다.', "error");
+        }
+    } catch (err) {
+        alert('서버 오류가 발생했습니다.\n다시 시도해주세요.', "error");
+    }
+};
+
 </script>
 
 <style scoped>

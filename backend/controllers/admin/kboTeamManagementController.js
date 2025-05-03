@@ -383,3 +383,62 @@ export const getKboTeamDetail = async (req, res) => {
         return sendServerError(res, error, '팀 정보 조회 중 문제가 발생했습니다. 다시 시도해주세요.');
     }
 }
+
+export const deleteKboTeam = async (req, res) => {
+    const accessToken = req.headers['authorization']?.split(' ')[1];
+
+    if (!accessToken) {
+        return sendBadRequest(res, '토큰이 제공되지 않았습니다.');
+    }
+
+    let { teamId } = req.body;
+    if (!teamId) {
+        return sendBadRequest(res, "삭제할 팀 ID가 제공되지 않았습니다.");
+    }
+
+    try {
+        const user = jwt.verify(accessToken, process.env.JWT_SECRET);
+        teamId = decryptData(teamId);
+
+        await withTransaction(async (client) => {
+            // 팀 존재 여부 확인
+            const { rows: teamRows } = await client.query(
+                'SELECT logo_url FROM kbo_team_master WHERE id = $1',
+                [teamId]
+            );
+
+            if (teamRows.length === 0) {
+                return sendBadRequest(res, "존재하지 않는 팀입니다.");
+            }
+
+            const logoFileId = teamRows[0].logo_url;
+
+            // 파일 삭제
+            if (logoFileId) {
+                const { rows: fileRows } = await client.query(
+                    'SELECT path FROM file_table WHERE file_id = $1',
+                    [logoFileId]
+                );
+
+                for (const file of fileRows) {
+                    await deleteFile(file.path);
+                }
+
+                await client.query(
+                    'DELETE FROM file_table WHERE file_id = $1',
+                    [logoFileId]
+                );
+            }
+
+            // 팀 삭제
+            await client.query(
+                'DELETE FROM kbo_team_master WHERE id = $1',
+                [teamId]
+            );
+
+            return sendSuccess(res, "팀이 성공적으로 삭제되었습니다.");
+        });
+    } catch (error) {
+        return sendServerError(res, error, "팀 삭제 중 오류가 발생했습니다.");
+    }
+};
