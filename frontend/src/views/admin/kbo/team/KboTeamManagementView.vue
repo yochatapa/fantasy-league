@@ -32,7 +32,7 @@
                     </template>
                     <template #item.name="{ item }">
                         <div class="d-flex align-center justify-center">
-                            <img :src="item.path" class="mr-2" style="height: 30px;">{{ item.name }}
+                            <img :src="item.path" v-if="item.path" class="mr-2" style="height: 30px;" :alt="item.name+'로고'">{{ item.name }}
                         </div>
                     </template>
                     <template #item.status="{ item }">
