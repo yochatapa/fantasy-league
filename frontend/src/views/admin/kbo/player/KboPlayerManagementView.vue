@@ -125,53 +125,69 @@
 
             <!-- 선수 목록 -->
             <v-col cols="12">
+                <!-- PC용 -->
                 <v-data-table-server
+                    v-if="!mobile"
                     :headers="headers"
                     :items="players"
                     :loading="loading"
                     :items-length="totalItems"
                     v-model:page="page"
                     v-model:items-per-page="itemsPerPage"
-                    :mobile="mobile"
-                    class="mt-2"
+                    class="elevation-1 mt-2"
                     loading-text="선수 목록을 불러오는 중입니다..."
-                    :hide-default-header="mobile"
-                    style="background: transparent; border: 0;"
                     @click:row="handleRowClick"
                 >
+                    <template #item.index="{ index }">
+                        {{ (page - 1) * itemsPerPage + index + 1 }}
+                    </template>
+                    <template #item.name="{ item }">
+                        {{ item.name }}
+                    </template>
+                    <template #item.team_name="{ item }">
+                        {{ item.team_name || '-' }}
+                    </template>
+                    <template #item.position="{ item }">
+                        {{ item.position }}
+                    </template>
+                    <template #item.back_number="{ item }">
+                        {{ item.back_number || '-' }}
+                    </template>
+                    <template #item.birth="{ item }">
+                        {{ item.birth || '-' }}
+                    </template>
+                </v-data-table-server>
+
+                <!-- 모바일용 -->
+                <v-data-table-server
+                    v-else
+                    :headers="headers"
+                    :items="players"
+                    :loading="loading"
+                    :items-length="totalItems"
+                    v-model:page="page"
+                    v-model:items-per-page="itemsPerPage"
+                    class="mt-2"
+                    mobile
+                    hide-default-header
+                    style="background: transparent; border: 0;"
+                    loading-text="선수 목록을 불러오는 중입니다..."
+                >
                     <template #item="{ item, index }">
-                        <div v-if="mobile">
-                            <v-card class="mb-2 pa-3" @click="() => handleRowClick(null, { item })">
-                                <div class="d-flex justify-space-between align-center mb-2">
-                                    <div class="text-subtitle-1 font-weight-bold">
-                                        #{{ (page - 1) * itemsPerPage + index + 1 }}
-                                    </div>
-                                    <v-chip :color="item.is_active ? 'green' : 'red'" label size="small">
-                                        {{ item.is_active ? '활동' : '비활동' }}
-                                    </v-chip>
+                        <v-card class="mb-2 pa-3" @click="(event) => handleRowClick(event, { item })">
+                            <div class="d-flex justify-space-between align-center mb-2">
+                                <div class="text-subtitle-1 font-weight-bold">
+                                    #{{ (page - 1) * itemsPerPage + index + 1 }}
                                 </div>
-                                <div class="text-body-2">
-                                    <div><strong>이름:</strong> {{ item.name }}</div>
-                                    <div><strong>생년월일:</strong> {{ formatDate(item.birth_date) }}</div>
-                                    <div><strong>포지션:</strong> {{ item.primary_position }}</div>
-                                    <div><strong>유형:</strong> {{ item.player_type === 'P' ? '투수' : '타자' }}</div>
-                                    <div><strong>소속팀:</strong> {{ item.team_name || '-' }}</div>
-                                </div>
-                            </v-card>
-                        </div>
-                        <template v-else>
-                            <td>{{ (page - 1) * itemsPerPage + index + 1 }}</td>
-                            <td>{{ item.name }}</td>
-                            <td>{{ formatDate(item.birth_date) }}</td>
-                            <td>{{ item.primary_position }}</td>
-                            <td>{{ item.player_type === 'P' ? '투수' : '타자' }}</td>
-                            <td>{{ item.team_name || '-' }}</td>
-                            <td>
-                                <v-chip :color="item.is_active ? 'green' : 'red'" label>
-                                    {{ item.is_active ? '활동' : '비활동' }}
-                                </v-chip>
-                            </td>
-                        </template>
+                            </div>
+                            <div class="text-body-2">
+                                <div><strong>이름:</strong> {{ item.name }}</div>
+                                <div><strong>소속팀:</strong> {{ item.team_name || '-' }}</div>
+                                <div><strong>포지션:</strong> {{ item.position }}</div>
+                                <div><strong>등번호:</strong> {{ item.back_number || '-' }}</div>
+                                <div><strong>생년월일:</strong> {{ item.birth || '-' }}</div>
+                            </div>
+                        </v-card>
                     </template>
                 </v-data-table-server>
             </v-col>
