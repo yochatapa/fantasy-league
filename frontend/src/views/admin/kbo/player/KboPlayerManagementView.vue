@@ -40,14 +40,10 @@
                                     >
                                         <template #prepend-item class="d-flex">
                                             <v-list-item @click="selectAll('teamIds')">
-                                                <v-list-item-content>
-                                                    <v-list-item-title>전체 선택</v-list-item-title>
-                                                </v-list-item-content>
+                                                <<v-list-item-title>전체 선택</v-list-item-title>
                                             </v-list-item>
                                             <v-list-item @click="deselectAll('teamIds')">
-                                                <v-list-item-content>
-                                                    <v-list-item-title>전체 해제</v-list-item-title>
-                                                </v-list-item-content>
+                                                <v-list-item-title>전체 해제</v-list-item-title>
                                             </v-list-item>
                                         </template>
                                         <template v-slot:selection="{ item, index }">
@@ -68,14 +64,10 @@
                                     >
                                         <template #prepend-item>
                                             <v-list-item @click="selectAll('primaryPositions')">
-                                                <v-list-item-content>
                                                     <v-list-item-title>전체 선택</v-list-item-title>
-                                                </v-list-item-content>
                                             </v-list-item>
                                             <v-list-item @click="deselectAll('primaryPositions')">
-                                                <v-list-item-content>
                                                     <v-list-item-title>전체 해제</v-list-item-title>
-                                                </v-list-item-content>
                                             </v-list-item>
                                         </template>
                                         <template v-slot:selection="{ item, index }">
@@ -294,6 +286,10 @@ const fetchTeamOptions = async () => {
     if (response.success) {
         teamOptions.value = response.data.teamList || [];
     }
+};
+
+const handleRowClick = (e, { item }) => {
+    router.push(`/admin/player/add?playerId=${encodeURIComponent(encryptData(item.id))}`);
 };
 
 onMounted(async () => {
