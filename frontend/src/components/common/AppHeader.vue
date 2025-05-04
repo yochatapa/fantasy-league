@@ -13,13 +13,17 @@ const goToLogin = () => router.push('/login')
 const logout = () => userStore.logout()
 
 const isAdminRoute = computed(() => route.path.startsWith('/admin'))
+
+const goHome = () => {
+    location.href=`${location.origin}${isAdminRoute.value?'/admin':''}`
+}
 </script>
 
 <template>
     <v-app-bar flat height="64" class="bg-white border-b">
         <v-container class="d-flex align-center justify-space-between" style="max-width: 1200px;">
-            <!-- 로고 및 타이틀 -->
-            <div class="d-flex align-center cursor-pointer" @click="isAdminRoute?router.push('/admin'):router.push('/')">
+            <!-- 로고 및 타이틀 --> 
+            <div class="d-flex align-center cursor-pointer" @click="goHome">
                 <v-icon size="28" color="primary" class="mr-2">mdi-baseball</v-icon>
                 <span class="text-h6 font-weight-bold text-primary">KBO Fantasy League</span>
             </div>
