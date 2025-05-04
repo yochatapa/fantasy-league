@@ -67,13 +67,13 @@ export const login = async (req, res) => {
                 { expiresIn: '15m' }
             );
     
+            let refreshToken = req.cookies.refreshToken
+
             // Refresh Token 유효성 확인
             const existingRefreshToken = await client.query(
-                `SELECT * FROM refresh_tokens WHERE user_id = $1 AND expires_at > NOW() LIMIT 1`,
-                [user.user_id]
+                `SELECT * FROM refresh_tokens WHERE token = $1 AND user_id = $2 AND expires_at > NOW() LIMIT 1`,
+                [refreshToken, user.user_id]
             );
-    
-            let refreshToken;
     
             if (existingRefreshToken.rows.length > 0) {
                 // 유효한 refreshToken이 있으면 그걸 사용하고 연장
