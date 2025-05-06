@@ -13,66 +13,86 @@ const finalUploadsBaseDir = path.join(process.cwd(), 'uploads');
 
 export const getKboTeamList = async (req, res) => {
     try {
-        let { page = 1, itemsPerPage = 10 } = req.query;
+        let { page, itemsPerPage = 10, year } = req.query;
 
-        // 페이지 및 항목 수를 숫자로 변환하고 최소값을 설정
-        page = Math.max(1, parseInt(page, 10));
-        itemsPerPage = Math.max(1, parseInt(itemsPerPage, 10));
+        const queryParams = [];
+        let whereClauses = [];
 
-        const offset = (page - 1) * itemsPerPage;
+        // year 필터
+        if (year) {
+            queryParams.push(parseInt(year, 10));
+            whereClauses.push(`ktm.founding_year <= $${queryParams.length}`);
 
-        // 팀 목록 조회 쿼리 (LIMIT, OFFSET 사용)
+            queryParams.push(parseInt(year, 10));
+            whereClauses.push(`(ktm.disband_year IS NULL OR ktm.disband_year >= $${queryParams.length})`);
+        }
+
+        const whereClause = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+
+        // 페이지네이션 여부 판단
+        let paginationClause = '';
+        if (page) {
+            page = Math.max(1, parseInt(page, 10));
+            itemsPerPage = Math.max(1, parseInt(itemsPerPage, 10));
+            const offset = (page - 1) * itemsPerPage;
+
+            queryParams.push(itemsPerPage);
+            queryParams.push(offset);
+            paginationClause = `LIMIT $${queryParams.length - 1} OFFSET $${queryParams.length}`;
+        }
+
         const kboTeamList = await query(`
             SELECT
-                ktm.id
-                , ktm.name
-                , ktm.code
-                , ktm.founding_year
-                , ktm.disband_year
-                , ktm.status
-                , ft.file_id
-                , ft.sn
-                , ft.original_name
-                , ft.size
-                , ft.path
-                , ft.mimetype
+                ktm.id,
+                ktm.name,
+                ktm.code,
+                ktm.founding_year,
+                ktm.disband_year,
+                ktm.status,
+                ft.file_id,
+                ft.sn,
+                ft.original_name,
+                ft.size,
+                ft.path,
+                ft.mimetype
             FROM kbo_team_master ktm
-                left join file_table ft on ft.file_id = ktm.logo_url::uuid and ft.sn = 1
+                LEFT JOIN file_table ft ON ft.file_id = ktm.logo_url::uuid AND ft.sn = 1
+            ${whereClause}
             ORDER BY ktm.status, ktm.founding_year, ktm.disband_year, ktm.id
-            LIMIT $1 OFFSET $2
-        `, [itemsPerPage, offset]);
+            ${paginationClause}
+        `, queryParams);
 
-        // 총 팀 수 조회
-        const totalTeams = await query(`
-            SELECT COUNT(*) as total
-            FROM kbo_team_master
-        `);
-
-        const total = totalTeams.rows[0].total;
-
-        for(let idx=0;idx<kboTeamList.rows.length;idx++){
-            const teamLogo = kboTeamList.rows[idx]
-            
-            let base64Image = null;
-        
-            if(teamLogo.path){
-                const filePath = path.join(process.cwd(), teamLogo.path);
-
-                base64Image = await convertFileToBase64(filePath, teamLogo.mimetype);
+        // 총 개수 조회 (페이징일 때만)
+        let total = null;
+        if (page) {
+            const countParams = [];
+            if (year) {
+                countParams.push(parseInt(year, 10));
+                countParams.push(parseInt(year, 10));
             }
-            
-            kboTeamList.rows[idx].path = base64Image
+
+            const totalTeams = await query(`
+                SELECT COUNT(*) AS total
+                FROM kbo_team_master ktm
+                ${whereClause}
+            `, countParams);
+
+            total = parseInt(totalTeams.rows[0].total, 10);
         }
 
-        if (kboTeamList.rows.length > 0) {
-            return sendSuccess(res, {
-                message: "팀 목록을 성공적으로 조회하였습니다.",
-                teamList: kboTeamList.rows,
-                total 
-            });
-        } else {
-            return sendBadRequest(res, "팀 목록 조회 중 문제가 발생하였습니다.");
+        // 이미지 base64 변환
+        for (let team of kboTeamList.rows) {
+            if (team.path) {
+                const filePath = path.join(process.cwd(), team.path);
+                team.path = await convertFileToBase64(filePath, team.mimetype);
+            }
         }
+
+        return sendSuccess(res, {
+            message: "팀 목록을 성공적으로 조회하였습니다.",
+            teamList: kboTeamList.rows,
+            ...(page ? { total } : {})  // page가 없으면 total도 제외
+        });
     } catch (error) {
         return sendServerError(res, error, '팀 목록 조회 중 문제가 발생하였습니다. 다시 시도해주세요.');
     }

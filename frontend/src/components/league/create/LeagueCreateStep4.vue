@@ -73,6 +73,7 @@
 
 <script setup>
 import { ref, computed, watch, defineProps, defineEmits } from 'vue';
+import { formatDate } from '@/utils/common/dateUtils.js';
 
 const props = defineProps({
     draftMethod: String,
@@ -134,15 +135,6 @@ const endOfYear = computed(() => {
     const date = new Date();
     return new Date(date.getFullYear(), 11, 31);
 });
-
-// 날짜 포맷
-const formatDate = (date) => {
-    if (!date) return '';
-    const year = date.getFullYear();
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const day = date.getDate().toString().padStart(2, '0');
-    return `${year}.${month}.${day}`;
-};
 
 const seasonStartDateFormatted = computed(() => formatDate(seasonStartDate.value));
 const draftDateFormatted = computed(() => formatDate(draftDate.value));

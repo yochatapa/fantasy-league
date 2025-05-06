@@ -15,7 +15,7 @@ import AdminLayoutView from '@/views/admin/AdminLayoutView.vue'
 import KboTeamManagementView from '@/views/admin/kbo/team/KboTeamManagementView.vue'
 import KboTeamAddView from '@/views/admin/kbo/team/KboTeamAddView.vue'
 import KboPlayerManagementView from '@/views/admin/kbo/player/KboPlayerManagementView.vue'
-//import KboPlayerAddView from '@/views/admin/kbo/team/KboPlayerAddView.vue'
+import KboPlayerAddView from '@/views/admin/kbo/player/KboPlayerAddView.vue'
 
 const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
@@ -111,6 +111,11 @@ const router = createRouter({
                             path: 'player/management',
                             name: 'KboPlayerManagementView',
                             component: KboPlayerManagementView,
+                        },
+                        {
+                            path: 'player/add',
+                            name: 'KboPlayerAddView',
+                            component: KboPlayerAddView,
                         }
                     ]
                 }

@@ -17,6 +17,7 @@ const menus = [
             { name: 'KBO 팀 관리', path: '/admin/team/management' },
             { name: 'KBO 팀 추가', path: '/admin/team/add', visible: false},
             { name: 'KBO 선수 관리', path: '/admin/player/management' },
+            { name: 'KBO 선수 추가', path: '/admin/player/add', visible: false},
         ]
     },
     {

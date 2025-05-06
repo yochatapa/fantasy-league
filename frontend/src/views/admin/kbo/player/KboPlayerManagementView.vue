@@ -263,7 +263,7 @@ const formatDate = (date) => {
 };
 
 const goToAddPlayer = () => {
-    router.push({ name: 'add-player' });
+    router.push("/admin/player/add");
 };
 
 const resetFilters = () => {
