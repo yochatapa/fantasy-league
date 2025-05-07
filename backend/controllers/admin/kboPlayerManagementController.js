@@ -227,169 +227,101 @@ export const createKboPlayer = async (req, res) => {
 };
 
 
-// export const updateKboTeam = async (req, res) => {
-//     const { name, code, founding_year, status, disband_year } = req.body;
-//     let { deletedFiles } = req.body;
+export const updateKboPlayer = async (req, res) => {
+    const { name, birth_date, player_type, primary_position, seasons } = req.body;
 
-//     let { teamId } = req.params;
+    const accessToken = req.headers['authorization']?.split(' ')[1];  // 'Bearer <token>' 형식에서 토큰 추출
 
-//     const uploadedFilesInfo = req.filesInfo;
-    
-//     const teamLogoInfo = uploadedFilesInfo?.filter(f => f.fieldName === 'newFiles');
+    if (!accessToken) {
+        return sendBadRequest(res, '토큰이 제공되지 않았습니다.');
+    }
 
-//     const accessToken = req.headers['authorization']?.split(' ')[1];  // 'Bearer <token>' 형식에서 토큰 추출
-    
-//     if(!accessToken){
-//         return sendBadRequest(res, '토큰이 제공되지 않았습니다.');
-//     }
+    let user;
+    try {
+        user = jwt.verify(accessToken, process.env.JWT_SECRET);
+    } catch (err) {
+        return sendBadRequest(res, '유효하지 않은 토큰입니다.');
+    }
 
-//     const user = jwt.verify(accessToken, process.env.JWT_SECRET);
-    
-//     teamId = decryptData(teamId)
+    let { playerId } = req.params;
+    playerId = decryptData(playerId);
 
-//     if(!teamId){
-//         return sendBadRequest(res, "팀 정보가 잘못되었습니다.");
-//     }
+    if (!playerId) {
+        return sendBadRequest(res, "선수 정보가 잘못되었습니다.");
+    }
 
-//     // 필수값 확인
-//     if (!teamId || !name || !code || !founding_year || !status) {
-//         return sendBadRequest(res, "필수 입력값을 모두 입력해주세요.");
-//     }
+    // 필수값 검증
+    if (!name || !birth_date || !player_type || !primary_position || !Array.isArray(seasons)) {
+        return sendBadRequest(res, "필수 입력값을 모두 입력해주세요.");
+    }
 
-//     // status 값 유효성 확인
-//     const validStatuses = ['active', 'inactive'];
-//     if (!validStatuses.includes(status)) {
-//         return sendBadRequest(res, "status 값이 올바르지 않습니다.");
-//     }
+    const validTypes = ['P', 'B'];
+    if (!validTypes.includes(player_type)) {
+        return sendBadRequest(res, "선수 유형 값이 올바르지 않습니다.");
+    }
 
-//     try {
-//         await withTransaction(async (client) => {
-//             // 중복 코드 확인
-//             const { rows: existing } = await client.query(
-//                 'SELECT id, logo_url FROM kbo_team_master WHERE code = $1',
-//                 [code]
-//             );
-            
-//             if (existing.length > 0 && existing.find((row)=>row.id !== teamId)) {
-//                 return sendBadRequest(res, "이미 존재하는 팀 코드입니다.");
-//             }
+    try {
+        await withTransaction(async (client) => {
+            // 선수 마스터 테이블 업데이트
+            const updatePlayerQuery = `
+                UPDATE kbo_player_master 
+                SET 
+                    name = $1,
+                    birth_date = $2,
+                    player_type = $3,
+                    primary_position = $4,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = $5
+                RETURNING id
+            `;
+            const { rows } = await client.query(updatePlayerQuery, [
+                name,
+                birth_date,
+                player_type,
+                primary_position,
+                playerId
+            ]);
 
-//             // UPDATE 쿼리 실행
-//             const updateQuery = `
-//                 UPDATE kbo_team_master SET
-//                     name = $2
-//                     , code = $3
-//                     , founding_year = $4
-//                     , status = $5
-//                     , disband_year = $6
-//                 where id = $1
-//             `;
-//             const params = [teamId, name, code, founding_year, status, disband_year || null];
+            // 시즌 정보 삭제 후 새로 추가
+            const deleteSeasonsQuery = `
+                DELETE FROM kbo_player_season WHERE player_id = $1
+            `;
+            await client.query(deleteSeasonsQuery, [playerId]);
 
-//             if(deletedFiles){
-//                 deletedFiles = JSON.parse(deletedFiles);
+            // 시즌 정보 저장
+            for (const season of seasons) {
+                const { year, team_id, position, uniform_number, is_active } = season;
 
-//                 deletedFiles.forEach(async deletedFile => {
-//                     // 파일 삭제
-//                     const filePath = await client.query("SELECT path FROM file_table WHERE file_id = $1 and sn = $2",[deletedFile.file_id,deletedFile.sn])
-                    
-//                     if(filePath.rows[0]){
-//                         await deleteFile(filePath.rows[0].path)
+                if (!year || !team_id || !Array.isArray(position) || !uniform_number) {
+                    return sendBadRequest(res, "선수이력 항목에 필수값이 누락되었습니다.");
+                }
 
-//                         const deletedFilesQuery = "DELETE FROM file_table WHERE file_id = $1 and sn = $2";
+                const insertSeasonQuery = `
+                    INSERT INTO kbo_player_season (
+                        player_id, year, team_id, position, uniform_number, is_active
+                    ) VALUES (
+                        $1, $2, $3, $4, $5, $6
+                    )
+                `;
+                await client.query(insertSeasonQuery, [
+                    playerId,
+                    year,
+                    team_id,
+                    position.join(","),
+                    uniform_number,
+                    is_active
+                ]);
+            }
 
-//                         await client.query(deletedFilesQuery,[deletedFile.file_id,deletedFile.sn])
-//                     }
-//                 });                
-//             }
-            
-//             await client.query(updateQuery, params);
-
-//             /* file 처리 */
-//             let finalFileSavedInfo = null; // saveUploadedFile 함수가 반환할 최종 파일 정보
-//             let finalFileUrlForDB = null; // DB file_path 컬럼에 저장할 경로/URL
-//             console.log("logo_url",existing[0].logo_url)
-//             const generatedFileId = existing[0].logo_url??uuidv4();
-
-//             if (teamLogoInfo && teamId !== null) { // 파일이 업로드되었고 유저 ID 발급된 경우
-//                 // 1. uuid file_id 생성
-                
-//                 const userSpecificUploadDir = path.join(finalUploadsBaseDir, 'kboTeam', teamId.toString(), 'logo');
-
-//                 for(let idx=0;idx<teamLogoInfo.length;idx++){
-//                     // saveUploadedFile 함수를 호출하여 파일 복사
-//                     finalFileSavedInfo = await saveUploadedFile(teamLogoInfo[idx], userSpecificUploadDir);
-//                     console.log('파일 복사 완료 :', finalFileSavedInfo);
-
-//                     // DB에 저장할 파일 경로/URL 구성 (예: 프로젝트 루트 기준 상대 경로)
-//                     finalFileUrlForDB = path.join('uploads', 'kboTeam', teamId.toString(), 'logo', finalFileSavedInfo.finalFileName);       
-                    
-//                     const maxSn = await client.query("SELECT COALESCE(max(sn),0) as sn FROM file_table WHERE file_id = $1",[generatedFileId])
-
-//                     // 2. 파일 정보 DB 저장 쿼리 실행
-//                     const insertFileQuery = `
-//                         INSERT INTO file_table (
-//                             file_id, sn, original_name, unique_name,
-//                             mimetype, size, path, category, uploaded_by
-//                         ) VALUES (
-//                             $1, $2, $3, $4, $5, $6, $7, $8, $9
-//                         )
-//                     `;
-
-//                     await client.query(insertFileQuery, [
-//                         generatedFileId, // uuid
-//                         maxSn.rows[0].sn+1,
-//                         teamLogoInfo[idx].originalName,
-//                         finalFileSavedInfo.finalFileName,
-//                         teamLogoInfo[idx].mimetype,
-//                         teamLogoInfo[idx].size,
-//                         finalFileUrlForDB,
-//                         'kboTeamLogo',
-//                         user.user_id
-//                     ]);                    
-//                 }
-//             }
-
-//             if(!existing.logo_url){
-//                 // 3. user_master 테이블에 profile_image 컬럼 업데이트
-//                 const updateUserQuery = `
-//                     UPDATE kbo_team_master
-//                     SET 
-//                         logo_url = $1
-//                         , updated_at = CURRENT_TIMESTAMP
-//                     WHERE id = $2
-//                 `;
-
-//                 await client.query(updateUserQuery, [
-//                     generatedFileId, // profile_image는 uuid
-//                     teamId,
-//                 ]);
-//             }
-
-//             const rowNumerQuery = `
-//                 SELECT row_number
-//                 FROM (
-//                     SELECT 
-//                         id,
-//                         ROW_NUMBER() OVER (ORDER BY status, founding_year, disband_year, id) AS row_number
-//                     FROM public.kbo_team_master
-//                 ) AS ordered_teams
-//                 WHERE id = $1`
-
-//             const rowNumber = await client.query(rowNumerQuery, [teamId]);
-            
-//             const page = Math.ceil(rowNumber.rows[0].row_number/10)
-
-//             return sendSuccess(res, 
-//             {
-//                 message : "팀이 성공적으로 수정되었습니다.",
-//                 page
-//             });
-//         });
-//     } catch (error) {
-//         return sendServerError(res, error, "팀 수정 중 오류가 발생했습니다. 다시 시도해주세요.");
-//     }
-// }
+            return sendSuccess(res, {
+                message: "선수가 성공적으로 수정되었습니다.",
+                playerId
+            });
+        });
+    } catch (error) {
+        return sendServerError(res, error, "선수 수정 중 오류가 발생했습니다. 다시 시도해주세요.");
+    }
+};
 
 export const getKboPlayerDetail = async (req, res) => {
     let { playerId } = req.params;

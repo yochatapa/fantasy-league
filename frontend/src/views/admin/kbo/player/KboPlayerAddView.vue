@@ -263,7 +263,7 @@ const submitForm = async () => {
 
     const method = isEditMode.value ? 'PUT' : 'POST';
     const url = isEditMode.value
-        ? `/api/admin/player/update/${playerId.value}`
+        ? `/api/admin/player/update/${encodeURIComponent(playerId.value)}`
         : '/api/admin/player/create';
 
     try {
