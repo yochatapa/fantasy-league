@@ -26,7 +26,7 @@ export const getKboPlayerList = async (req, res) => {
         const queryParams = [];
         let whereClauses = [];
 
-        // 🔹 소속팀 필터 (다중 선택 가능)
+        // 소속팀 필터 (다중 선택 가능)
         if (teamIds) {
             const teamIdList = teamIds.split(',').map(id => parseInt(id, 10));
             queryParams.push(...teamIdList);
@@ -34,7 +34,7 @@ export const getKboPlayerList = async (req, res) => {
             whereClauses.push(`kps.team_id IN (${teamPlaceholders.join(', ')})`);
         }
 
-        // 🔹 포지션 필터 (다중 선택 가능)
+        // 포지션 필터 (다중 선택 가능)
         if (positions) {
             const positionList = positions.split(',');
             queryParams.push(...positionList);
@@ -42,7 +42,7 @@ export const getKboPlayerList = async (req, res) => {
             whereClauses.push(`(${positionPlaceholders.map(pos => `kps.position LIKE '%' || ${pos} || '%'`).join(' OR ')})`);
         }
 
-        // 🔹 생년월일 필터
+        // 생년월일 필터
         if (birthDateFrom) {
             queryParams.push(birthDateFrom);
             whereClauses.push(`kpm.birth_date >= $${queryParams.length}`);
@@ -52,10 +52,19 @@ export const getKboPlayerList = async (req, res) => {
             whereClauses.push(`kpm.birth_date <= $${queryParams.length}`);
         }
 
-        // 🔹 활동 여부 필터
+        // 활동 여부 필터
         if (isActive !== undefined) {
+            const currentYear = new Date().getFullYear(); // 현재 년도
             queryParams.push(isActive === 'true');
-            whereClauses.push(`kps.is_active = $${queryParams.length}`);
+            whereClauses.push(`
+                EXISTS (
+                    SELECT 1 
+                    FROM kbo_player_season kps_sub
+                    WHERE kps_sub.player_id = kpm.id
+                    AND kps_sub.year = ${currentYear}
+                    AND kps_sub.is_active = $${queryParams.length}
+                )
+            `);
         }
 
         const whereClause = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
@@ -72,14 +81,22 @@ export const getKboPlayerList = async (req, res) => {
             paginationClause = `LIMIT $${queryParams.length - 1} OFFSET $${queryParams.length}`;
         }
 
-        // 🔹 조회 쿼리 실행
+        // 조회 쿼리 실행
         const kboPlayerList = await query(`
             SELECT 
                 kpm.id,
                 kpm.name,
-                kpm.birth_date,
+                TO_CHAR(kpm.birth_date, 'YYYY.MM.DD') as birth_date,
                 kpm.player_type,
                 kpm.primary_position,
+                COALESCE(
+                    string_agg(DISTINCT ktm.name, ', ') 
+                    FILTER (WHERE ktm.name IS NOT NULL), ''
+                ) AS team_name,
+                CASE 
+                    WHEN BOOL_OR(kps.is_active AND kps.year = EXTRACT(YEAR FROM CURRENT_DATE)::INT) THEN '현역'
+                    ELSE '은퇴'
+                END AS is_active_status,
                 COALESCE(json_agg(
                     json_build_object(
                         'year', kps.year,
@@ -88,25 +105,32 @@ export const getKboPlayerList = async (req, res) => {
                         'uniform_number', kps.uniform_number,
                         'is_active', kps.is_active
                     )
+                    ORDER BY kps.is_active DESC, kps.year DESC
                 ) FILTER (WHERE kps.id IS NOT NULL), '[]') AS seasons
             FROM kbo_player_master kpm
-            LEFT JOIN kbo_player_season kps ON kpm.id = kps.player_id
+            LEFT JOIN (
+                SELECT 
+                    kps.* 
+                FROM kbo_player_season kps
+                ORDER BY kps.is_active DESC, kps.year DESC
+            ) kps ON kpm.id = kps.player_id
+            LEFT JOIN kbo_team_master ktm ON ktm.id = kps.team_id
             ${whereClause}
             GROUP BY kpm.id
             ORDER BY kpm.name, kpm.birth_date
             ${paginationClause}
         `, queryParams);
+        
+        
 
-        // 🔹 총 개수 조회
+        // 총 개수 조회
         let total = null;
         if (page) {
             const countParams = [...queryParams];
             const totalPlayers = await query(`
-                SELECT COUNT(DISTINCT kpm.id) AS total
+                SELECT COUNT(*) AS total
                 FROM kbo_player_master kpm
-                LEFT JOIN kbo_player_season kps ON kpm.id = kps.player_id
-                ${whereClause}
-            `, countParams);
+            `);
 
             total = parseInt(totalPlayers.rows[0].total, 10);
         }

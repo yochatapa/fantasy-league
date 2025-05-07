@@ -40,7 +40,7 @@
                                     >
                                         <template #prepend-item class="d-flex">
                                             <v-list-item @click="selectAll('teamIds')">
-                                                <<v-list-item-title>전체 선택</v-list-item-title>
+                                                <v-list-item-title>전체 선택</v-list-item-title>
                                             </v-list-item>
                                             <v-list-item @click="deselectAll('teamIds')">
                                                 <v-list-item-title>전체 해제</v-list-item-title>
@@ -57,23 +57,23 @@
 
                                 <v-col cols="12" md="3">
                                     <v-select
-                                        v-model="filters.primaryPositions"
+                                        v-model="filters.positions"
                                         :items="positionOptions"
                                         label="포지션"
                                         multiple
                                     >
                                         <template #prepend-item>
-                                            <v-list-item @click="selectAll('primaryPositions')">
-                                                    <v-list-item-title>전체 선택</v-list-item-title>
+                                            <v-list-item @click="selectAll('positions')">
+                                                <v-list-item-title>전체 선택</v-list-item-title>
                                             </v-list-item>
-                                            <v-list-item @click="deselectAll('primaryPositions')">
-                                                    <v-list-item-title>전체 해제</v-list-item-title>
+                                            <v-list-item @click="deselectAll('positions')">
+                                                <v-list-item-title>전체 해제</v-list-item-title>
                                             </v-list-item>
                                         </template>
                                         <template v-slot:selection="{ item, index }">
                                             <v-chip v-if="index < 2" :text="item.title"></v-chip>
                                             <span v-if="index === 2" class="text-grey text-caption align-self-center">
-                                                외 {{ filters.primaryPositions.length - 2 }}건
+                                                외 {{ filters.positions.length - 2 }}건
                                             </span>
                                         </template>
                                     </v-select>
@@ -156,6 +156,9 @@
                     <template #item.birth="{ item }">
                         {{ item.birth || '-' }}
                     </template>
+                    <template #item.player_type="{ item }">
+                        {{ item.player_type==="B"?"타자":"투수" }}
+                    </template>
                 </v-data-table-server>
 
                 <!-- 모바일용 -->
@@ -216,49 +219,76 @@ const filterExpanded = ref(false);
 
 const filters = ref({
     teamIds: [],
-    primaryPositions: [],
+    positions: [],
     birthDateFrom: '',
     birthDateTo: '',
-    isActiveList: [true,false],
+    isActiveList: [],
 });
 
 const teamOptions = ref([]);
 const positionOptions = ['C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'DH', 'SP', 'RP'];
 const activeOptions = [
-    { title: '활동', value: true },
-    { title: '비활동', value: false },
+    { title: '현역', value: true },
+    { title: '은퇴', value: false },
 ];
 
 const headers = [
     { title: '번호', value: 'index', width: 80, align: 'center' },
     { title: '이름', value: 'name', align: 'center' },
     { title: '생년월일', value: 'birth_date', align: 'center' },
-    { title: '포지션', value: 'primary_position', align: 'center' },
+    { title: '주 포지션', value: 'primary_position', align: 'center' },
     { title: '유형', value: 'player_type', align: 'center' },
     { title: '소속팀', value: 'team_name', align: 'center' },
-    { title: '활동여부', value: 'is_active', align: 'center' },
+    { title: '활동여부', value: 'is_active_status', align: 'center' },
 ];
 
 const fetchPlayerList = async () => {
     try {
         loading.value = true;
 
+        // URLSearchParams를 사용하여 쿼리 파라미터를 생성
         const params = new URLSearchParams();
         params.append('page', page.value);
         params.append('limit', itemsPerPage.value);
-        params.append('filters', JSON.stringify(filters.value));
 
-        const response = await commonFetch('/admin/player/list', {
-            method : "GET"
+        // teamIds를 압축하여 전달
+        if (filters.value.teamIds.length > 0) {
+            params.append('teamIds', filters.value.teamIds.join(','));
+        }
+
+        // positions를 압축하여 전달
+        if (filters.value.positions.length > 0) {
+            params.append('positions', filters.value.positions.join(','));
+        }
+
+        // isActiveList를 압축하여 전달
+        if (filters.value.isActiveList.length > 0) {
+            params.append('isActive', filters.value.isActiveList.join(','));
+        }
+
+        // birthDateFrom, birthDateTo가 존재하면 추가
+        if (filters.value.birthDateFrom) {
+            params.append('birthDateFrom', filters.value.birthDateFrom);
+        }
+        if (filters.value.birthDateTo) {
+            params.append('birthDateTo', filters.value.birthDateTo);
+        }
+
+        // 최종 URL 생성
+        const queryString = params.toString();
+        const response = await commonFetch(`/api/admin/player/list?${queryString}`, {
+            method: "GET"
         });
-        players.value = response.data;
-        totalItems.value = response.total;
+
+        players.value = response.data.playerList;
+        totalItems.value = response.data.total;
     } catch (err) {
         console.error('선수 목록 조회 실패', err);
     } finally {
         loading.value = false;
     }
 };
+
 
 const formatDate = (date) => {
     return date ? new Date(date).toLocaleDateString() : '-';
@@ -271,7 +301,7 @@ const goToAddPlayer = () => {
 const resetFilters = () => {
     filters.value = {
         teamIds: [],
-        primaryPositions: [],
+        positions: [],
         birthDateFrom: '',
         birthDateTo: '',
         isActiveList: [],
@@ -282,8 +312,8 @@ const resetFilters = () => {
 const selectAll = (field) => {
     if (field === 'teamIds') {
         filters.value.teamIds = teamOptions.value.map(team => team.id);
-    } else if (field === 'primaryPositions') {
-        filters.value.primaryPositions = positionOptions;
+    } else if (field === 'positions') {
+        filters.value.positions = positionOptions;
     } else if (field === 'isActiveList') {
         filters.value.isActiveList = activeOptions.map(option => option.value);
     }
@@ -292,8 +322,8 @@ const selectAll = (field) => {
 const deselectAll = (field) => {
     if (field === 'teamIds') {
         filters.value.teamIds = [];
-    } else if (field === 'primaryPositions') {
-        filters.value.primaryPositions = [];
+    } else if (field === 'positions') {
+        filters.value.positions = [];
     } else if (field === 'isActiveList') {
         filters.value.isActiveList = [];
     }
@@ -312,8 +342,6 @@ const handleRowClick = (e, { item }) => {
 
 onMounted(async () => {
     await fetchTeamOptions();
-    selectAll("teamIds")
-    selectAll("primaryPositions")
     fetchPlayerList();
 });
 </script>
