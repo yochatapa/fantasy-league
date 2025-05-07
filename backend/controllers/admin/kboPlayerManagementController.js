@@ -391,61 +391,104 @@ export const createKboPlayer = async (req, res) => {
 //     }
 // }
 
-// export const getKboTeamDetail = async (req, res) => {
-//     let { teamId } = req.params;
-    
-//     teamId = decryptData(teamId)
+export const getKboPlayerDetail = async (req, res) => {
+    let { playerId } = req.params;
 
-//     if(!teamId){
-//         return sendBadRequest(res, "팀 정보가 잘못되었습니다.");
-//     }
+    // 1️⃣ playerId 복호화
+    playerId = decryptData(playerId);
 
-//     try {
-//         let teamInfoQuery = `
-//             SELECT
-//                 ktm.id
-//                 , ktm.name
-//                 , ktm.code
-//                 , ktm.founding_year
-//                 , ktm.status
-//                 , ktm.disband_year
-//                 , ft.file_id
-//                 , ft.sn
-//                 , ft.original_name
-//                 , ft.size
-//                 , ft.path
-//                 , ft.mimetype
-//             FROM kbo_team_master ktm
-//                 left join file_table ft on ft.file_id = ktm.logo_url::uuid and ft.sn = 1
-//             WHERE ktm.id = $1
-//         `;
+    if (!playerId) {
+        return sendBadRequest(res, "선수 정보가 잘못되었습니다.");
+    }
 
-//         const param = [teamId];
-
-//         const teamInfo = await query(teamInfoQuery, param);
-
-//         const teamLogo = teamInfo.rows[0]
-//         let base64Image = null;
-    
-//         if(teamLogo.path){
-//             const filePath = path.join(process.cwd(), teamLogo.path);
-
-//             base64Image = await convertFileToBase64(filePath, teamLogo.mimetype);
-//         }
+    try {
+        // 2️⃣ 선수 기본 정보 조회
+        const playerInfoQuery = `
+            SELECT
+                kpm.id,
+                kpm.name,
+                TO_CHAR(kpm.birth_date, 'YYYY.MM.DD') as birth_date,
+                kpm.player_type,
+                kpm.primary_position,
+                ft.file_id,
+                ft.sn,
+                ft.original_name,
+                ft.size,
+                ft.path,
+                ft.mimetype
+            FROM kbo_player_master kpm
+            LEFT JOIN file_table ft ON ft.file_id = kpm.main_profile_image::uuid AND ft.sn = 1
+            WHERE kpm.id = $1
+        `;
         
-//         teamInfo.rows[0].path = base64Image
-        
-//         if(!teamInfo.rows[0])
-//             return sendBadRequest(res, '팀 정보가 없습니다.');
+        const playerInfo = await query(playerInfoQuery, [playerId]);
 
-//         return sendSuccess(res, {
-//             message: '팀 정보가 조회되었습니다.',
-//             teamInfo : teamInfo.rows[0]
-//         });
-//     } catch (error) {
-//         return sendServerError(res, error, '팀 정보 조회 중 문제가 발생했습니다. 다시 시도해주세요.');
-//     }
-// }
+        if (playerInfo.rowCount === 0) {
+            return sendBadRequest(res, '선수 정보가 없습니다.');
+        }
+
+        // 3️⃣ 시즌별 기록 조회
+        const playerSeasonsQuery = `
+            SELECT
+                kps.year,
+                kps.team_id,
+                ktm.name AS team_name,
+                string_to_array(kps.position, ',') AS position,
+                kps.uniform_number,
+                kps.is_active,
+                COALESCE(ft.path, '') AS path,
+                ft.mimetype
+            FROM kbo_player_season kps
+            LEFT JOIN kbo_team_master ktm ON ktm.id = kps.team_id
+            LEFT JOIN file_table ft ON ft.file_id = kps.profile_image::uuid AND ft.sn = 1
+            WHERE kps.player_id = $1
+            ORDER BY kps.year DESC
+        `;
+
+        const playerSeasons = await query(playerSeasonsQuery, [playerId]);
+
+        // 4️⃣ 프로필 이미지 처리
+        const playerData = playerInfo.rows[0];
+        let base64MainImage = null;
+
+        // 메인 프로필 이미지 처리
+        if (playerData.path) {
+            const filePath = path.join(process.cwd(), playerData.path);
+            base64MainImage = await convertFileToBase64(filePath, playerData.mimetype);
+        }
+        
+        playerData.profile_image = base64MainImage;
+        delete playerData.path; // path 정보는 필요 없으므로 삭제
+
+        // 5️⃣ 시즌별 이미지 처리
+        for (const season of playerSeasons.rows) {
+            if (season.path) {
+                const seasonFilePath = path.join(process.cwd(), season.path);
+                season.profile_image = await convertFileToBase64(seasonFilePath, season.mimetype);
+            } else {
+                season.profile_image = null;
+            }
+            delete season.path;
+            delete season.mimetype;
+        }
+
+        // 6️⃣ 중복된 팀명 제거 (최근 시즌 기준으로 하나만 유지)
+        const uniqueTeams = new Set();
+        playerSeasons.rows.forEach(season => uniqueTeams.add(season.team_name));
+        playerData.team_names = Array.from(uniqueTeams).join(', ');
+
+        // 7️⃣ 최종 응답 구성
+        return sendSuccess(res, {
+            message: '선수 정보가 조회되었습니다.',
+            playerInfo: playerData,
+            seasons: playerSeasons.rows
+        });
+
+    } catch (error) {
+        console.error('선수 정보 조회 오류:', error);
+        return sendServerError(res, error, '선수 정보 조회 중 문제가 발생했습니다. 다시 시도해주세요.');
+    }
+};
 
 // export const deleteKboTeam = async (req, res) => {
 //     const accessToken = req.headers['authorization']?.split(' ')[1];

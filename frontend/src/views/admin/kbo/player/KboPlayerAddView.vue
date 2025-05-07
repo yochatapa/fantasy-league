@@ -138,7 +138,7 @@ const router = useRouter();
 const formRef = ref(null);
 const formValid = ref(false);
 
-const playerId = computed(() => route.query.playerId);
+const playerId = computed(() => decodeURIComponent(route.query.playerId));
 const isEditMode = computed(() => !!playerId.value);
 
 // 연도 옵션: 1982년부터 현재 연도까지
@@ -185,9 +185,22 @@ const filteredPositions = computed(() => {
 });
 
 watch(() => form.value.player_type, () => {
-    form.value.primary_position = null;
+    const validPositions = filteredPositions.value.map(pos => pos.code);
+
+    // ✅ 기존의 primary_position이 필터링된 포지션에 있으면 유지
+    if (!validPositions.includes(form.value.primary_position)) {
+        form.value.primary_position = null;
+    }
+
+    // ✅ 시즌에 있는 포지션들도 유효한 값만 남김
     form.value.seasons.forEach(season => {
-        season.position = null;
+        if (Array.isArray(season.position)) {
+            season.position = season.position.filter(pos => validPositions.includes(pos));
+        } else {
+            if (!validPositions.includes(season.position)) {
+                season.position = null;
+            }
+        }
     });
 });
 
@@ -206,10 +219,10 @@ const fetchAllTeamOptionsForSeasons = async () => {
 };
 
 const fetchPlayer = async () => {
-    const res = await commonFetch(`/api/admin/player/${playerId.value}`, { method: 'GET' });
+    const res = await commonFetch(`/api/admin/player/${encodeURIComponent(playerId.value)}`, { method: 'GET' });
     if (res.success) {
-        const { master, seasons } = res.data;
-        form.value = { ...master, seasons };
+        const { playerInfo, seasons } = res.data;
+        form.value = { ...playerInfo, seasons };
         await fetchAllTeamOptionsForSeasons();
     }
 };
