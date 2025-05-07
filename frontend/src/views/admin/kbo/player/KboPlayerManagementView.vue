@@ -248,7 +248,9 @@ const fetchPlayerList = async () => {
         params.append('limit', itemsPerPage.value);
         params.append('filters', JSON.stringify(filters.value));
 
-        const response = await commonFetch('GET', '/players', params);
+        const response = await commonFetch('/admin/player/list', {
+            method : "GET"
+        });
         players.value = response.data;
         totalItems.value = response.total;
     } catch (err) {

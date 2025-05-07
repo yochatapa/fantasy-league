@@ -11,72 +11,115 @@ import convertFileToBase64 from '../../utils/convertFileToBase64.js'; // apiResp
 
 const finalUploadsBaseDir = path.join(process.cwd(), 'uploads');
 
-/*export const getKboTeamList = async (req, res) => {
+export const getKboPlayerList = async (req, res) => {
     try {
-        let { page = 1, itemsPerPage = 10 } = req.query;
+        let { 
+            page, 
+            itemsPerPage = 10, 
+            teamIds, 
+            positions, 
+            birthDateFrom, 
+            birthDateTo, 
+            isActive 
+        } = req.query;
 
-        // 페이지 및 항목 수를 숫자로 변환하고 최소값을 설정
-        page = Math.max(1, parseInt(page, 10));
-        itemsPerPage = Math.max(1, parseInt(itemsPerPage, 10));
+        const queryParams = [];
+        let whereClauses = [];
 
-        const offset = (page - 1) * itemsPerPage;
-
-        // 팀 목록 조회 쿼리 (LIMIT, OFFSET 사용)
-        const kboTeamList = await query(`
-            SELECT
-                ktm.id
-                , ktm.name
-                , ktm.code
-                , ktm.founding_year
-                , ktm.disband_year
-                , ktm.status
-                , ft.file_id
-                , ft.sn
-                , ft.original_name
-                , ft.size
-                , ft.path
-                , ft.mimetype
-            FROM kbo_team_master ktm
-                left join file_table ft on ft.file_id = ktm.logo_url::uuid and ft.sn = 1
-            ORDER BY ktm.status, ktm.founding_year, ktm.disband_year, ktm.id
-            LIMIT $1 OFFSET $2
-        `, [itemsPerPage, offset]);
-
-        // 총 팀 수 조회
-        const totalTeams = await query(`
-            SELECT COUNT(*) as total
-            FROM kbo_team_master
-        `);
-
-        const total = totalTeams.rows[0].total;
-
-        for(let idx=0;idx<kboTeamList.rows.length;idx++){
-            const teamLogo = kboTeamList.rows[idx]
-            
-            let base64Image = null;
-        
-            if(teamLogo.path){
-                const filePath = path.join(process.cwd(), teamLogo.path);
-
-                base64Image = await convertFileToBase64(filePath, teamLogo.mimetype);
-            }
-            
-            kboTeamList.rows[idx].path = base64Image
+        // 🔹 소속팀 필터 (다중 선택 가능)
+        if (teamIds) {
+            const teamIdList = teamIds.split(',').map(id => parseInt(id, 10));
+            queryParams.push(...teamIdList);
+            const teamPlaceholders = teamIdList.map((_, idx) => `$${queryParams.length - teamIdList.length + idx + 1}`);
+            whereClauses.push(`kps.team_id IN (${teamPlaceholders.join(', ')})`);
         }
 
-        if (kboTeamList.rows.length > 0) {
-            return sendSuccess(res, {
-                message: "팀 목록을 성공적으로 조회하였습니다.",
-                teamList: kboTeamList.rows,
-                total 
-            });
-        } else {
-            return sendBadRequest(res, "팀 목록 조회 중 문제가 발생하였습니다.");
+        // 🔹 포지션 필터 (다중 선택 가능)
+        if (positions) {
+            const positionList = positions.split(',');
+            queryParams.push(...positionList);
+            const positionPlaceholders = positionList.map((_, idx) => `$${queryParams.length - positionList.length + idx + 1}`);
+            whereClauses.push(`(${positionPlaceholders.map(pos => `kps.position LIKE '%' || ${pos} || '%'`).join(' OR ')})`);
         }
+
+        // 🔹 생년월일 필터
+        if (birthDateFrom) {
+            queryParams.push(birthDateFrom);
+            whereClauses.push(`kpm.birth_date >= $${queryParams.length}`);
+        }
+        if (birthDateTo) {
+            queryParams.push(birthDateTo);
+            whereClauses.push(`kpm.birth_date <= $${queryParams.length}`);
+        }
+
+        // 🔹 활동 여부 필터
+        if (isActive !== undefined) {
+            queryParams.push(isActive === 'true');
+            whereClauses.push(`kps.is_active = $${queryParams.length}`);
+        }
+
+        const whereClause = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+
+        // 페이지네이션 여부 판단
+        let paginationClause = '';
+        if (page) {
+            page = Math.max(1, parseInt(page, 10));
+            itemsPerPage = Math.max(1, parseInt(itemsPerPage, 10));
+            const offset = (page - 1) * itemsPerPage;
+
+            queryParams.push(itemsPerPage);
+            queryParams.push(offset);
+            paginationClause = `LIMIT $${queryParams.length - 1} OFFSET $${queryParams.length}`;
+        }
+
+        // 🔹 조회 쿼리 실행
+        const kboPlayerList = await query(`
+            SELECT 
+                kpm.id,
+                kpm.name,
+                kpm.birth_date,
+                kpm.player_type,
+                kpm.primary_position,
+                COALESCE(json_agg(
+                    json_build_object(
+                        'year', kps.year,
+                        'team_id', kps.team_id,
+                        'position', string_to_array(kps.position, ','),
+                        'uniform_number', kps.uniform_number,
+                        'is_active', kps.is_active
+                    )
+                ) FILTER (WHERE kps.id IS NOT NULL), '[]') AS seasons
+            FROM kbo_player_master kpm
+            LEFT JOIN kbo_player_season kps ON kpm.id = kps.player_id
+            ${whereClause}
+            GROUP BY kpm.id
+            ORDER BY kpm.name, kpm.birth_date
+            ${paginationClause}
+        `, queryParams);
+
+        // 🔹 총 개수 조회
+        let total = null;
+        if (page) {
+            const countParams = [...queryParams];
+            const totalPlayers = await query(`
+                SELECT COUNT(DISTINCT kpm.id) AS total
+                FROM kbo_player_master kpm
+                LEFT JOIN kbo_player_season kps ON kpm.id = kps.player_id
+                ${whereClause}
+            `, countParams);
+
+            total = parseInt(totalPlayers.rows[0].total, 10);
+        }
+
+        return sendSuccess(res, {
+            message: "선수 목록을 성공적으로 조회하였습니다.",
+            playerList: kboPlayerList.rows,
+            ...(page ? { total } : {})
+        });
     } catch (error) {
-        return sendServerError(res, error, '팀 목록 조회 중 문제가 발생하였습니다. 다시 시도해주세요.');
+        return sendServerError(res, error, '선수 목록 조회 중 문제가 발생하였습니다. 다시 시도해주세요.');
     }
-};*/
+};
 
 
 
