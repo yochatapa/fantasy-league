@@ -147,14 +147,14 @@
                     <template #item.team_name="{ item }">
                         {{ item.team_name || '-' }}
                     </template>
-                    <template #item.position="{ item }">
-                        {{ item.position }}
+                    <template #item.primary_position="{ item }">
+                        {{ item.primary_position }}
                     </template>
-                    <template #item.back_number="{ item }">
-                        {{ item.back_number || '-' }}
+                    <template #item.last_uniform_number="{ item }">
+                        {{ item.last_uniform_number || '-' }}
                     </template>
-                    <template #item.birth="{ item }">
-                        {{ item.birth || '-' }}
+                    <template #item.birth_date="{ item }">
+                        {{ item.birth_date || '-' }}
                     </template>
                     <template #item.player_type="{ item }">
                         {{ item.player_type==="B"?"타자":"투수" }}
@@ -186,9 +186,9 @@
                             <div class="text-body-2">
                                 <div><strong>이름:</strong> {{ item.name }}</div>
                                 <div><strong>소속팀:</strong> {{ item.team_name || '-' }}</div>
-                                <div><strong>포지션:</strong> {{ item.position }}</div>
-                                <div><strong>등번호:</strong> {{ item.back_number || '-' }}</div>
-                                <div><strong>생년월일:</strong> {{ item.birth || '-' }}</div>
+                                <div><strong>주 포지션:</strong> {{ item.primary_position }}</div>
+                                <div><strong>등번호:</strong> {{ item.last_uniform_number || '-' }}</div>
+                                <div><strong>생년월일:</strong> {{ item.birth_date || '-' }}</div>
                             </div>
                         </v-card>
                     </template>
@@ -239,6 +239,7 @@ const headers = [
     { title: '주 포지션', value: 'primary_position', align: 'center' },
     { title: '유형', value: 'player_type', align: 'center' },
     { title: '소속팀', value: 'team_name', align: 'center' },
+    { title: '등번호', value: 'last_uniform_number', align: 'center' },
     { title: '활동여부', value: 'is_active_status', align: 'center' },
 ];
 

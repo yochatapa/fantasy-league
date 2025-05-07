@@ -52,12 +52,13 @@
                         <v-col cols="6" class="text-right">
                             <v-btn color="primary" class="mb-2" @click="addSeason">이력 추가</v-btn>
                         </v-col>
-                    </v-row>                    
+                    </v-row>        
                     <v-row
                         v-for="(season, index) in form.seasons"
                         :key="index"
+                        class="d-flex flex-wrap"
                     >
-                        <v-col cols="2">
+                        <v-col cols="12" md="2">
                             <v-select
                                 v-model="season.year"
                                 :items="yearOptions"
@@ -67,7 +68,7 @@
                                 @update:model-value="updateSeasonYear(index, season.year)"
                             />
                         </v-col>
-                        <v-col cols="3">
+                        <v-col cols="12" md="3">
                             <v-select
                                 v-model="season.team_id"
                                 label="팀"
@@ -78,7 +79,7 @@
                                 required
                             />
                         </v-col>
-                        <v-col cols="2">
+                        <v-col cols="12" md="2">
                             <v-select
                                 v-model="season.position"
                                 :items="filteredPositions"
@@ -91,7 +92,7 @@
                                 :rules="[v => !!v || '포지션 선택은 필수입니다.']"
                             />
                         </v-col>
-                        <v-col cols="2">
+                        <v-col cols="12" md="2">
                             <v-text-field
                                 v-model="season.uniform_number"
                                 label="등번호"
@@ -100,17 +101,18 @@
                                 :rules="[v => !!v || '등번호 입력은 필수입니다.']"
                             />
                         </v-col>
-                        <v-col cols="2">
+                        <v-col cols="6" md="2">
                             <v-checkbox
                                 v-model="season.is_active"
                                 label="활동"
                             />
                         </v-col>
-                        <v-col cols="1">
+                        <v-col cols="6" md="1" class="d-flex justify-end">
                             <v-btn icon color="error" @click="removeSeason(index)">
                                 <v-icon>mdi-delete</v-icon>
                             </v-btn>
                         </v-col>
+                        <v-divider class="mb-8"></v-divider>
                     </v-row>
                 </v-form>
             </v-card-text>

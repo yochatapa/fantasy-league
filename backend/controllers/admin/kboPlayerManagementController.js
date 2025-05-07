@@ -97,7 +97,13 @@ export const getKboPlayerList = async (req, res) => {
                     WHEN BOOL_OR(kps.is_active AND kps.year = EXTRACT(YEAR FROM CURRENT_DATE)::INT) THEN '현역'
                     ELSE '은퇴'
                 END AS is_active_status,
-                COALESCE(json_agg(
+                COALESCE(MAX(kps.uniform_number) 
+                FILTER (WHERE kps.is_active = true OR kps.year = (
+                    SELECT MAX(year) 
+                    FROM kbo_player_season 
+                    WHERE player_id = kpm.id
+                )), NULL) AS last_uniform_number
+                ,COALESCE(json_agg(
                     json_build_object(
                         'year', kps.year,
                         'team_id', kps.team_id,
