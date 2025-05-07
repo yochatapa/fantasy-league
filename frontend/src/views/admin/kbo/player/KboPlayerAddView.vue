@@ -140,7 +140,7 @@ const router = useRouter();
 const formRef = ref(null);
 const formValid = ref(false);
 
-const playerId = computed(() => decodeURIComponent(route.query.playerId));
+const playerId = computed(() => route.query.playerId);
 const isEditMode = computed(() => !!playerId.value);
 
 // 연도 옵션: 1982년부터 현재 연도까지
