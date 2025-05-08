@@ -80,18 +80,22 @@
                                 </v-col>
 
                                 <v-col cols="12" md="3">
-                                    <v-text-field
+                                    <CommonDateInput
                                         v-model="filters.birthDateFrom"
                                         label="생년월일 From"
-                                        type="date"
+                                        :max="today"
+                                        :rules="[v => !!v || '생년월일을 입력해주세요.']"
+                                        :required="true"
                                     />
                                 </v-col>
 
                                 <v-col cols="12" md="3">
-                                    <v-text-field
+                                    <CommonDateInput
                                         v-model="filters.birthDateTo"
                                         label="생년월일 To"
-                                        type="date"
+                                        :max="today"
+                                        :rules="[v => !!v || '생년월일을 입력해주세요.']"
+                                        :required="true"
                                     />
                                 </v-col>
 
@@ -199,6 +203,7 @@
 </template>
 
 <script setup>
+import CommonDateInput from '@/components/common/CommonDateInput.vue';
 import { ref, onMounted, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useDisplay } from 'vuetify';
@@ -209,6 +214,7 @@ import { fa } from 'vuetify/locale';
 const router = useRouter();
 const route = useRoute();
 const { mobile } = useDisplay();
+const today = ref(new Date().toLocaleString());
 
 const players = ref([]);
 const loading = ref(false);

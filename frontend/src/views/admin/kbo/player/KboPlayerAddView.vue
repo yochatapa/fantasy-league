@@ -210,7 +210,6 @@ const teamOptionsPerSeason = ref([]); // 각 시즌마다 팀 옵션 리스트
 
 const fetchTeamsByYear = async (year) => {
     const res = await commonFetch(`/api/admin/team/list?year=${year}`, { method: 'GET' });
-    console.log(res.data)
     return res.success ? res.data.teamList : [];
 };
 
@@ -262,7 +261,7 @@ const updateSeasonYear = async (index, newYear) => {
 
 const submitForm = async () => {
     if (!formRef.value?.validate()) return;
-
+    form.value.birth_date = formatDate(form.value.birth_date);
     const method = isEditMode.value ? 'PUT' : 'POST';
     const url = isEditMode.value
         ? `/api/admin/player/update/${encodeURIComponent(playerId.value)}`
