@@ -249,7 +249,7 @@
                                 <div><strong>생년월일:</strong> {{ item.birth_date || '-' }}</div>
                                 <div><strong>유형:</strong> {{ item.player_type==="B"?"타자":"투수" }}</div>
                                 <div><strong>외국인:</strong> {{ item.is_foreign ? '외국인' : '국내' }}</div>
-                                <div><strong>활동 연도:</strong> {{ item.active_years ? item.active_years.join(', ') : '-' }}</div>
+                                <div><strong>활동 연도:</strong> {{ item.active_years ? item.active_years : '-' }}</div>
                                 <div><strong>활동 여부:</strong> {{ item.is_retired ? '은퇴' : '현역' }}</div>
                             </div>
                         </v-card>
