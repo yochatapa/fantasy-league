@@ -1,11 +1,7 @@
-import { useRoute, useRouter } from 'vue-router';
 import { PUBLIC_ROUTES } from '@/utils/code/code'
 
 export async function commonFetch(url, options = {}) {
     const { method = 'GET', headers = {}, body } = options;
-
-    const route = useRoute()
-    const router = useRouter();
 
     const isJson = body && typeof body === 'object' && !(body instanceof FormData);
 
@@ -28,16 +24,17 @@ export async function commonFetch(url, options = {}) {
         
         if (!response.ok) {
             const errorDetail = await response.json();
+            const currentPath = window.location.pathname;
             
             if(response.status === 401){
-                if(!PUBLIC_ROUTES.includes(route.path)){
+                if(!PUBLIC_ROUTES.includes(currentPath)){
                     alert("로그인 정보가 없습니다.\n다시 로그인해주세요.")
-                    await router.push("/")
+                    location.href=`${location.origin}`
                 }
             }else if(response.status === 403){
-                if(!PUBLIC_ROUTES.includes(route.path)){
+                if(!PUBLIC_ROUTES.includes(currentPath)){
                     alert("접근 권한이 없습니다.\n다시 로그인해주세요.")
-                    await router.push("/")
+                    location.href=`${location.origin}`
                 }
             }
             return {
@@ -53,8 +50,19 @@ export async function commonFetch(url, options = {}) {
 
             const disposition = response.headers.get('Content-Disposition');
             let filename = 'downloaded_file';
-            if (disposition && disposition.includes('filename=')) {
-                filename = decodeURIComponent(disposition.split('filename=')[1].replace(/"/g, ''));
+            if (disposition) {
+                // RFC 5987 형식(filename*=UTF-8'') 우선 처리
+                const utf8FilenameRegex = /filename\*\=UTF-8''(.+)/;
+                const plainFilenameRegex = /filename="(.+?)"/;
+            
+                if (utf8FilenameRegex.test(disposition)) {
+                    filename = disposition.match(utf8FilenameRegex)[1];
+            
+                    // ⚠️ 두 번 디코딩 처리
+                    filename = decodeURIComponent(decodeURIComponent(filename));
+                } else if (plainFilenameRegex.test(disposition)) {
+                    filename = decodeURIComponent(disposition.match(plainFilenameRegex)[1]);
+                }
             }
             console.log(filename);
             const url = window.URL.createObjectURL(data);
@@ -88,7 +96,7 @@ export async function commonFetch(url, options = {}) {
         return {
             success: false,
             message : error?.message || '서버와의 통신 중 오류가 발생했습니다. 인터넷 연결을 확인해주세요.' ,
-            code : errorDetail?.code || -1,
+            code : error?.code || -1,
             data: error
         };
     }
