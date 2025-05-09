@@ -157,7 +157,11 @@ export const getKboPlayerList = async (req, res) => {
 
 
 export const createKboPlayer = async (req, res) => {
-    const { name, birth_date, player_type, primary_position, seasons } = req.body;
+    const { 
+        name, birth_date, player_type, primary_position, seasons, 
+        is_retired, draft_info, throwing_hand, batting_hand, 
+        height, weight, contract_bonus, is_foreign 
+    } = req.body;
 
     const accessToken = req.headers['authorization']?.split(' ')[1];
 
@@ -186,16 +190,17 @@ export const createKboPlayer = async (req, res) => {
         await withTransaction(async (client) => {
             // 선수 마스터 테이블 저장
             const insertPlayerQuery = `
-                INSERT INTO kbo_player_master (name, birth_date, player_type, primary_position, created_at)
-                VALUES ($1, $2, $3, $4, $5)
+                INSERT INTO kbo_player_master (
+                    name, birth_date, player_type, primary_position, is_retired, 
+                    draft_info, throwing_hand, batting_hand, height, weight, 
+                    contract_bonus, is_foreign, created_at
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
                 RETURNING id
             `;
             const { rows } = await client.query(insertPlayerQuery, [
-                name,
-                birth_date,
-                player_type,
-                primary_position,
-                user.user_id
+                name, birth_date, player_type, primary_position, is_retired ?? false,
+                draft_info, throwing_hand, batting_hand, height, weight,
+                contract_bonus, is_foreign ?? false, user.user_id
             ]);
 
             const playerId = rows[0].id;
@@ -241,7 +246,11 @@ export const createKboPlayer = async (req, res) => {
 
 
 export const updateKboPlayer = async (req, res) => {
-    const { name, birth_date, player_type, primary_position, seasons } = req.body;
+    const { 
+        name, birth_date, player_type, primary_position, seasons, 
+        is_retired, draft_info, throwing_hand, batting_hand, 
+        height, weight, contract_bonus, is_foreign 
+    } = req.body;
 
     const accessToken = req.headers['authorization']?.split(' ')[1];  // 'Bearer <token>' 형식에서 토큰 추출
 
@@ -283,8 +292,16 @@ export const updateKboPlayer = async (req, res) => {
                     birth_date = $2,
                     player_type = $3,
                     primary_position = $4,
+                    is_retired = $5,
+                    draft_info = $6,
+                    throwing_hand = $7,
+                    batting_hand = $8,
+                    height = $9,
+                    weight = $10,
+                    contract_bonus = $11,
+                    is_foreign = $12,
                     updated_at = CURRENT_TIMESTAMP
-                WHERE id = $5
+                WHERE id = $13
                 RETURNING id
             `;
             const { rows } = await client.query(updatePlayerQuery, [
@@ -292,6 +309,14 @@ export const updateKboPlayer = async (req, res) => {
                 birth_date,
                 player_type,
                 primary_position,
+                is_retired ?? false,
+                draft_info,
+                throwing_hand,
+                batting_hand,
+                height,
+                weight,
+                contract_bonus,
+                is_foreign ?? false,
                 playerId
             ]);
 
@@ -359,6 +384,14 @@ export const getKboPlayerDetail = async (req, res) => {
                 TO_CHAR(kpm.birth_date, 'YYYY.MM.DD') as birth_date,
                 kpm.player_type,
                 kpm.primary_position,
+                kpm.is_retired,
+                kpm.draft_info,
+                kpm.throwing_hand,
+                kpm.batting_hand,
+                kpm.height,
+                kpm.weight,
+                kpm.contract_bonus,
+                kpm.is_foreign,
                 ft.file_id,
                 ft.sn,
                 ft.original_name,

@@ -38,9 +38,58 @@
                         v-model="form.primary_position"
                         :items="filteredPositions"
                         label="주 포지션"
-                        chips
                         item-title="name"
                         item-value="code"
+                    />
+
+                    <v-text-field
+                        v-model="form.draft_info"
+                        label="드래프트 정보"
+                    />
+                    <v-select
+                        v-model="form.throwing_hand"
+                        label="던지는 팔"
+                        :items="[
+                            { label: '좌투', value: 'L' },
+                            { label: '우투', value: 'R' },
+                            { label: '양투', value: 'B' }
+                        ]"
+                        item-title="label"
+                        item-value="value"
+                    />
+                    <v-select
+                        v-model="form.batting_hand"
+                        label="치는 팔"
+                        :items="[
+                            { label: '좌타', value: 'L' },
+                            { label: '우타', value: 'R' },
+                            { label: '양타', value: 'B' }
+                        ]"
+                        item-title="label"
+                        item-value="value"
+                    />
+                    <v-text-field
+                        v-model="form.height"
+                        label="신장 (cm)"
+                        type="number"
+                    />
+                    <v-text-field
+                        v-model="form.weight"
+                        label="체중 (kg)"
+                        type="number"
+                    />
+                    <v-text-field
+                        v-model="form.contract_bonus"
+                        label="입단 계약금 (원)"
+                        type="number"
+                    />
+                    <v-checkbox
+                        v-model="form.is_retired"
+                        label="은퇴 여부"
+                    />
+                    <v-checkbox
+                        v-model="form.is_foreign"
+                        label="외국인 선수 여부"
                     />
 
                     <!-- 이력 목록 -->
@@ -156,6 +205,14 @@ const form = ref({
     birth_date: '',
     player_type: '',
     primary_position: null,
+    is_retired: false,
+    draft_info: '',
+    throwing_hand: '',
+    batting_hand: '',
+    height: null,
+    weight: null,
+    contract_bonus: null,
+    is_foreign: false,
     seasons: [],
 });
 
