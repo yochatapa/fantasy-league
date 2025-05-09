@@ -219,6 +219,12 @@
                                     :default="seasonStartEndDateOptions[index]?.defaultEndDate"
                                 />
                             </v-col>
+                            <v-col cols="12" md="2" class="px-2">
+                                <v-checkbox
+                                    v-model="season.is_active"
+                                    label="1군 등록 여부"
+                                />
+                            </v-col>
                             <v-col cols="12" md="1" class="d-flex justify-end">
                                 <v-btn icon color="error" @click="removeSeason(index)">
                                     <v-icon>mdi-delete</v-icon>
