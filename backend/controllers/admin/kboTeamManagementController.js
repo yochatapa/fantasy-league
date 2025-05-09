@@ -134,7 +134,7 @@ export const createKboTeam = async (req, res) => {
                 [code]
             );
             if (existing.length > 0) {
-                return sendBadRequest(res, "이미 존재하는 팀 코드입니다.");
+                throw new Error("-1");
             }
 
             // INSERT 쿼리 실행
@@ -229,7 +229,11 @@ export const createKboTeam = async (req, res) => {
             });
         });
     } catch (error) {
-        return sendServerError(res, error, "팀 생성 중 오류가 발생했습니다. 다시 시도해주세요.");
+        let errorMessage;
+        switch(error.message){
+            case "-1" : errorMessage = "이미 존재하는 팀 코드입니다."; break;
+        }
+        return sendServerError(res, error, errorMessage??"팀 생성 중 오류가 발생했습니다. 다시 시도해주세요.");
     }
 };
 
@@ -277,7 +281,7 @@ export const updateKboTeam = async (req, res) => {
             );
             
             if (existing.length > 0 && existing.find((row)=>row.id !== teamId)) {
-                return sendBadRequest(res, "이미 존재하는 팀 코드입니다.");
+                throw new Error("-1");
             }
 
             // UPDATE 쿼리 실행
@@ -393,7 +397,11 @@ export const updateKboTeam = async (req, res) => {
             });
         });
     } catch (error) {
-        return sendServerError(res, error, "팀 수정 중 오류가 발생했습니다. 다시 시도해주세요.");
+        let errorMessage;
+        switch(error.message){
+            case "-1" : errorMessage = "이미 존재하는 팀 코드입니다."; break;
+        }
+        return sendServerError(res, error, errorMessage??"팀 수정 중 오류가 발생했습니다. 다시 시도해주세요.");
     }
 }
 
@@ -477,7 +485,7 @@ export const deleteKboTeam = async (req, res) => {
             );
 
             if (teamRows.length === 0) {
-                return sendBadRequest(res, "존재하지 않는 팀입니다.");
+                throw new Error("-1");
             }
 
             const logoFileId = teamRows[0].logo_url;
@@ -508,6 +516,10 @@ export const deleteKboTeam = async (req, res) => {
             return sendSuccess(res, "팀이 성공적으로 삭제되었습니다.");
         });
     } catch (error) {
-        return sendServerError(res, error, "팀 삭제 중 오류가 발생했습니다.");
+        let errorMessage;
+        switch(error.message){
+            case "-1" : errorMessage = "존재하지 않는 팀입니다."; break;
+        }
+        return sendServerError(res, error, errorMessage??"팀 삭제 중 오류가 발생했습니다. 다시 시도해주세요.");
     }
 };

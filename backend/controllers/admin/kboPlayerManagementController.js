@@ -171,7 +171,7 @@ export const createKboPlayer = async (req, res) => {
     } catch (err) {
         return sendBadRequest(res, '유효하지 않은 토큰입니다.');
     }
-    console.log(name, birth_date, player_type, primary_position, seasons)
+    
     // 필수값 검증
     if (!name || !birth_date || !player_type || !primary_position || !Array.isArray(seasons)) {
         return sendBadRequest(res, "필수 입력값을 모두 입력해주세요.");
@@ -205,7 +205,7 @@ export const createKboPlayer = async (req, res) => {
                 const { year, team_id, position, uniform_number, is_active } = season;
 
                 if (!year || !team_id || !Array.isArray(position) || !uniform_number) {
-                    return sendBadRequest(res, "선수이력 항목에 필수값이 누락되었습니다.");
+                    throw new Error("-1");
                 }
 
                 const insertSeasonQuery = `
@@ -231,7 +231,11 @@ export const createKboPlayer = async (req, res) => {
             });
         });
     } catch (error) {
-        return sendServerError(res, error, "선수 생성 중 오류가 발생했습니다. 다시 시도해주세요.");
+        let errorMessage;
+        switch(error.message){
+            case "-1" : errorMessage = "선수이력 항목에 필수값이 누락되었습니다."; break;
+        }
+        return sendServerError(res, error, errorMessage??"선수 생성 중 오류가 발생했습니다. 다시 시도해주세요.");
     }
 };
 
@@ -302,7 +306,7 @@ export const updateKboPlayer = async (req, res) => {
                 const { year, team_id, position, uniform_number, is_active } = season;
 
                 if (!year || !team_id || !Array.isArray(position) || !uniform_number) {
-                    return sendBadRequest(res, "선수이력 항목에 필수값이 누락되었습니다.");
+                    throw new Error("-1");
                 }
 
                 const insertSeasonQuery = `
@@ -328,7 +332,11 @@ export const updateKboPlayer = async (req, res) => {
             });
         });
     } catch (error) {
-        return sendServerError(res, error, "선수 수정 중 오류가 발생했습니다. 다시 시도해주세요.");
+        let errorMessage;
+        switch(error.message){
+            case "-1" : errorMessage = "선수이력 항목에 필수값이 누락되었습니다."; break;
+        }
+        return sendServerError(res, error, errorMessage??"선수 수정 중 오류가 발생했습니다. 다시 시도해주세요.");
     }
 };
 

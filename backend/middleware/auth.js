@@ -88,7 +88,7 @@ export const verifyToken = async (req, res, next) => {
             
             if (userResult.rows.length === 0) {
                 // 사용자를 찾을 수 없는 경우 (비활성화 등)
-                return sendInvalidTokenRequest(res);
+                throw new Error("사용자를 찾을 수 없습니다.");
             }
             const currentUser = userResult.rows[0];
             
