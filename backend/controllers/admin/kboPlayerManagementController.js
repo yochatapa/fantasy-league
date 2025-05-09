@@ -13,18 +13,27 @@ const finalUploadsBaseDir = path.join(process.cwd(), 'uploads');
 
 export const getKboPlayerList = async (req, res) => {
     try {
-        let { 
-            page, 
-            itemsPerPage = 10, 
-            teamIds, 
-            positions, 
-            birthDateFrom, 
-            birthDateTo, 
-            isActive 
+        let {
+            page,
+            limit = 10,
+            name,
+            teamIds,
+            positions,
+            birthDateFrom,
+            birthDateTo,
+            isRetiredList,
+            activeYears,
+            isForeignerList
         } = req.query;
 
         const queryParams = [];
         let whereClauses = [];
+
+        // 이름 필터
+        if (name) {
+            queryParams.push(`%${name}%`);
+            whereClauses.push(`kpm.name LIKE $${queryParams.length}`);
+        }
 
         // 소속팀 필터 (다중 선택 가능)
         if (teamIds) {
@@ -52,96 +61,92 @@ export const getKboPlayerList = async (req, res) => {
             whereClauses.push(`kpm.birth_date <= $${queryParams.length}`);
         }
 
-        // 활동 여부 필터
-        if (isActive !== undefined) {
-            const currentYear = new Date().getFullYear(); // 현재 년도
-            queryParams.push(isActive === 'true');
-            whereClauses.push(`
-                EXISTS (
-                    SELECT 1 
-                    FROM kbo_player_season kps_sub
-                    WHERE kps_sub.player_id = kpm.id
-                    AND kps_sub.year = ${currentYear}
-                    AND kps_sub.is_active = $${queryParams.length}
-                )
-            `);
+        // 활동 여부 필터 (isRetiredList로 변경됨)
+        if (isRetiredList) {
+            const isActiveBoolList = isRetiredList.split(',').map(active => active === 'true');
+            queryParams.push(...isActiveBoolList);
+            const isActivePlaceholders = isActiveBoolList.map((_, idx) => `$${queryParams.length - isActiveBoolList.length + idx + 1}`);
+            whereClauses.push(`kpm.is_retired IN (${isActivePlaceholders.join(', ')})`);
+        }
+
+        // 활동 연도 필터 (다중 선택 가능)
+        if (activeYears) {
+            const yearList = activeYears.split(',').map(year => parseInt(year, 10));
+            queryParams.push(...yearList);
+            const yearPlaceholders = yearList.map((_, idx) => `$${queryParams.length - yearList.length + idx + 1}`);
+            whereClauses.push(`EXTRACT(YEAR FROM (kps.year || '-01-01')::DATE) IN (${yearPlaceholders.join(', ')})`);
+        }
+
+        // 외국인 선수 여부 필터 (다중 선택 가능)
+        if (isForeignerList) {
+            const isForeignerBoolList = isForeignerList.split(',').map(foreign => foreign === 'true');
+            queryParams.push(...isForeignerBoolList);
+            const foreignerPlaceholders = isForeignerBoolList.map((_, idx) => `$${queryParams.length - isForeignerBoolList.length + idx + 1}`);
+            whereClauses.push(`kpm.is_foreigner IN (${foreignerPlaceholders.join(', ')})`);
         }
 
         const whereClause = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
 
-        // 페이지네이션 여부 판단
+        // 페이지네이션
         let paginationClause = '';
+        let paginationParams = [];
         if (page) {
             page = Math.max(1, parseInt(page, 10));
-            itemsPerPage = Math.max(1, parseInt(itemsPerPage, 10));
-            const offset = (page - 1) * itemsPerPage;
-
-            queryParams.push(itemsPerPage);
-            queryParams.push(offset);
-            paginationClause = `LIMIT $${queryParams.length - 1} OFFSET $${queryParams.length}`;
+            limit = Math.max(1, parseInt(limit, 10));
+            const offset = (page - 1) * limit;
+            paginationParams = [limit, offset];
+            paginationClause = `LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}`; // 파라미터 순서 명시적으로 지정
         }
 
-        // 조회 쿼리 실행
+        // 조회 쿼리
         const kboPlayerList = await query(`
-            SELECT 
+            SELECT
                 kpm.id,
                 kpm.name,
                 TO_CHAR(kpm.birth_date, 'YYYY.MM.DD') as birth_date,
                 kpm.player_type,
                 kpm.primary_position,
                 COALESCE(
-                    string_agg(DISTINCT ktm.name, ', ') 
+                    string_agg(DISTINCT ktm.name, ', ')
                     FILTER (WHERE ktm.name IS NOT NULL), ''
                 ) AS team_name,
-                CASE 
-                    WHEN BOOL_OR(kps.is_active AND kps.year = EXTRACT(YEAR FROM CURRENT_DATE)::INT) THEN '현역'
-                    ELSE '은퇴'
-                END AS is_active_status,
+                kpm.is_retired,
+                kpm.is_foreigner,
                 COALESCE(
                     (
-                        SELECT kps.uniform_number 
-                        FROM kbo_player_season kps 
-                        WHERE kps.player_id = kpm.id 
-                        ORDER BY kps.year DESC 
+                        SELECT kps.uniform_number
+                        FROM kbo_player_season kps
+                        WHERE kps.player_id = kpm.id
+                        ORDER BY kps.year DESC
                         LIMIT 1
                     ), NULL
-                ) AS last_uniform_number
-                ,COALESCE(json_agg(
-                    json_build_object(
-                        'year', kps.year,
-                        'team_id', kps.team_id,
-                        'position', string_to_array(kps.position, ','),
-                        'uniform_number', kps.uniform_number,
-                        'is_active', kps.is_active
-                    )
-                    ORDER BY kps.is_active DESC, kps.year DESC
-                ) FILTER (WHERE kps.id IS NOT NULL), '[]') AS seasons
+                ) AS last_uniform_number,
+                COALESCE(
+                    (
+                        SELECT MIN(EXTRACT(YEAR FROM (kps.year || '-01-01')::DATE)) || '~' || MAX(EXTRACT(YEAR FROM (kps.year || '-01-01')::DATE))
+                        FROM kbo_player_season kps
+                        WHERE kps.player_id = kpm.id
+                    ), '-'
+                ) AS active_years
             FROM kbo_player_master kpm
-            LEFT JOIN (
-                SELECT 
-                    kps.* 
-                FROM kbo_player_season kps
-                ORDER BY kps.is_active DESC, kps.year DESC
-            ) kps ON kpm.id = kps.player_id
+            LEFT JOIN kbo_player_season kps ON kpm.id = kps.player_id
             LEFT JOIN kbo_team_master ktm ON ktm.id = kps.team_id
             ${whereClause}
             GROUP BY kpm.id
             ORDER BY kpm.name, kpm.birth_date
             ${paginationClause}
-        `, queryParams);
-        
-        
+        `, [...queryParams, ...paginationParams]);
 
         // 총 개수 조회
         let total = null;
         if (page) {
-            const countParams = [...queryParams];
-            const totalPlayers = await query(`
-                SELECT COUNT(*) AS total
+            const countResult = await query(`
+                SELECT COUNT(DISTINCT kpm.id) AS total
                 FROM kbo_player_master kpm
-            `);
-
-            total = parseInt(totalPlayers.rows[0].total, 10);
+                LEFT JOIN kbo_player_season kps ON kpm.id = kps.player_id
+                ${whereClause}
+            `, queryParams);
+            total = parseInt(countResult.rows[0].total, 10);
         }
 
         return sendSuccess(res, {
@@ -153,7 +158,6 @@ export const getKboPlayerList = async (req, res) => {
         return sendServerError(res, error, '선수 목록 조회 중 문제가 발생하였습니다. 다시 시도해주세요.');
     }
 };
-
 
 
 export const createKboPlayer = async (req, res) => {

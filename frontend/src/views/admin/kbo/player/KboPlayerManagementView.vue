@@ -6,7 +6,6 @@
                 <v-btn color="primary" @click="goToAddPlayer" class="ml-2">선수 추가</v-btn>
             </v-col>
 
-            <!-- 필터 영역 -->
             <v-col cols="12">
                 <v-card class="mb-4 pa-4 rounded-lg elevation-1">
                     <v-row class="align-center mb-2">
@@ -29,6 +28,14 @@
                     <v-expand-transition>
                         <div v-show="filterExpanded">
                             <v-row class="g-4">
+                                <v-col cols="12" md="3">
+                                    <v-text-field
+                                        v-model="filters.name"
+                                        label="이름"
+                                        clearable
+                                    ></v-text-field>
+                                </v-col>
+
                                 <v-col cols="12" md="3">
                                     <v-select
                                         v-model="filters.teamIds"
@@ -80,6 +87,47 @@
                                 </v-col>
 
                                 <v-col cols="12" md="3">
+                                    <v-select
+                                        v-model="filters.activeYears"
+                                        :items="activeYearOptions"
+                                        label="활동 연도"
+                                        multiple
+                                    >
+                                        <template #prepend-item>
+                                            <v-list-item @click="selectAll('activeYears')">
+                                                <v-list-item-title>전체 선택</v-list-item-title>
+                                            </v-list-item>
+                                            <v-list-item @click="deselectAll('activeYears')">
+                                                <v-list-item-title>전체 해제</v-list-item-title>
+                                            </v-list-item>
+                                        </template>
+                                        <template v-slot:selection="{ item, index }">
+                                            <v-chip v-if="index < 2" :text="item.title"></v-chip>
+                                            <span v-if="index === 2" class="text-grey text-caption align-self-center">
+                                                외 {{ filters.activeYears.length - 2 }}건
+                                            </span>
+                                        </template>
+                                    </v-select>
+                                </v-col>
+
+                                <v-col cols="12" md="3">
+                                    <v-select
+                                        v-model="filters.isForeigners"
+                                        :items="foreignerOptions"
+                                        label="외국인 선수 여부"
+                                        multiple
+                                        chips
+                                    >
+                                        <template v-slot:selection="{ item, index }">
+                                            <v-chip v-if="index < 2" :text="item.title"></v-chip>
+                                            <span v-if="index === 2" class="text-grey text-caption align-self-center">
+                                                (+{{ filters.isForeigners.length - 2 }} others)
+                                            </span>
+                                        </template>
+                                    </v-select>
+                                </v-col>
+
+                                <v-col cols="12" md="3">
                                     <CommonDateInput
                                         v-model="filters.birthDateFrom"
                                         label="생년월일 From"
@@ -101,7 +149,7 @@
 
                                 <v-col cols="12" md="3">
                                     <v-select
-                                        v-model="filters.isActiveList"
+                                        v-model="filters.isRetiredList"
                                         :items="activeOptions"
                                         label="활동 여부"
                                         multiple
@@ -110,13 +158,13 @@
                                         <template v-slot:selection="{ item, index }">
                                             <v-chip v-if="index < 2" :text="item.title"></v-chip>
                                             <span v-if="index === 2" class="text-grey text-caption align-self-center">
-                                                (+{{ filters.isActiveList.length - 2 }} others)
+                                                (+{{ filters.isRetiredList.length - 2 }} others)
                                             </span>
                                         </template>
                                     </v-select>
                                 </v-col>
 
-                                
+
                             </v-row>
                         </div>
                     </v-expand-transition>
@@ -127,9 +175,7 @@
                 </v-card>
             </v-col>
 
-            <!-- 선수 목록 -->
             <v-col cols="12">
-                <!-- PC용 -->
                 <v-data-table-server
                     v-if="!mobile"
                     :headers="headers"
@@ -163,9 +209,17 @@
                     <template #item.player_type="{ item }">
                         {{ item.player_type==="B"?"타자":"투수" }}
                     </template>
+                    <template #item.is_foreigner="{ item }">
+                        {{ item.is_foreigner ? '외국인' : '국내' }}
+                    </template>
+                    <template #item.active_years="{ item }">
+                        {{ item.active_years ? item.active_years : '-' }}
+                    </template>
+                    <template #item.is_retired="{ item }">
+                        {{ item.is_retired ? '은퇴' : '현역' }}
+                    </template>
                 </v-data-table-server>
 
-                <!-- 모바일용 -->
                 <v-data-table-server
                     v-else
                     :headers="headers"
@@ -193,6 +247,10 @@
                                 <div><strong>주 포지션:</strong> {{ item.primary_position }}</div>
                                 <div><strong>등번호:</strong> {{ item.last_uniform_number || '-' }}</div>
                                 <div><strong>생년월일:</strong> {{ item.birth_date || '-' }}</div>
+                                <div><strong>유형:</strong> {{ item.player_type==="B"?"타자":"투수" }}</div>
+                                <div><strong>외국인:</strong> {{ item.is_foreigner ? '외국인' : '국내' }}</div>
+                                <div><strong>활동 연도:</strong> {{ item.active_years ? item.active_years.join(', ') : '-' }}</div>
+                                <div><strong>활동 여부:</strong> {{ item.is_retired ? '은퇴' : '현역' }}</div>
                             </div>
                         </v-card>
                     </template>
@@ -209,7 +267,6 @@ import { useRouter, useRoute } from 'vue-router';
 import { useDisplay } from 'vuetify';
 import { commonFetch } from '@/utils/common/commonFetch';
 import { encryptData } from '@/utils/common/crypto';
-import { fa } from 'vuetify/locale';
 
 const router = useRouter();
 const route = useRoute();
@@ -224,19 +281,27 @@ const totalItems = ref(0);
 const filterExpanded = ref(false);
 
 const filters = ref({
+    name: '', // 이름 필터 추가
     teamIds: [],
     positions: [],
     birthDateFrom: '',
     birthDateTo: '',
-    isActiveList: [],
+    isRetiredList: [],
+    activeYears: [], // 활동 연도 필터 추가
+    isForeigners: [], // 외국인 선수 여부 필터 추가
 });
 
 const teamOptions = ref([]);
 const positionOptions = ['C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'DH', 'SP', 'RP'];
 const activeOptions = [
-    { title: '현역', value: true },
-    { title: '은퇴', value: false },
+    { title: '현역', value: false },
+    { title: '은퇴', value: true },
 ];
+const foreignerOptions = [
+    { title: '외국인', value: true },
+    { title: '국내', value: false },
+];
+const activeYearOptions = ref([]); // 활동 연도 옵션
 
 const headers = [
     { title: '번호', value: 'index', width: 80, align: 'center' },
@@ -246,42 +311,44 @@ const headers = [
     { title: '유형', value: 'player_type', align: 'center' },
     { title: '소속팀', value: 'team_name', align: 'center' },
     { title: '등번호', value: 'last_uniform_number', align: 'center' },
-    { title: '활동여부', value: 'is_active_status', align: 'center' },
+    { title: '외국인', value: 'is_foreigner', align: 'center' }, // 외국인 선수 여부 컬럼 추가
+    { title: '활동 연도', value: 'active_years', align: 'center' }, // 활동 연도 컬럼 추가
+    { title: '활동여부', value: 'is_retired', align: 'center' },
 ];
 
 const fetchPlayerList = async () => {
     try {
         loading.value = true;
 
-        // URLSearchParams를 사용하여 쿼리 파라미터를 생성
         const params = new URLSearchParams();
         params.append('page', page.value);
         params.append('limit', itemsPerPage.value);
 
-        // teamIds를 압축하여 전달
+        if (filters.value.name) {
+            params.append('name', filters.value.name);
+        }
         if (filters.value.teamIds.length > 0) {
             params.append('teamIds', filters.value.teamIds.join(','));
         }
-
-        // positions를 압축하여 전달
         if (filters.value.positions.length > 0) {
             params.append('positions', filters.value.positions.join(','));
         }
-
-        // isActiveList를 압축하여 전달
-        if (filters.value.isActiveList.length > 0) {
-            params.append('isActive', filters.value.isActiveList.join(','));
+        if (filters.value.isRetiredList.length > 0) {
+            params.append('isRetiredList', filters.value.isRetiredList.join(','));
         }
-
-        // birthDateFrom, birthDateTo가 존재하면 추가
         if (filters.value.birthDateFrom) {
             params.append('birthDateFrom', filters.value.birthDateFrom);
         }
         if (filters.value.birthDateTo) {
             params.append('birthDateTo', filters.value.birthDateTo);
         }
+        if (filters.value.activeYears.length > 0) {
+            params.append('activeYears', filters.value.activeYears.join(','));
+        }
+        if (filters.value.isForeigners.length > 0) {
+            params.append('isForeignerList', filters.value.isForeigners.join(','));
+        }
 
-        // 최종 URL 생성
         const queryString = params.toString();
         const response = await commonFetch(`/api/admin/player/list?${queryString}`, {
             method: "GET"
@@ -296,7 +363,6 @@ const fetchPlayerList = async () => {
     }
 };
 
-
 const formatDate = (date) => {
     return date ? new Date(date).toLocaleDateString() : '-';
 };
@@ -307,22 +373,28 @@ const goToAddPlayer = () => {
 
 const resetFilters = () => {
     filters.value = {
+        name: '',
         teamIds: [],
         positions: [],
         birthDateFrom: '',
         birthDateTo: '',
-        isActiveList: [],
+        isRetiredList: [],
+        activeYears: [],
+        isForeigners: [],
     };
 };
 
-// selectAll 메서드를 수정하여, 필드 값에 대해 모든 항목을 선택하도록 수정
 const selectAll = (field) => {
     if (field === 'teamIds') {
         filters.value.teamIds = teamOptions.value.map(team => team.id);
     } else if (field === 'positions') {
         filters.value.positions = positionOptions;
-    } else if (field === 'isActiveList') {
-        filters.value.isActiveList = activeOptions.map(option => option.value);
+    } else if (field === 'isRetiredList') {
+        filters.value.isRetiredList = activeOptions.map(option => option.value);
+    } else if (field === 'activeYears') {
+        filters.value.activeYears = activeYearOptions.value;
+    } else if (field === 'isForeigners') {
+        filters.value.isForeigners = foreignerOptions.map(option => option.value);
     }
 };
 
@@ -331,8 +403,12 @@ const deselectAll = (field) => {
         filters.value.teamIds = [];
     } else if (field === 'positions') {
         filters.value.positions = [];
-    } else if (field === 'isActiveList') {
-        filters.value.isActiveList = [];
+    } else if (field === 'isRetiredList') {
+        filters.value.isRetiredList = [];
+    } else if (field === 'activeYears') {
+        filters.value.activeYears = [];
+    } else if (field === 'isForeigners') {
+        filters.value.isForeigners = [];
     }
 };
 
@@ -343,12 +419,23 @@ const fetchTeamOptions = async () => {
     }
 };
 
+const fetchActiveYearOptions = () => {
+    const currentYear = new Date().getFullYear();
+    const startYear = 1982; // 예시 시작 연도
+    const years = [];
+    for (let i = currentYear; i >= startYear; i--) {
+        years.push(i);
+    }
+    activeYearOptions.value = years;
+};
+
 const handleRowClick = (e, { item }) => {
     router.push(`/admin/player/add?playerId=${encodeURIComponent(encryptData(item.id))}`);
 };
 
 onMounted(async () => {
     await fetchTeamOptions();
+    fetchActiveYearOptions();
     fetchPlayerList();
 });
 </script>
