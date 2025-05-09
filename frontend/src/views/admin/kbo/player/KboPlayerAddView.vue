@@ -7,7 +7,6 @@
 
             <v-card-text>
                 <v-form @submit.prevent="submitForm" ref="formRef" v-model="formValid">
-                    <!-- 🔹 선수 기본 정보 -->
                     <v-row no-gutters>
                         <v-col cols="12" class="mb-4">
                             <span class="text-h6">선수 기본 정보</span>
@@ -53,7 +52,6 @@
 
                     <v-divider class="my-4" />
 
-                    <!-- 🔹 신체 정보 -->
                     <v-row no-gutters>
                         <v-col cols="12" class="mb-4">
                             <span class="text-h6">신체 정보</span>
@@ -94,7 +92,6 @@
 
                     <v-divider class="my-4" />
 
-                    <!-- 🔹 계약 정보 -->
                     <v-row no-gutters>
                         <v-col cols="12" class="mb-4">
                             <span class="text-h6">계약 정보</span>
@@ -128,7 +125,6 @@
 
                     <v-divider class="my-4" />
 
-                    <!-- 🔹 선수 이력 -->
                     <v-container>
                         <v-row class="align-center mb-4">
                             <v-col cols="6">
@@ -137,10 +133,10 @@
                             <v-col cols="6" class="text-right">
                                 <v-btn color="primary" class="mb-2" @click="addSeason">이력 추가</v-btn>
                             </v-col>
-                        </v-row>  
+                        </v-row>
 
                         <v-row
-                            v-for="(season, index) in form.seasons"
+                            v-for="(season, index) in activeSeasons"
                             :key="index"
                             no-gutters
                             class="d-flex flex-wrap"
@@ -151,6 +147,7 @@
                                     :items="yearOptions"
                                     label="연도"
                                     required
+                                    @change="updateSeasonYear(index, season.year)"
                                 />
                             </v-col>
                             <v-col cols="12" md="3" class="px-2">
@@ -231,7 +228,7 @@ const birthDateInput = ref('');
 const currentYear = new Date().getFullYear();
 const yearOptions = Array.from({ length: currentYear - 1982 + 1 }, (_, i) => 1982 + i);
 
-const today = new Date().toISOString().split('T')[0]; // yyyy-mm-dd
+const today = new Date().toISOString().split('T')[0]; //YYYY-MM-DD
 const birthDateMenu = ref(false);
 
 const form = ref({
@@ -248,6 +245,10 @@ const form = ref({
     contract_bonus: null,
     is_foreign: false,
     seasons: [],
+});
+
+const activeSeasons = computed(() => {
+    return form.value.seasons.filter(season => season.flag === 'I' || season.flag === 'U');
 });
 
 watch(() => form.value.birth_date, (newVal) => {
@@ -314,7 +315,11 @@ const fetchPlayer = async () => {
     const res = await commonFetch(`/api/admin/player/${encodeURIComponent(playerId.value)}`, { method: 'GET' });
     if (res.success) {
         const { playerInfo, seasons } = res.data;
-        form.value = { ...playerInfo, seasons };
+        // 수정 모드일 때는 기존 seasons 데이터에 'U' 플래그를 설정
+        form.value = {
+            ...playerInfo,
+            seasons: seasons.map(season => ({ ...season, flag: 'U' })),
+        };
         await fetchAllTeamOptionsForSeasons();
     }
 };
@@ -332,16 +337,28 @@ const addSeason = async () => {
         position: null,
         uniform_number: null,
         is_active: true,
+        flag: 'I', // 새로 추가된 데이터는 'I' 플래그 설정
     };
     form.value.seasons.push(newSeason);
 
+    // 새로운 시즌에 대한 팀 옵션도 추가
     const teamList = await fetchTeamsByYear(newSeason.year);
     teamOptionsPerSeason.value.push(teamList);
 };
 
 const removeSeason = (index) => {
-    form.value.seasons.splice(index, 1);
-    teamOptionsPerSeason.value.splice(index, 1);
+    // 수정 모드일 때는 삭제되는 데이터에 'D' 플래그를 설정
+    if (isEditMode.value && form.value.seasons[index]?.id) {
+        if(form.value.seasons[index]?.flag === "I"){
+            form.value.seasons.splice(index, 1);
+            teamOptionsPerSeason.value.splice(index, 1);
+        }
+        else form.value.seasons[index].flag = 'D';
+    } else {
+        // 등록 모드에서는 그냥 배열에서 제거
+        form.value.seasons.splice(index, 1);
+        teamOptionsPerSeason.value.splice(index, 1);
+    }
 };
 
 const updateSeasonYear = async (index, newYear) => {
@@ -353,6 +370,22 @@ const updateSeasonYear = async (index, newYear) => {
 const submitForm = async () => {
     if (!formRef.value?.validate()) return;
     form.value.birth_date = formatDate(form.value.birth_date);
+
+    // 등록 모드일 때는 모든 seasons 데이터에 'I' 플래그 설정
+    if (!isEditMode.value) {
+        form.value.seasons = form.value.seasons.map(season => ({ ...season, flag: 'I' }));
+    }
+
+    // 수정 모드에서 제거되지 않은 시즌 데이터에 'U' 플래그가 없으면 'U' 설정 (기존 데이터 수정)
+    if (isEditMode.value) {
+        form.value.seasons = form.value.seasons.map(season => {
+            if (season.flag !== 'D' && !season.flag) {
+                return { ...season, flag: 'U' };
+            }
+            return season;
+        });
+    }
+
     const method = isEditMode.value ? 'PUT' : 'POST';
     const url = isEditMode.value
         ? `/api/admin/player/update/${encodeURIComponent(playerId.value)}`

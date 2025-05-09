@@ -320,35 +320,50 @@ export const updateKboPlayer = async (req, res) => {
                 playerId
             ]);
 
-            // 시즌 정보 삭제 후 새로 추가
-            const deleteSeasonsQuery = `
-                DELETE FROM kbo_player_season WHERE player_id = $1
-            `;
-            await client.query(deleteSeasonsQuery, [playerId]);
-
-            // 시즌 정보 저장
+            // 시즌 정보 처리
             for (const season of seasons) {
-                const { year, team_id, position, uniform_number, is_active } = season;
+                const { year, team_id, position, uniform_number, is_active, flag, id } = season;
 
-                if (!year || !team_id || !Array.isArray(position) || !uniform_number) {
+                if (!year || !team_id || !Array.isArray(position) || !uniform_number || !flag) {
                     throw new Error("-1");
                 }
 
-                const insertSeasonQuery = `
-                    INSERT INTO kbo_player_season (
-                        player_id, year, team_id, position, uniform_number, is_active
-                    ) VALUES (
-                        $1, $2, $3, $4, $5, $6
-                    )
-                `;
-                await client.query(insertSeasonQuery, [
-                    playerId,
-                    year,
-                    team_id,
-                    position.join(","),
-                    uniform_number,
-                    is_active
-                ]);
+                if (flag === 'I') {
+                    const insertSeasonQuery = `
+                        INSERT INTO kbo_player_season (
+                            player_id, year, team_id, position, uniform_number, is_active
+                        ) VALUES (
+                            $1, $2, $3, $4, $5, $6
+                        )
+                    `;
+                    await client.query(insertSeasonQuery, [
+                        playerId,
+                        year,
+                        team_id,
+                        position.join(","),
+                        uniform_number,
+                        is_active
+                    ]);
+                } else if (flag === 'U') {
+                    const updateSeasonQuery = `
+                        UPDATE kbo_player_season
+                        SET year = $1, team_id = $2, position = $3, uniform_number = $4, is_active = $5
+                        WHERE id = $6
+                    `;
+                    await client.query(updateSeasonQuery, [
+                        year,
+                        team_id,
+                        position.join(","),
+                        uniform_number,
+                        is_active,
+                        id
+                    ]);
+                } else if (flag === 'D') {
+                    const deleteSeasonQuery = `
+                        DELETE FROM kbo_player_season WHERE id = $1
+                    `;
+                    await client.query(deleteSeasonQuery, [id]);
+                }
             }
 
             return sendSuccess(res, {
@@ -361,9 +376,10 @@ export const updateKboPlayer = async (req, res) => {
         switch(error.message){
             case "-1" : errorMessage = "선수이력 항목에 필수값이 누락되었습니다."; break;
         }
-        return sendServerError(res, error, errorMessage??"선수 수정 중 오류가 발생했습니다. 다시 시도해주세요.");
+        return sendServerError(res, error, errorMessage ?? "선수 수정 중 오류가 발생했습니다. 다시 시도해주세요.");
     }
 };
+
 
 export const getKboPlayerDetail = async (req, res) => {
     let { playerId } = req.params;
@@ -412,6 +428,7 @@ export const getKboPlayerDetail = async (req, res) => {
         // 3️⃣ 시즌별 기록 조회
         const playerSeasonsQuery = `
             SELECT
+                kps.id,
                 kps.year,
                 kps.team_id,
                 ktm.name AS team_name,
