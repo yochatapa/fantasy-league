@@ -322,7 +322,7 @@ export const updateKboPlayer = async (req, res) => {
 
             // 시즌 정보 처리
             for (const season of seasons) {
-                const { year, team_id, position, uniform_number, is_active, flag, id } = season;
+                const { year, team_id, position, uniform_number, is_active, flag, id, contract_type, salary, start_date, end_date } = season;
 
                 if (!year || !team_id || !Array.isArray(position) || !uniform_number || !flag) {
                     throw new Error("-1");
@@ -331,9 +331,10 @@ export const updateKboPlayer = async (req, res) => {
                 if (flag === 'I') {
                     const insertSeasonQuery = `
                         INSERT INTO kbo_player_season (
-                            player_id, year, team_id, position, uniform_number, is_active
+                            player_id, year, team_id, position, uniform_number, is_active,
+                            contract_type, salary, start_date, end_date
                         ) VALUES (
-                            $1, $2, $3, $4, $5, $6
+                            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
                         )
                     `;
                     await client.query(insertSeasonQuery, [
@@ -342,13 +343,18 @@ export const updateKboPlayer = async (req, res) => {
                         team_id,
                         position.join(","),
                         uniform_number,
-                        is_active
+                        is_active,
+                        contract_type,
+                        salary,
+                        start_date,
+                        end_date
                     ]);
                 } else if (flag === 'U') {
                     const updateSeasonQuery = `
                         UPDATE kbo_player_season
-                        SET year = $1, team_id = $2, position = $3, uniform_number = $4, is_active = $5
-                        WHERE id = $6
+                        SET year = $1, team_id = $2, position = $3, uniform_number = $4, 
+                            is_active = $5, contract_type = $6, salary = $7, start_date = $8, end_date = $9
+                        WHERE id = $10
                     `;
                     await client.query(updateSeasonQuery, [
                         year,
@@ -356,6 +362,10 @@ export const updateKboPlayer = async (req, res) => {
                         position.join(","),
                         uniform_number,
                         is_active,
+                        contract_type,
+                        salary,
+                        start_date,
+                        end_date,
                         id
                     ]);
                 } else if (flag === 'D') {
@@ -379,6 +389,7 @@ export const updateKboPlayer = async (req, res) => {
         return sendServerError(res, error, errorMessage ?? "선수 수정 중 오류가 발생했습니다. 다시 시도해주세요.");
     }
 };
+
 
 
 export const getKboPlayerDetail = async (req, res) => {
@@ -436,7 +447,11 @@ export const getKboPlayerDetail = async (req, res) => {
                 kps.uniform_number,
                 kps.is_active,
                 COALESCE(ft.path, '') AS path,
-                ft.mimetype
+                ft.mimetype,
+                kps.contract_type,  -- 계약 유형
+                kps.salary,         -- 연봉
+                TO_CHAR(kps.start_date, 'YYYY.MM.DD') as start_date,     -- 계약 시작일
+                TO_CHAR(kps.end_date, 'YYYY.MM.DD') as end_date        -- 계약 종료일
             FROM kbo_player_season kps
             LEFT JOIN kbo_team_master ktm ON ktm.id = kps.team_id
             LEFT JOIN file_table ft ON ft.file_id = kps.profile_image::uuid AND ft.sn = 1

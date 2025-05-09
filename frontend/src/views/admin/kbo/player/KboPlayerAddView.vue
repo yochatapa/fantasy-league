@@ -139,7 +139,7 @@
                             v-for="(season, index) in activeSeasons"
                             :key="index"
                             no-gutters
-                            class="d-flex flex-wrap"
+                            class="d-flex flex-wrap align-items-center"
                         >
                             <v-col cols="12" md="2" class="px-2">
                                 <v-select
@@ -147,7 +147,6 @@
                                     :items="yearOptions"
                                     label="연도"
                                     required
-                                    @change="updateSeasonYear(index, season.year)"
                                 />
                             </v-col>
                             <v-col cols="12" md="3" class="px-2">
@@ -180,10 +179,44 @@
                                     required
                                 />
                             </v-col>
-                            <v-col cols="12" md="1" >
-                                <v-checkbox
-                                    v-model="season.is_active"
-                                    label="활동"
+                            <v-col cols="12" md="2" class="px-2">
+                                <v-select
+                                    v-model="season.contract_type"
+                                    label="계약 형태"
+                                    :items="[
+                                        { label: '일반 계약', value: 'C' },
+                                        { label: 'FA', value: 'FA' },
+                                        { label: '드래프트', value: 'D' },
+                                        { label: '트레이드', value: 'T' },
+                                        { label: '해외 영입', value: 'I' }
+                                    ]"
+                                    item-title="label"
+                                    item-value="value"
+                                />
+                            </v-col>
+                            <v-col cols="12" md="3" class="px-2">
+                                <v-text-field
+                                    v-model="season.salary"
+                                    label="연봉 (만원)"
+                                    type="number"
+                                />
+                            </v-col>
+                            <v-col cols="12" md="3" class="px-2">
+                                <CommonDateInput
+                                    v-model="season.start_date"
+                                    label="계약 시작일"
+                                    :min="seasonStartEndDateOptions[index]?.minDate"
+                                    :max="seasonStartEndDateOptions[index]?.maxDate"
+                                    :default="seasonStartEndDateOptions[index]?.defaultStartDate"
+                                />
+                            </v-col>
+                            <v-col cols="12" md="3" class="px-2">
+                                <CommonDateInput
+                                    v-model="season.end_date"
+                                    label="계약 종료일"
+                                    :min="seasonStartEndDateOptions[index]?.minDate"
+                                    :max="seasonStartEndDateOptions[index]?.maxDate"
+                                    :default="seasonStartEndDateOptions[index]?.defaultEndDate"
                                 />
                             </v-col>
                             <v-col cols="12" md="1" class="d-flex justify-end">
@@ -222,6 +255,7 @@ const formValid = ref(false);
 
 const playerId = computed(() => route.query.playerId);
 const isEditMode = computed(() => !!playerId.value);
+const isInitialLoad = ref(true);
 
 // 연도 옵션: 1982년부터 현재 연도까지
 const birthDateInput = ref('');
@@ -247,8 +281,27 @@ const form = ref({
     seasons: [],
 });
 
+const getFirstDayOfYear = (year) => {
+    return `${year}-01-01`;
+}
+
+const getLastDayOfYear = (year) => {
+    return `${year}-12-31`;
+}
+
 const activeSeasons = computed(() => {
     return form.value.seasons.filter(season => season.flag === 'I' || season.flag === 'U');
+});
+
+const seasonStartEndDateOptions = computed(() => {
+    return form.value.seasons.map((season, index) => {
+        const year = season.year || new Date().getFullYear();
+        const minDate = getFirstDayOfYear(year);
+        const maxDate = getLastDayOfYear(year);
+        const defaultStartDate = getFirstDayOfYear(year);
+        const defaultEndDate = getLastDayOfYear(year);
+        return { minDate, maxDate, defaultStartDate, defaultEndDate };
+    });
 });
 
 watch(() => form.value.birth_date, (newVal) => {
@@ -318,7 +371,11 @@ const fetchPlayer = async () => {
         // 수정 모드일 때는 기존 seasons 데이터에 'U' 플래그를 설정
         form.value = {
             ...playerInfo,
-            seasons: seasons.map(season => ({ ...season, flag: 'U' })),
+            seasons: seasons.map(season => ({ 
+                ...season
+                , flag: 'U'
+            })),
+            
         };
         await fetchAllTeamOptionsForSeasons();
     }
@@ -328,15 +385,20 @@ onMounted(async () => {
     if (isEditMode.value) {
         await fetchPlayer();
     }
+    isInitialLoad.value = false;
 });
 
 const addSeason = async () => {
+    const year = new Date().getFullYear();
     const newSeason = {
-        year: new Date().getFullYear(),
+        year: year,
         team_id: null,
         position: null,
         uniform_number: null,
-        is_active: true,
+        contract_type: null,
+        salary: null,
+        start_date: getFirstDayOfYear(year),
+        end_date: getLastDayOfYear(year),
         flag: 'I', // 새로 추가된 데이터는 'I' 플래그 설정
     };
     form.value.seasons.push(newSeason);
@@ -349,11 +411,12 @@ const addSeason = async () => {
 const removeSeason = (index) => {
     // 수정 모드일 때는 삭제되는 데이터에 'D' 플래그를 설정
     if (isEditMode.value && form.value.seasons[index]?.id) {
-        if(form.value.seasons[index]?.flag === "I"){
+        if (form.value.seasons[index]?.flag === "I") {
             form.value.seasons.splice(index, 1);
             teamOptionsPerSeason.value.splice(index, 1);
+        } else {
+            form.value.seasons[index].flag = 'D';
         }
-        else form.value.seasons[index].flag = 'D';
     } else {
         // 등록 모드에서는 그냥 배열에서 제거
         form.value.seasons.splice(index, 1);
@@ -361,10 +424,35 @@ const removeSeason = (index) => {
     }
 };
 
-const updateSeasonYear = async (index, newYear) => {
+watch(
+    () => form.value.seasons.map(season => season.year), // 각 시즌의 year를 감시
+    (newYears, oldYears) => {
+        newYears.forEach((newYear, index) => {
+        if (newYear !== oldYears[index]) {
+            // 해당 인덱스의 연도가 변경되었을 때 updateSeasonYear 로직 실행
+            updateSeasonDetails(index, newYear);
+        }
+        });
+    },
+    { deep: true } // 배열 내부의 변경을 감지하기 위해 deep 옵션 사용
+);
+
+const updateSeasonDetails = async (index, newYear) => {
+    if (isInitialLoad.value) {
+        return;
+    }
+    const currentTeamId = form.value.seasons[index].team_id;
+    form.value.seasons[index].year = newYear;
     const teamList = await fetchTeamsByYear(newYear);
     teamOptionsPerSeason.value[index] = teamList;
-    form.value.seasons[index].team_id = null; // 팀 초기화
+
+    const isExistingTeamInNewList = teamList.some(team => team.id === currentTeamId);
+    if (!isExistingTeamInNewList) {
+        form.value.seasons[index].team_id = null;
+    }
+
+    form.value.seasons[index].start_date = getFirstDayOfYear(newYear);
+    form.value.seasons[index].end_date = getLastDayOfYear(newYear);
 };
 
 const submitForm = async () => {
