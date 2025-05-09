@@ -1,168 +1,202 @@
 <template>
     <v-container>
         <v-card class="pa-4 mx-auto">
-            <v-card-title class="text-h6 mb-4">
+            <v-card-title class="text-h6 mb-4 font-weight-bold">
                 {{ isEditMode ? '선수 정보 수정' : '선수 정보 등록' }}
             </v-card-title>
 
             <v-card-text>
                 <v-form @submit.prevent="submitForm" ref="formRef" v-model="formValid">
-                    <!-- 기본 정보 입력 -->
-                    <v-text-field
-                        v-model="form.name"
-                        label="선수 이름"
-                        :rules="[v => !!v || '이름을 입력해주세요.']"
-                        required
-                    />
-                    <CommonDateInput
-                        v-model="form.birth_date"
-                        label="생년월일"
-                        :max="today"
-                        :rules="[v => !!v || '생년월일을 입력해주세요.']"
-                        :required="true"
-                    />
-
-                    <v-select
-                        v-model="form.player_type"
-                        label="선수 유형"
-                        :items="[
-                            { label: '타자', value: 'B' }, 
-                            { label: '투수', value: 'P' }
-                        ]"
-                        item-title="label"
-                        item-value="value"
-                        :rules="[v => !!v || '선수 유형을 선택해주세요.']"
-                        required
-                    />
-                    <v-select
-                        v-model="form.primary_position"
-                        :items="filteredPositions"
-                        label="주 포지션"
-                        item-title="name"
-                        item-value="code"
-                    />
-
-                    <v-text-field
-                        v-model="form.draft_info"
-                        label="드래프트 정보"
-                    />
-                    <v-select
-                        v-model="form.throwing_hand"
-                        label="던지는 팔"
-                        :items="[
-                            { label: '좌투', value: 'L' },
-                            { label: '우투', value: 'R' },
-                            { label: '양투', value: 'B' }
-                        ]"
-                        item-title="label"
-                        item-value="value"
-                    />
-                    <v-select
-                        v-model="form.batting_hand"
-                        label="치는 팔"
-                        :items="[
-                            { label: '좌타', value: 'L' },
-                            { label: '우타', value: 'R' },
-                            { label: '양타', value: 'B' }
-                        ]"
-                        item-title="label"
-                        item-value="value"
-                    />
-                    <v-text-field
-                        v-model="form.height"
-                        label="신장 (cm)"
-                        type="number"
-                    />
-                    <v-text-field
-                        v-model="form.weight"
-                        label="체중 (kg)"
-                        type="number"
-                    />
-                    <v-text-field
-                        v-model="form.contract_bonus"
-                        label="입단 계약금 (원)"
-                        type="number"
-                    />
-                    <v-checkbox
-                        v-model="form.is_retired"
-                        label="은퇴 여부"
-                    />
-                    <v-checkbox
-                        v-model="form.is_foreign"
-                        label="외국인 선수 여부"
-                    />
-
-                    <!-- 이력 목록 -->
-                    <v-divider class="my-4" />
-                    <v-row class="align-center mb-2">
-                        <v-col cols="6">
-                            <span class="text-subtitle-1 font-weight-medium">선수 이력</span>
+                    <!-- 🔹 선수 기본 정보 -->
+                    <v-row no-gutters>
+                        <v-col cols="12" class="mb-4">
+                            <span class="text-h6">선수 기본 정보</span>
                         </v-col>
-                        <v-col cols="6" class="text-right">
-                            <v-btn color="primary" class="mb-2" @click="addSeason">이력 추가</v-btn>
-                        </v-col>
-                    </v-row>        
-                    <v-row
-                        v-for="(season, index) in form.seasons"
-                        :key="index"
-                        class="d-flex flex-wrap"
-                    >
-                        <v-col cols="12" md="2">
-                            <v-select
-                                v-model="season.year"
-                                :items="yearOptions"
-                                label="연도"
-                                :rules="[v => !!v || '연도 입력은 필수입니다.']"
+                        <v-col cols="12" md="6" class="pa-2">
+                            <v-text-field
+                                v-model="form.name"
+                                label="선수 이름"
+                                :rules="[v => !!v || '이름을 입력해주세요.']"
                                 required
-                                @update:model-value="updateSeasonYear(index, season.year)"
+                            />
+                        </v-col>
+                        <v-col cols="12" md="6" class="pa-2">
+                            <CommonDateInput
+                                v-model="form.birth_date"
+                                label="생년월일"
+                                :max="today"
+                                :rules="[v => !!v || '생년월일을 입력해주세요.']"
+                                :required="true"
+                            />
+                        </v-col>
+                        <v-col cols="12" md="6" class="pa-2">
+                            <v-select
+                                v-model="form.player_type"
+                                label="선수 유형"
+                                :items="[ { label: '타자', value: 'B' }, { label: '투수', value: 'P' } ]"
+                                item-title="label"
+                                item-value="value"
+                                :rules="[v => !!v || '선수 유형을 선택해주세요.']"
+                                required
+                            />
+                        </v-col>
+                        <v-col cols="12" md="6" class="pa-2">
+                            <v-select
+                                v-model="form.primary_position"
+                                :items="filteredPositions"
+                                label="주 포지션"
+                                item-title="name"
+                                item-value="code"
+                            />
+                        </v-col>
+                    </v-row>
+
+                    <v-divider class="my-4" />
+
+                    <!-- 🔹 신체 정보 -->
+                    <v-row no-gutters>
+                        <v-col cols="12" class="mb-4">
+                            <span class="text-h6">신체 정보</span>
+                        </v-col>
+                        <v-col cols="12" md="6" class="pa-2">
+                            <v-text-field
+                                v-model="form.height"
+                                label="신장 (cm)"
+                                type="number"
+                            />
+                        </v-col>
+                        <v-col cols="12" md="6" class="pa-2">
+                            <v-text-field
+                                v-model="form.weight"
+                                label="체중 (kg)"
+                                type="number"
+                            />
+                        </v-col>
+                        <v-col cols="12" md="6" class="pa-2">
+                            <v-select
+                                v-model="form.throwing_hand"
+                                label="던지는 팔"
+                                :items="[ { label: '좌투', value: 'L' }, { label: '우투', value: 'R' }, { label: '양투', value: 'B' } ]"
+                                item-title="label"
+                                item-value="value"
+                            />
+                        </v-col>
+                        <v-col cols="12" md="6" class="pa-2">
+                            <v-select
+                                v-model="form.batting_hand"
+                                label="치는 팔"
+                                :items="[ { label: '좌타', value: 'L' }, { label: '우타', value: 'R' }, { label: '양타', value: 'B' } ]"
+                                item-title="label"
+                                item-value="value"
+                            />
+                        </v-col>
+                    </v-row>
+
+                    <v-divider class="my-4" />
+
+                    <!-- 🔹 계약 정보 -->
+                    <v-row no-gutters>
+                        <v-col cols="12" class="mb-4">
+                            <span class="text-h6">계약 정보</span>
+                        </v-col>
+                        <v-col cols="12" md="6" class="pa-2">
+                            <v-text-field
+                                v-model="form.draft_info"
+                                label="드래프트 정보"
+                            />
+                        </v-col>
+                        <v-col cols="12" md="6" class="pa-2">
+                            <v-text-field
+                                v-model="form.contract_bonus"
+                                label="입단 계약금 (만원)"
+                                type="number"
                             />
                         </v-col>
                         <v-col cols="12" md="3">
-                            <v-select
-                                v-model="season.team_id"
-                                label="팀"
-                                :items="teamOptionsPerSeason[index] || []"
-                                item-title="name"
-                                item-value="id"
-                                :rules="[v => !!v || '팀 선택은 필수입니다.']"
-                                required
-                            />
-                        </v-col>
-                        <v-col cols="12" md="2">
-                            <v-select
-                                v-model="season.position"
-                                :items="filteredPositions"
-                                label="포지션"
-                                multiple
-                                chips
-                                item-title="name"
-                                item-value="code"
-                                required
-                                :rules="[v => !!v || '포지션 선택은 필수입니다.']"
-                            />
-                        </v-col>
-                        <v-col cols="12" md="2">
-                            <v-text-field
-                                v-model="season.uniform_number"
-                                label="등번호"
-                                type="number"
-                                required
-                                :rules="[v => !!v || '등번호 입력은 필수입니다.']"
-                            />
-                        </v-col>
-                        <v-col cols="6" md="2">
                             <v-checkbox
-                                v-model="season.is_active"
-                                label="활동"
+                                v-model="form.is_retired"
+                                label="은퇴 여부"
                             />
                         </v-col>
-                        <v-col cols="6" md="1" class="d-flex justify-end">
-                            <v-btn icon color="error" @click="removeSeason(index)">
-                                <v-icon>mdi-delete</v-icon>
-                            </v-btn>
+                        <v-col cols="12" md="3">
+                            <v-checkbox
+                                v-model="form.is_foreign"
+                                label="외국인 선수 여부"
+                            />
                         </v-col>
-                        <v-divider class="mb-8"></v-divider>
                     </v-row>
+
+                    <v-divider class="my-4" />
+
+                    <!-- 🔹 선수 이력 -->
+                    <v-container>
+                        <v-row class="align-center mb-4">
+                            <v-col cols="6">
+                                <span class="text-h6">선수 이력</span>
+                            </v-col>
+                            <v-col cols="6" class="text-right">
+                                <v-btn color="primary" class="mb-2" @click="addSeason">이력 추가</v-btn>
+                            </v-col>
+                        </v-row>  
+
+                        <v-row
+                            v-for="(season, index) in form.seasons"
+                            :key="index"
+                            no-gutters
+                            class="d-flex flex-wrap"
+                        >
+                            <v-col cols="12" md="2" class="px-2">
+                                <v-select
+                                    v-model="season.year"
+                                    :items="yearOptions"
+                                    label="연도"
+                                    required
+                                />
+                            </v-col>
+                            <v-col cols="12" md="3" class="px-2">
+                                <v-select
+                                    v-model="season.team_id"
+                                    label="팀"
+                                    :items="teamOptionsPerSeason[index] || []"
+                                    item-title="name"
+                                    item-value="id"
+                                    required
+                                />
+                            </v-col>
+                            <v-col cols="12" md="3" class="px-2">
+                                <v-select
+                                    v-model="season.position"
+                                    :items="filteredPositions"
+                                    label="포지션"
+                                    multiple
+                                    chips
+                                    item-title="name"
+                                    item-value="code"
+                                    required
+                                />
+                            </v-col>
+                            <v-col cols="12" md="2" class="px-2">
+                                <v-text-field
+                                    v-model="season.uniform_number"
+                                    label="등번호"
+                                    type="number"
+                                    required
+                                />
+                            </v-col>
+                            <v-col cols="12" md="1" >
+                                <v-checkbox
+                                    v-model="season.is_active"
+                                    label="활동"
+                                />
+                            </v-col>
+                            <v-col cols="12" md="1" class="d-flex justify-end">
+                                <v-btn icon color="error" @click="removeSeason(index)">
+                                    <v-icon>mdi-delete</v-icon>
+                                </v-btn>
+                            </v-col>
+                            <v-divider class="my-4"></v-divider>
+                        </v-row>
+                    </v-container>
                 </v-form>
             </v-card-text>
 
