@@ -209,8 +209,8 @@
                     <template #item.player_type="{ item }">
                         {{ item.player_type==="B"?"타자":"투수" }}
                     </template>
-                    <template #item.is_foreigner="{ item }">
-                        {{ item.is_foreigner ? '외국인' : '국내' }}
+                    <template #item.is_foreign="{ item }">
+                        {{ item.is_foreign ? '외국인' : '국내' }}
                     </template>
                     <template #item.active_years="{ item }">
                         {{ item.active_years ? item.active_years : '-' }}
@@ -248,7 +248,7 @@
                                 <div><strong>등번호:</strong> {{ item.last_uniform_number || '-' }}</div>
                                 <div><strong>생년월일:</strong> {{ item.birth_date || '-' }}</div>
                                 <div><strong>유형:</strong> {{ item.player_type==="B"?"타자":"투수" }}</div>
-                                <div><strong>외국인:</strong> {{ item.is_foreigner ? '외국인' : '국내' }}</div>
+                                <div><strong>외국인:</strong> {{ item.is_foreign ? '외국인' : '국내' }}</div>
                                 <div><strong>활동 연도:</strong> {{ item.active_years ? item.active_years.join(', ') : '-' }}</div>
                                 <div><strong>활동 여부:</strong> {{ item.is_retired ? '은퇴' : '현역' }}</div>
                             </div>
@@ -311,7 +311,7 @@ const headers = [
     { title: '유형', value: 'player_type', align: 'center' },
     { title: '소속팀', value: 'team_name', align: 'center' },
     { title: '등번호', value: 'last_uniform_number', align: 'center' },
-    { title: '외국인', value: 'is_foreigner', align: 'center' }, // 외국인 선수 여부 컬럼 추가
+    { title: '외국인', value: 'is_foreign', align: 'center' }, // 외국인 선수 여부 컬럼 추가
     { title: '활동 연도', value: 'active_years', align: 'center' }, // 활동 연도 컬럼 추가
     { title: '활동여부', value: 'is_retired', align: 'center' },
 ];

@@ -82,7 +82,7 @@ export const getKboPlayerList = async (req, res) => {
             const isForeignerBoolList = isForeignerList.split(',').map(foreign => foreign === 'true');
             queryParams.push(...isForeignerBoolList);
             const foreignerPlaceholders = isForeignerBoolList.map((_, idx) => `$${queryParams.length - isForeignerBoolList.length + idx + 1}`);
-            whereClauses.push(`kpm.is_foreigner IN (${foreignerPlaceholders.join(', ')})`);
+            whereClauses.push(`kpm.is_foreign IN (${foreignerPlaceholders.join(', ')})`);
         }
 
         const whereClause = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
@@ -111,7 +111,7 @@ export const getKboPlayerList = async (req, res) => {
                     FILTER (WHERE ktm.name IS NOT NULL), ''
                 ) AS team_name,
                 kpm.is_retired,
-                kpm.is_foreigner,
+                kpm.is_foreign,
                 COALESCE(
                     (
                         SELECT kps.uniform_number
