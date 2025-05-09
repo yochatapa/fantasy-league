@@ -54,6 +54,25 @@
 
                     <v-row no-gutters>
                         <v-col cols="12" class="mb-4">
+                            <span class="text-h6">프로필 이미지</span>
+                        </v-col>
+                        <v-col cols="12" class="pa-2">
+                            <FileUploader
+                                ref="mainImageUploader"
+                                v-model="form.main_profile_image"
+                                label="대표 이미지"
+                                accept="image/*"
+                                :multiple="false"
+                                type="image"
+                                :initial-files="initialMainProfileImage ? initialMainProfileImage : []"
+                            />
+                        </v-col>
+                    </v-row>
+
+                    <v-divider class="my-4" />
+
+                    <v-row no-gutters>
+                        <v-col cols="12" class="mb-4">
                             <span class="text-h6">신체 정보</span>
                         </v-col>
                         <v-col cols="12" md="6" class="pa-2">
@@ -230,6 +249,17 @@
                                     <v-icon>mdi-delete</v-icon>
                                 </v-btn>
                             </v-col>
+                            <v-col cols="12" class="pa-2">
+                                <FileUploader
+                                    ref="seasonImageUploader"
+                                    v-model="season.profile_image"
+                                    label="시즌 이미지"
+                                    accept="image/*"
+                                    :multiple="false"
+                                    type="image"
+                                    :initial-files="initialSeasonImages[index] ? initialSeasonImages[index] : []"
+                                />
+                            </v-col>
                             <v-divider class="my-4"></v-divider>
                         </v-row>
                     </v-container>
@@ -245,7 +275,7 @@
         </v-card>
     </v-container>
 </template>
-
+    
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -253,6 +283,7 @@ import CommonDateInput from '@/components/common/CommonDateInput.vue';
 import { commonFetch } from '@/utils/common/commonFetch';
 import { formatDate } from '@/utils/common/dateUtils.js';
 import { POSITIONS } from '@/utils/code/code.js';
+import FileUploader from '@/components/common/FileUploader.vue'; // FileUploader 컴포넌트 import
 
 const route = useRoute();
 const router = useRouter();
@@ -262,6 +293,9 @@ const formValid = ref(false);
 const playerId = computed(() => route.query.playerId);
 const isEditMode = computed(() => !!playerId.value);
 const isInitialLoad = ref(true);
+
+const mainImageUploader = ref(null);
+const seasonImageUploader = ref(null);
 
 // 연도 옵션: 1982년부터 현재 연도까지
 const birthDateInput = ref('');
@@ -284,8 +318,12 @@ const form = ref({
     weight: null,
     contract_bonus: null,
     is_foreign: false,
+    main_profile_image: null, // 대표 이미지 데이터 저장
     seasons: [],
 });
+
+const initialMainProfileImage = ref(null);
+const initialSeasonImages = ref([]);
 
 const getFirstDayOfYear = (year) => {
     return `${year}-01-01`;
@@ -313,20 +351,6 @@ const seasonStartEndDateOptions = computed(() => {
 watch(() => form.value.birth_date, (newVal) => {
     birthDateInput.value = formatDate(newVal);
 });
-
-const handleBirthDateBlur = () => {
-    const digits = birthDateInput.value.replace(/[^\d]/g, '');
-    if (digits.length === 8) {
-        const yyyy = digits.slice(0, 4);
-        const mm = digits.slice(4, 6);
-        const dd = digits.slice(6, 8);
-        form.value.birth_date = `${yyyy}-${mm}-${dd}`;
-    } else {
-        // 값이 불완전하면 form과 input 모두 초기화
-        form.value.birth_date = '';
-        birthDateInput.value = '';
-    }
-};
 
 const filteredPositions = computed(() => {
     if (form.value.player_type === 'P') {
@@ -373,16 +397,27 @@ const fetchAllTeamOptionsForSeasons = async () => {
 const fetchPlayer = async () => {
     const res = await commonFetch(`/api/admin/player/${encodeURIComponent(playerId.value)}`, { method: 'GET' });
     if (res.success) {
-        const { playerInfo, seasons } = res.data;
-        // 수정 모드일 때는 기존 seasons 데이터에 'U' 플래그를 설정
+        const { playerInfo, seasons, mainProfileImage, seasonImages } = res.data;
         form.value = {
             ...playerInfo,
-            seasons: seasons.map(season => ({ 
-                ...season
-                , flag: 'U'
+            main_profile_image: mainProfileImage ? [mainProfileImage] : null,
+            seasons: seasons.map((season, index) => ({
+                ...season,
+                flag: 'U',
+                profile_image: seasonImages?.[index] ? [seasonImages?.[index]] : null,
             })),
-            
         };
+
+        if(playerInfo.file_id)
+            initialMainProfileImage.value = [{
+                    file_id             : playerInfo.file_id
+                    , sn                : playerInfo.sn
+                    , original_name     : playerInfo.original_name
+                    , size              : playerInfo.size
+                    , path              : playerInfo.path
+                    , mimetype          : playerInfo.mimetype
+                }]
+        initialSeasonImages.value = seasons.map((_, index) => seasonImages?.[index] ? [seasonImages?.[index]] : null);
         await fetchAllTeamOptionsForSeasons();
     }
 };
@@ -405,42 +440,42 @@ const addSeason = async () => {
         salary: null,
         start_date: getFirstDayOfYear(year),
         end_date: getLastDayOfYear(year),
-        flag: 'I', // 새로 추가된 데이터는 'I' 플래그 설정
+        flag: 'I',
+        profile_image: null,
     };
     form.value.seasons.push(newSeason);
 
-    // 새로운 시즌에 대한 팀 옵션도 추가
     const teamList = await fetchTeamsByYear(newSeason.year);
     teamOptionsPerSeason.value.push(teamList);
+    initialSeasonImages.value.push(null);
 };
 
 const removeSeason = (index) => {
-    // 수정 모드일 때는 삭제되는 데이터에 'D' 플래그를 설정
     if (isEditMode.value && form.value.seasons[index]?.id) {
         if (form.value.seasons[index]?.flag === "I") {
             form.value.seasons.splice(index, 1);
             teamOptionsPerSeason.value.splice(index, 1);
+            initialSeasonImages.value.splice(index, 1);
         } else {
             form.value.seasons[index].flag = 'D';
         }
     } else {
-        // 등록 모드에서는 그냥 배열에서 제거
         form.value.seasons.splice(index, 1);
         teamOptionsPerSeason.value.splice(index, 1);
+        initialSeasonImages.value.splice(index, 1);
     }
 };
 
 watch(
-    () => form.value.seasons.map(season => season.year), // 각 시즌의 year를 감시
+    () => form.value.seasons.map(season => season.year),
     (newYears, oldYears) => {
         newYears.forEach((newYear, index) => {
-        if (newYear !== oldYears[index]) {
-            // 해당 인덱스의 연도가 변경되었을 때 updateSeasonYear 로직 실행
-            updateSeasonDetails(index, newYear);
-        }
+            if (newYear !== oldYears[index]) {
+                updateSeasonDetails(index, newYear);
+            }
         });
     },
-    { deep: true } // 배열 내부의 변경을 감지하기 위해 deep 옵션 사용
+    { deep: true }
 );
 
 const updateSeasonDetails = async (index, newYear) => {
@@ -463,21 +498,45 @@ const updateSeasonDetails = async (index, newYear) => {
 
 const submitForm = async () => {
     if (!formRef.value?.validate()) return;
-    form.value.birth_date = formatDate(form.value.birth_date);
 
-    // 등록 모드일 때는 모든 seasons 데이터에 'I' 플래그 설정
-    if (!isEditMode.value) {
-        form.value.seasons = form.value.seasons.map(season => ({ ...season, flag: 'I' }));
-    }
+    const formData = new FormData();
 
-    // 수정 모드에서 제거되지 않은 시즌 데이터에 'U' 플래그가 없으면 'U' 설정 (기존 데이터 수정)
-    if (isEditMode.value) {
-        form.value.seasons = form.value.seasons.map(season => {
-            if (season.flag !== 'D' && !season.flag) {
-                return { ...season, flag: 'U' };
+    // 기본 폼 데이터 추가
+    for (const key in form.value) {
+        if (key === 'main_profile_image') {
+            // 대표 이미지가 있으면 FormData에 추가
+            form.value.main_profile_image = mainImageUploader.value?.getNewFiles()[0] || form.value.main_profile_image?.[0]
+            if (form.value.main_profile_image) {
+                formData.append('main_profile_image', form.value.main_profile_image);
             }
-            return season;
-        });
+        } else if (key === 'seasons') {
+            form.value.seasons.forEach((season, index) => {
+                /*const uploader = seasonImageUploaders.value[index]; // index별로 참조 (수정된 ref 사용)
+                const newSeasonFiles = uploader?.getNewFiles();
+
+                // 파일 데이터 추가
+                if (newSeasonFiles && newSeasonFiles.length > 0) {
+                    formData.append(`seasons[${index}][profile_image]`, newSeasonFiles[0]);
+                } else if (season.profile_image && typeof season.profile_image[0] !== 'string' && season.profile_image[0] instanceof File) {
+                    formData.append(`seasons[${index}][profile_image]`, season.profile_image[0]);
+                }*/
+
+                // 일반 시즌 데이터 추가
+                for (const key in season) {
+                    if(key === "position"){
+                        season[key].forEach((pos,idx)=>{
+                            formData.append(`seasons[${index}][position][${idx}]`, pos ?? '');
+                        })
+                    }else if(key === "start_date" || key === "end_date"){
+                        formData.append(`seasons[${index}][${key}]`, formatDate(season[key]) ?? '');
+                    }else if (key !== 'profile_image') { // profile_image는 이미 처리했으므로 건너뜁니다.
+                        formData.append(`seasons[${index}][${key}]`, season[key] ?? '');
+                    }
+                }
+            });
+        } else {
+            formData.append(key, form.value[key] ?? '');
+        }
     }
 
     const method = isEditMode.value ? 'PUT' : 'POST';
@@ -488,8 +547,7 @@ const submitForm = async () => {
     try {
         const res = await commonFetch(url, {
             method,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(form.value),
+            body: formData,
         });
 
         if (res.success) {
@@ -498,8 +556,8 @@ const submitForm = async () => {
         } else {
             alert(res.message || '저장 실패', 'error');
         }
-    } catch {
-        alert('서버 오류가 발생했습니다.', 'error');
+    } catch (err) {
+        alert('서버에서 에러가 발생하였습니다.\n다시 시도해주세요.', 'error');
     }
 };
 </script>

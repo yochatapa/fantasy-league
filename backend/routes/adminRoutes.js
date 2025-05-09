@@ -17,6 +17,6 @@ router.get('/team/:teamId', verifyToken, verifyAdmin, getKboTeamDetail);
 router.get('/player/list', verifyToken, verifyAdmin, /*handleUpload([{name : "newFiles"}]),*/ getKboPlayerList);
 router.get('/player/:playerId', verifyToken, verifyAdmin, getKboPlayerDetail);
 router.post('/player/create', verifyToken, verifyAdmin, /*handleUpload([{name : "newFiles"}]),*/ createKboPlayer);
-router.put('/player/update/:playerId', verifyToken, verifyAdmin, /*handleUpload([{name : "newFiles"}]),*/ updateKboPlayer);
+router.put('/player/update/:playerId', verifyToken, verifyAdmin, handleUpload([{name : "main_profile_image"}]), updateKboPlayer);
 // router.delete('/player/delete', verifyToken, verifyAdmin, deleteKboTeam);
 export default router;
