@@ -101,26 +101,30 @@ export const getKboTeamList = async (req, res) => {
 
 
 export const createKboTeam = async (req, res) => {
-    const { name, code, founding_year, logo_url, status, disband_year } = req.body;
+    const { 
+        name, code, founding_year, status, disband_year, logo
+    } = req.body;
 
-    const uploadedFilesInfo = req.filesInfo;
-    
-    const teamLogoInfo = uploadedFilesInfo?.filter(f => f.fieldName === 'newFiles');
+    const { newFiles = [], deletedFiles = [] } = logo;
 
-    const accessToken = req.headers['authorization']?.split(' ')[1];  // 'Bearer <token>' 형식에서 토큰 추출
-    
-    if(!accessToken){
+    const accessToken = req.headers['authorization']?.split(' ')[1];
+
+    if (!accessToken) {
         return sendBadRequest(res, '토큰이 제공되지 않았습니다.');
     }
 
-    const user = jwt.verify(accessToken, process.env.JWT_SECRET);
+    let user;
+    try {
+        user = jwt.verify(accessToken, process.env.JWT_SECRET);
+    } catch (err) {
+        return sendBadRequest(res, '유효하지 않은 토큰입니다.');
+    }
 
-    // 필수값 확인
+    // 필수값 검증
     if (!name || !code || !founding_year || !status) {
         return sendBadRequest(res, "필수 입력값을 모두 입력해주세요.");
     }
 
-    // status 값 유효성 확인
     const validStatuses = ['active', 'inactive'];
     if (!validStatuses.includes(status)) {
         return sendBadRequest(res, "status 값이 올바르지 않습니다.");
@@ -128,145 +132,113 @@ export const createKboTeam = async (req, res) => {
 
     try {
         await withTransaction(async (client) => {
-            // 중복 코드 확인
-            const { rows: existing } = await client.query(
-                'SELECT 1 FROM kbo_team_master WHERE code = $1',
-                [code]
-            );
-            if (existing.length > 0) {
-                throw new Error("-1");
-            }
-
-            // INSERT 쿼리 실행
+            // 1️⃣ 팀 마스터 테이블 저장
             const insertQuery = `
-                INSERT INTO kbo_team_master (name, code, founding_year, logo_url, status, disband_year)
-                VALUES ($1, $2, $3, $4, $5, $6)
-                RETURNING *
+                INSERT INTO kbo_team_master (name, code, founding_year, status, disband_year, created_at)
+                VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+                RETURNING id
             `;
-            const values = [name, code, founding_year, logo_url || null, status, disband_year || null];
+            const { rows } = await client.query(insertQuery, [
+                name, code, founding_year, status, disband_year || null
+            ]);
 
-            const { rows } = await client.query(insertQuery, values);
+            const teamId = rows[0].id;
 
-            const teamId = rows[0].id
+            // 2️⃣ [Insert 처리] main_profile_image의 newFiles 처리
+            if (newFiles.length > 0) {
+                for (const newFile of newFiles) {
+                    const userSpecificUploadDir = path.join(finalUploadsBaseDir, 'kboTeam', teamId.toString(), 'logo');
 
-            /* file 처리 */
-            let finalFileSavedInfo = null; // saveUploadedFile 함수가 반환할 최종 파일 정보
-            let finalFileUrlForDB = null; // DB file_path 컬럼에 저장할 경로/URL
-            
-            if (teamLogoInfo && teamId !== null) { // 파일이 업로드되었고 유저 ID 발급된 경우
-                // 1. uuid file_id 생성
-                const generatedFileId = uuidv4();
-                const userSpecificUploadDir = path.join(finalUploadsBaseDir, 'kboTeam', teamId.toString(), 'logo');
+                    const finalFileSavedInfo = await saveUploadedFile({
+                        originalName: newFile.originalName,
+                        filename: newFile.filename,
+                        path: newFile.path,
+                        size: newFile.size,
+                        mimetype: newFile.mimetype
+                    }, userSpecificUploadDir);
 
-                for(let idx=0;idx<teamLogoInfo.length;idx++){
-                    // saveUploadedFile 함수를 호출하여 파일 복사
-                    finalFileSavedInfo = await saveUploadedFile(teamLogoInfo[idx], userSpecificUploadDir);
-                    console.log('파일 복사 완료 :', finalFileSavedInfo);
+                    const finalFileUrlForDB = path.join(
+                        'uploads',
+                        'kboTeam',
+                        teamId.toString(),
+                        'logo',
+                        finalFileSavedInfo.finalFileName
+                    );
 
-                    // DB에 저장할 파일 경로/URL 구성 (예: 프로젝트 루트 기준 상대 경로)
-                    finalFileUrlForDB = path.join('uploads', 'kboTeam', teamId.toString(), 'logo', finalFileSavedInfo.finalFileName);                    
+                    const mainProfileFileId = uuidv4();
 
-                    // 2. 파일 정보 DB 저장 쿼리 실행
-                    const insertFileQuery = `
+                    const maxSn = await client.query(
+                        "SELECT COALESCE(max(sn),0) as sn FROM file_table WHERE file_id = $1",
+                        [mainProfileFileId]
+                    );
+
+                    await client.query(`
                         INSERT INTO file_table (
                             file_id, sn, original_name, unique_name,
                             mimetype, size, path, category, uploaded_by
                         ) VALUES (
                             $1, $2, $3, $4, $5, $6, $7, $8, $9
                         )
-                    `;
-
-                    await client.query(insertFileQuery, [
-                        generatedFileId, // uuid
-                        idx+1,
-                        teamLogoInfo[idx].originalName,
+                    `, [
+                        mainProfileFileId,
+                        maxSn.rows[0].sn + 1,
+                        newFile.originalName,
                         finalFileSavedInfo.finalFileName,
-                        teamLogoInfo[idx].mimetype,
-                        teamLogoInfo[idx].size,
+                        newFile.mimetype,
+                        newFile.size,
                         finalFileUrlForDB,
                         'kboTeamLogo',
                         user.user_id
-                    ]);                    
+                    ]);
+
+                    // kbo_team_master 테이블에 logo_url 업데이트 (file_id 저장)
+                    await client.query(`
+                        UPDATE kbo_team_master
+                        SET logo_url = $1
+                        WHERE id = $2
+                    `, [mainProfileFileId, teamId]);
                 }
-                
-                // 3. user_master 테이블에 profile_image 컬럼 업데이트
-                const updateUserQuery = `
-                    UPDATE kbo_team_master
-                    SET 
-                        logo_url = $1
-                        , updated_at = CURRENT_TIMESTAMP
-                    WHERE id = $2
-                `;
-
-                await client.query(updateUserQuery, [
-                    generatedFileId, // profile_image는 uuid
-                    teamId,
-                ]);
-
-            } else {
-                // 파일이 업로드되지 않은 경우
-                console.log("No Kbo Team Logo Uploaded.");
             }
 
-            const rowNumerQuery = `
-                SELECT row_number
-                FROM (
-                    SELECT 
-                        id,
-                        ROW_NUMBER() OVER (ORDER BY status, founding_year, disband_year, id) AS row_number
-                    FROM public.kbo_team_master
-                ) AS ordered_teams
-                WHERE id = $1`
-
-            const rowNumber = await client.query(rowNumerQuery, [teamId]);
-            
-            const page = Math.ceil(rowNumber.rows[0].row_number/10)
-
-            return sendSuccess(res,{
-                message : "팀이 성공적으로 생성되었습니다.",
-                teamId,
-                page
+            // 팀 생성 완료 후 반환
+            return sendSuccess(res, {
+                message: "팀이 성공적으로 생성되었습니다.",
+                teamId
             });
         });
     } catch (error) {
         let errorMessage;
-        switch(error.message){
-            case "-1" : errorMessage = "이미 존재하는 팀 코드입니다."; break;
+        switch (error.message) {
+            case "-1": errorMessage = "이미 존재하는 팀 코드입니다."; break;
         }
-        return sendServerError(res, error, errorMessage??"팀 생성 중 오류가 발생했습니다. 다시 시도해주세요.");
+        return sendServerError(res, error, errorMessage ?? "팀 생성 중 오류가 발생했습니다. 다시 시도해주세요.");
     }
 };
 
-export const updateKboTeam = async (req, res) => {
-    const { name, code, founding_year, status, disband_year } = req.body;
-    let { deletedFiles } = req.body;
 
+
+export const updateKboTeam = async (req, res) => {
+    const { name, code, founding_year, status, disband_year, logo } = req.body;
+    const { newFiles = [], deletedFiles = [] } = logo;
     let { teamId } = req.params;
 
-    const uploadedFilesInfo = req.filesInfo;
-    
-    const teamLogoInfo = uploadedFilesInfo?.filter(f => f.fieldName === 'newFiles');
+    const accessToken = req.headers['authorization']?.split(' ')[1];
 
-    const accessToken = req.headers['authorization']?.split(' ')[1];  // 'Bearer <token>' 형식에서 토큰 추출
-    
-    if(!accessToken){
+    if (!accessToken) {
         return sendBadRequest(res, '토큰이 제공되지 않았습니다.');
     }
 
     const user = jwt.verify(accessToken, process.env.JWT_SECRET);
-    
-    teamId = decryptData(teamId)
+    teamId = decryptData(teamId);
 
-    if(!teamId){
+    if (!teamId) {
         return sendBadRequest(res, "팀 정보가 잘못되었습니다.");
     }
 
-    // 필수값 확인
-    if (!teamId || !name || !code || !founding_year || !status) {
+    if (!name || !code || !founding_year || !status) {
         return sendBadRequest(res, "필수 입력값을 모두 입력해주세요.");
     }
 
-    // status 값 유효성 확인
     const validStatuses = ['active', 'inactive'];
     if (!validStatuses.includes(status)) {
         return sendBadRequest(res, "status 값이 올바르지 않습니다.");
@@ -274,136 +246,120 @@ export const updateKboTeam = async (req, res) => {
 
     try {
         await withTransaction(async (client) => {
-            // 중복 코드 확인
             const { rows: existing } = await client.query(
                 'SELECT id, logo_url FROM kbo_team_master WHERE code = $1',
                 [code]
             );
-            
-            if (existing.length > 0 && existing.find((row)=>row.id !== teamId)) {
+
+            if (existing.length > 0 && existing.find((row) => row.id !== teamId)) {
                 throw new Error("-1");
             }
 
-            // UPDATE 쿼리 실행
+            const { rows: rows } = await client.query(
+                'SELECT id, logo_url FROM kbo_team_master WHERE id = $1',
+                [teamId]
+            );
+
+            console.log("rows",rows)
+
             const updateQuery = `
                 UPDATE kbo_team_master SET
-                    name = $2
-                    , code = $3
-                    , founding_year = $4
-                    , status = $5
-                    , disband_year = $6
-                where id = $1
+                    name = $2,
+                    code = $3,
+                    founding_year = $4,
+                    status = $5,
+                    disband_year = $6
+                WHERE id = $1
             `;
             const params = [teamId, name, code, founding_year, status, disband_year || null];
-
-            if(deletedFiles){
-                deletedFiles = JSON.parse(deletedFiles);
-
-                deletedFiles.forEach(async deletedFile => {
-                    // 파일 삭제
-                    const filePath = await client.query("SELECT path FROM file_table WHERE file_id = $1 and sn = $2",[deletedFile.file_id,deletedFile.sn])
-                    
-                    if(filePath.rows[0]){
-                        await deleteFile(filePath.rows[0].path)
-
-                        const deletedFilesQuery = "DELETE FROM file_table WHERE file_id = $1 and sn = $2";
-
-                        await client.query(deletedFilesQuery,[deletedFile.file_id,deletedFile.sn])
-                    }
-                });                
-            }
-            
             await client.query(updateQuery, params);
 
-            /* file 처리 */
-            let finalFileSavedInfo = null; // saveUploadedFile 함수가 반환할 최종 파일 정보
-            let finalFileUrlForDB = null; // DB file_path 컬럼에 저장할 경로/URL
-            console.log("logo_url",existing[0].logo_url)
-            const generatedFileId = existing[0].logo_url??uuidv4();
-
-            if (teamLogoInfo && teamId !== null) { // 파일이 업로드되었고 유저 ID 발급된 경우
-                // 1. uuid file_id 생성
-                
+            /* 🔹 logo 파일 처리 */
+            if (logo) {
+                const generatedFileId = rows[0].logo_url ?? uuidv4();
                 const userSpecificUploadDir = path.join(finalUploadsBaseDir, 'kboTeam', teamId.toString(), 'logo');
-
-                for(let idx=0;idx<teamLogoInfo.length;idx++){
-                    // saveUploadedFile 함수를 호출하여 파일 복사
-                    finalFileSavedInfo = await saveUploadedFile(teamLogoInfo[idx], userSpecificUploadDir);
-                    console.log('파일 복사 완료 :', finalFileSavedInfo);
-
-                    // DB에 저장할 파일 경로/URL 구성 (예: 프로젝트 루트 기준 상대 경로)
-                    finalFileUrlForDB = path.join('uploads', 'kboTeam', teamId.toString(), 'logo', finalFileSavedInfo.finalFileName);       
+                
+                // [Delete 처리]
+                for (const deletedFile of deletedFiles) {
+                    const { rows: fileRows } = await client.query(
+                        'SELECT path FROM file_table WHERE file_id = $1 and sn = $2',
+                        [deletedFile.file_id, deletedFile.sn]
+                    );
                     
-                    const maxSn = await client.query("SELECT COALESCE(max(sn),0) as sn FROM file_table WHERE file_id = $1",[generatedFileId])
+                    for (const file of fileRows) {
+                        await deleteFile(file.path);
+                    }
 
-                    // 2. 파일 정보 DB 저장 쿼리 실행
-                    const insertFileQuery = `
-                        INSERT INTO file_table (
+                    await client.query(
+                        'DELETE FROM file_table WHERE file_id = $1 and sn = $2',
+                        [deletedFile.file_id, deletedFile.sn]
+                    );
+                }
+                
+                // [Insert 처리]
+                for (const newFile of newFiles) {
+                    console.log(newFile)
+                    const finalFileSavedInfo = await saveUploadedFile({
+                        originalName: newFile.originalName,
+                        filename: newFile.filename,
+                        path: newFile.path,
+                        size: newFile.size,
+                        mimetype: newFile.mimetype
+                    }, userSpecificUploadDir);
+
+                    const finalFileUrlForDB = path.join(
+                        'uploads',
+                        'kboTeam',
+                        teamId.toString(),
+                        'logo',
+                        finalFileSavedInfo.finalFileName
+                    );
+
+                    const maxSn = await client.query(
+                        "SELECT COALESCE(max(sn),0) as sn FROM file_table WHERE file_id = $1",
+                        [generatedFileId]
+                    );
+
+                    await client.query(
+                        `INSERT INTO file_table (
                             file_id, sn, original_name, unique_name,
                             mimetype, size, path, category, uploaded_by
                         ) VALUES (
                             $1, $2, $3, $4, $5, $6, $7, $8, $9
-                        )
-                    `;
+                        )`,
+                        [
+                            generatedFileId,
+                            maxSn.rows[0].sn + 1,
+                            newFile.originalName,
+                            finalFileSavedInfo.finalFileName,
+                            newFile.mimetype,
+                            newFile.size,
+                            finalFileUrlForDB,
+                            'kboTeamLogo',
+                            user.user_id
+                        ]
+                    );
+                }
 
-                    await client.query(insertFileQuery, [
-                        generatedFileId, // uuid
-                        maxSn.rows[0].sn+1,
-                        teamLogoInfo[idx].originalName,
-                        finalFileSavedInfo.finalFileName,
-                        teamLogoInfo[idx].mimetype,
-                        teamLogoInfo[idx].size,
-                        finalFileUrlForDB,
-                        'kboTeamLogo',
-                        user.user_id
-                    ]);                    
+                if (!rows[0].logo_url) {
+                    await client.query(`
+                        UPDATE kbo_team_master
+                        SET logo_url = $1, updated_at = CURRENT_TIMESTAMP
+                        WHERE id = $2
+                    `, [generatedFileId, teamId]);
                 }
             }
+        });
 
-            if(!existing.logo_url){
-                // 3. user_master 테이블에 profile_image 컬럼 업데이트
-                const updateUserQuery = `
-                    UPDATE kbo_team_master
-                    SET 
-                        logo_url = $1
-                        , updated_at = CURRENT_TIMESTAMP
-                    WHERE id = $2
-                `;
-
-                await client.query(updateUserQuery, [
-                    generatedFileId, // profile_image는 uuid
-                    teamId,
-                ]);
-            }
-
-            const rowNumerQuery = `
-                SELECT row_number
-                FROM (
-                    SELECT 
-                        id,
-                        ROW_NUMBER() OVER (ORDER BY status, founding_year, disband_year, id) AS row_number
-                    FROM public.kbo_team_master
-                ) AS ordered_teams
-                WHERE id = $1`
-
-            const rowNumber = await client.query(rowNumerQuery, [teamId]);
-            
-            const page = Math.ceil(rowNumber.rows[0].row_number/10)
-
-            return sendSuccess(res, 
-            {
-                message : "팀이 성공적으로 수정되었습니다.",
-                page
-            });
+        return sendSuccess(res, {
+            message: "팀이 성공적으로 수정되었습니다."
         });
     } catch (error) {
-        let errorMessage;
-        switch(error.message){
-            case "-1" : errorMessage = "이미 존재하는 팀 코드입니다."; break;
-        }
-        return sendServerError(res, error, errorMessage??"팀 수정 중 오류가 발생했습니다. 다시 시도해주세요.");
+        const errorMessage = error.message === "-1" ? "이미 존재하는 팀 코드입니다." : "팀 수정 중 오류가 발생했습니다. 다시 시도해주세요.";
+        return sendServerError(res, error, errorMessage);
     }
-}
+};
+
 
 export const getKboTeamDetail = async (req, res) => {
     let { teamId } = req.params;

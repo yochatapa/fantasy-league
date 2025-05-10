@@ -67,7 +67,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { commonFetch } from '@/utils/common/commonFetch';
+import { commonFetch, getNewFormData } from '@/utils/common/commonFetch';
 import FileUploader from '@/components/common/FileUploader.vue';
 
 const route = useRoute();
@@ -141,22 +141,7 @@ onMounted(() => {
 const submitForm = async () => {
     if (!formRef.value?.validate()) return;
 
-    const formData = new FormData();
-
-    for (const key in form.value) {
-        if (form.value[key] !== null && key !== 'logo') {
-            formData.append(key, form.value[key]??'');
-        }
-    }
-
-    const newFiles = fileUploader.value?.getNewFiles() || [];
-    newFiles.forEach(file => {
-        formData.append('newFiles', file);
-    });
-
-    const deletedFiles = fileUploader.value?.getDeletedFiles() || [];
-    formData.append('deletedFiles', JSON.stringify(deletedFiles));
-
+    const formData = getNewFormData(form.value);
     try {
         const res = await commonFetch(
             isEditMode.value
