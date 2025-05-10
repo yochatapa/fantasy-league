@@ -7,8 +7,6 @@ const router = express.Router();
 router.get('/check-nickname', checkNickname);
 router.get('/check-email', checkEmail);
 
-router.post('/signup', handleUpload([{
-    name : "profileImage"
-}]), signup)
+router.post('/signup', handleUpload(), signup)
 
 export default router;

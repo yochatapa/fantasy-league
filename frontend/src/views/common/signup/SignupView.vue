@@ -80,12 +80,13 @@
                             />
 
                             <!-- 프로필 이미지 -->
-                            <v-file-input
+                            <FileUploader
                                 v-model="profileImage"
                                 label="프로필 이미지"
-                                prepend-icon="mdi-camera"
-                                class="mb-2"
                                 accept="image/*"
+                                :multiple="false"
+                                type="image"
+                                class="mb-2"
                             />
 
                             <!-- 프로필 소개글 -->
@@ -127,8 +128,9 @@
 import { ref, computed, watch, nextTick } from 'vue';
 import { KBO_TEAMS } from '@/utils/code/kboTeams';
 import validation from '@/utils/common/validation';
-import { commonFetch } from '@/utils/common/commonFetch';
+import { commonFetch, getNewFormData } from '@/utils/common/commonFetch';
 import { useRouter } from 'vue-router';
+import FileUploader from '@/components/common/FileUploader.vue';
 
 const router = useRouter();
 
@@ -392,16 +394,14 @@ const submitForm = async () => {
     if(nicknameCheckStatus.value === "taken") return alert("비밀번호가 일치하지 않습니다.", "error")
 
     try {
-        const formData = new FormData();
-        formData.append('email', email.value);
-        formData.append('password', password.value);
-        formData.append('nickname', nickname.value);
-        formData.append('profileBio', profileBio.value);
-        formData.append('favoriteTeam', favoriteTeam.value);
-
-        if (profileImage.value) {
-            formData.append('profileImage', profileImage.value);
-        }
+        const formData = getNewFormData({
+            email : email.value
+            , password : password.value
+            , nickname : nickname.value
+            , profileBio : profileBio.value
+            , favoriteTeam : favoriteTeam.value
+            , profileImage : profileImage.value
+        });
 
         const response = await commonFetch(`/api/users/signup`,
             {

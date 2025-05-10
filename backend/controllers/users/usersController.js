@@ -8,11 +8,9 @@ import { v4 as uuidv4 } from 'uuid';
 const finalUploadsBaseDir = path.join(process.cwd(), 'uploads');
 
 export const signup = async (req, res) => {
-    const { email, password, nickname, profileBio, favoriteTeam } = req.body;
+    const { email, password, nickname, profileBio, favoriteTeam, profileImage } = req.body;
 
     // 파일 정보
-    const uploadedFilesInfo = req.filesInfo;
-    const profileImageInfo = uploadedFilesInfo?.find(f => f.fieldName === 'profileImage');
 
     if (!email || !password || !nickname) {
         return sendBadRequest(res, {
@@ -63,56 +61,59 @@ export const signup = async (req, res) => {
             const result = await client.query(insertQuery, values);
             const createdUserId = result.rows[0].user_id;
 
-            let finalFileSavedInfo = null; // saveUploadedFile 함수가 반환할 최종 파일 정보
-            let finalFileUrlForDB = null; // DB file_path 컬럼에 저장할 경로/URL
+            if (profileImage) { // 파일이 업로드되었고 유저 ID 발급된 경우
+                const { newFiles = [] } = profileImage;
 
-            if (profileImageInfo && createdUserId !== null) { // 파일이 업로드되었고 유저 ID 발급된 경우
-                const userSpecificUploadDir = path.join(finalUploadsBaseDir, 'users', createdUserId.toString(), 'profile');
+                if (newFiles.length > 0) {
+                    for (const profileImageFile of newFiles) {
+                        const userSpecificUploadDir = path.join(finalUploadsBaseDir, 'users', createdUserId.toString(), 'profile');
 
-                // saveUploadedFile 함수를 호출하여 파일 복사
-                finalFileSavedInfo = await saveUploadedFile(profileImageInfo, userSpecificUploadDir);
-                console.log('파일 복사 완료 :', finalFileSavedInfo);
+                        const finalFileSavedInfo = await saveUploadedFile({
+                            originalName: profileImageFile.originalName,
+                            filename: profileImageFile.filename,
+                            path: profileImageFile.path,
+                            size: profileImageFile.size,
+                            mimetype: profileImageFile.mimetype
+                        }, userSpecificUploadDir);
 
-                // DB에 저장할 파일 경로/URL 구성 (예: 프로젝트 루트 기준 상대 경로)
-                finalFileUrlForDB = path.join('uploads', 'users', createdUserId.toString(), 'profile', finalFileSavedInfo.finalFileName);
+                        const finalFileUrlForDB = path.join('uploads', 'users', createdUserId.toString(), 'profile', finalFileSavedInfo.finalFileName);
 
+                        const generatedFileId = uuidv4();
 
-                // 1. uuid file_id 생성
-                const generatedFileId = uuidv4();
+                        // 2. 파일 정보 DB 저장 쿼리 실행
+                        const insertFileQuery = `
+                            INSERT INTO file_table (
+                                file_id, sn, original_name, unique_name,
+                                mimetype, size, path, category, uploaded_by
+                            ) VALUES (
+                                $1, 1, $2, $3, $4, $5, $6, $7, $8
+                            )
+                        `;
 
-                // 2. 파일 정보 DB 저장 쿼리 실행
-                const insertFileQuery = `
-                    INSERT INTO file_table (
-                        file_id, sn, original_name, unique_name,
-                        mimetype, size, path, category, uploaded_by
-                    ) VALUES (
-                        $1, 1, $2, $3, $4, $5, $6, $7, $8
-                    )
-                `;
+                        await client.query(insertFileQuery, [
+                            generatedFileId, // uuid
+                            profileImageFile.originalName,
+                            finalFileSavedInfo.finalFileName,
+                            profileImageFile.mimetype,
+                            profileImageFile.size,
+                            finalFileUrlForDB,
+                            'profile',
+                            createdUserId
+                        ]);
 
-                await client.query(insertFileQuery, [
-                    generatedFileId, // uuid
-                    profileImageInfo.originalName,
-                    finalFileSavedInfo.finalFileName,
-                    profileImageInfo.mimetype,
-                    profileImageInfo.size,
-                    finalFileUrlForDB,
-                    'profile',
-                    createdUserId
-                ]);
+                        // 3. user_master 테이블에 profile_image 컬럼 업데이트
+                        const updateUserQuery = `
+                            UPDATE user_master
+                            SET profile_image = $1
+                            WHERE user_id = $2
+                        `;
 
-                // 3. user_master 테이블에 profile_image 컬럼 업데이트
-                const updateUserQuery = `
-                    UPDATE user_master
-                    SET profile_image = $1
-                    WHERE user_id = $2
-                `;
-
-                await client.query(updateUserQuery, [
-                    generatedFileId, // profile_image는 uuid
-                    createdUserId,
-                ]);
-
+                        await client.query(updateUserQuery, [
+                            generatedFileId, // profile_image는 uuid
+                            createdUserId,
+                        ]);
+                    }
+                }
             } else {
                 // 파일이 업로드되지 않은 경우
                 console.log("No profile image uploaded.");
