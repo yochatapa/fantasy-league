@@ -46,6 +46,8 @@
                                 label="주 포지션"
                                 item-title="name"
                                 item-value="code"
+                                :rules="[v => !!v || '주 포지션을 선택해주세요.']"
+                                required
                             />
                         </v-col>
                     </v-row>
@@ -79,14 +81,20 @@
                             <v-text-field
                                 v-model="form.height"
                                 label="신장 (cm)"
-                                type="number"
+                                type="text"
+                                :rules="[v => !!v || '신장을 입력해주세요.', v => /^\d{0,3}$/.test(v) || '최대 3자리 숫자만 입력 가능합니다.']"
+                                @input="form.height = form.height.replace(/[^0-9]/g, '').slice(0, 3)"
+                                required
                             />
                         </v-col>
                         <v-col cols="12" md="6" class="pa-2">
                             <v-text-field
                                 v-model="form.weight"
                                 label="체중 (kg)"
-                                type="number"
+                                type="text"
+                                :rules="[v => !!v || '체중을 입력해주세요.', v => /^\d{0,3}$/.test(v) || '최대 3자리 숫자만 입력 가능합니다.']"
+                                @input="form.weight = form.weight.replace(/[^0-9]/g, '').slice(0, 3)"
+                                required
                             />
                         </v-col>
                         <v-col cols="12" md="6" class="pa-2">
@@ -283,7 +291,7 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import CommonDateInput from '@/components/common/CommonDateInput.vue';
-import { commonFetch } from '@/utils/common/commonFetch';
+import { commonFetch, getNewFormData } from '@/utils/common/commonFetch';
 import { formatDate } from '@/utils/common/dateUtils.js';
 import { POSITIONS } from '@/utils/code/code.js';
 import FileUploader from '@/components/common/FileUploader.vue'; // FileUploader 컴포넌트 import
@@ -502,45 +510,45 @@ const updateSeasonDetails = async (index, newYear) => {
 const submitForm = async () => {
     if (!formRef.value?.validate()) return;
 
-    const formData = new FormData();
+    const formData = getNewFormData(form.value);
 
     // 기본 폼 데이터 추가
-    for (const key in form.value) {
-        if (key === 'main_profile_image') {
-            // 대표 이미지가 있으면 FormData에 추가
-            form.value.main_profile_image = mainImageUploader.value?.getNewFiles()[0] || form.value.main_profile_image?.[0]
-            if (form.value.main_profile_image) {
-                formData.append('main_profile_image', form.value.main_profile_image);
-            }
-        } else if (key === 'seasons') {
-            form.value.seasons.forEach((season, index) => {
-                /*const uploader = seasonImageUploaders.value[index]; // index별로 참조 (수정된 ref 사용)
-                const newSeasonFiles = uploader?.getNewFiles();
+    // for (const key in form.value) {
+    //     if (key === 'main_profile_image') {
+    //         // 대표 이미지가 있으면 FormData에 추가
+    //         form.value.main_profile_image = mainImageUploader.value?.getNewFiles()[0] || form.value.main_profile_image?.[0]
+    //         if (form.value.main_profile_image) {
+    //             formData.append('main_profile_image', form.value.main_profile_image);
+    //         }
+    //     } else if (key === 'seasons') {
+    //         form.value.seasons.forEach((season, index) => {
+    //             /*const uploader = seasonImageUploaders.value[index]; // index별로 참조 (수정된 ref 사용)
+    //             const newSeasonFiles = uploader?.getNewFiles();
 
-                // 파일 데이터 추가
-                if (newSeasonFiles && newSeasonFiles.length > 0) {
-                    formData.append(`seasons[${index}][profile_image]`, newSeasonFiles[0]);
-                } else if (season.profile_image && typeof season.profile_image[0] !== 'string' && season.profile_image[0] instanceof File) {
-                    formData.append(`seasons[${index}][profile_image]`, season.profile_image[0]);
-                }*/
+    //             // 파일 데이터 추가
+    //             if (newSeasonFiles && newSeasonFiles.length > 0) {
+    //                 formData.append(`seasons[${index}][profile_image]`, newSeasonFiles[0]);
+    //             } else if (season.profile_image && typeof season.profile_image[0] !== 'string' && season.profile_image[0] instanceof File) {
+    //                 formData.append(`seasons[${index}][profile_image]`, season.profile_image[0]);
+    //             }*/
 
-                // 일반 시즌 데이터 추가
-                for (const key in season) {
-                    if(key === "position"){
-                        season[key].forEach((pos,idx)=>{
-                            formData.append(`seasons[${index}][position][${idx}]`, pos ?? '');
-                        })
-                    }else if(key === "start_date" || key === "end_date"){
-                        formData.append(`seasons[${index}][${key}]`, formatDate(season[key]) ?? '');
-                    }else if (key !== 'profile_image') { // profile_image는 이미 처리했으므로 건너뜁니다.
-                        formData.append(`seasons[${index}][${key}]`, season[key] ?? '');
-                    }
-                }
-            });
-        } else {
-            formData.append(key, form.value[key] ?? '');
-        }
-    }
+    //             // 일반 시즌 데이터 추가
+    //             for (const key in season) {
+    //                 if(key === "position"){
+    //                     season[key].forEach((pos,idx)=>{
+    //                         formData.append(`seasons[${index}][position][${idx}]`, pos ?? '');
+    //                     })
+    //                 }else if(key === "start_date" || key === "end_date"){
+    //                     formData.append(`seasons[${index}][${key}]`, formatDate(season[key]) ?? '');
+    //                 }else if (key !== 'profile_image') { // profile_image는 이미 처리했으므로 건너뜁니다.
+    //                     formData.append(`seasons[${index}][${key}]`, season[key] ?? '');
+    //                 }
+    //             }
+    //         });
+    //     } else {
+    //         formData.append(key, form.value[key] ?? '');
+    //     }
+    // }
 
     const method = isEditMode.value ? 'PUT' : 'POST';
     const url = isEditMode.value

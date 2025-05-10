@@ -1,6 +1,5 @@
 <template>
     <div>
-        <!-- 드롭 영역 + 파일 추가 버튼 -->
         <v-file-input
             v-model="fileInput"
             :multiple="multiple"
@@ -12,7 +11,6 @@
             :clearable="false"
         />
 
-        <!-- 신규 추가된 파일 목록 -->
         <v-list v-if="newFiles.length > 0" class="pa-0">
             <v-list-item
                 v-for="(file, index) in newFilesName"
@@ -25,7 +23,6 @@
             </v-list-item>
         </v-list>
 
-        <!-- 기존 파일 목록 -->
         <v-list v-if="existingFiles.length > 0" class="pa-0">
             <v-list-item
                 v-for="(file, index) in existingFiles"
@@ -42,10 +39,17 @@
 </template>
 
 <script setup>
-import { ref, defineExpose, computed } from 'vue'
+import { ref, defineExpose, computed, watch } from 'vue';
 import { commonFetch } from '@/utils/common/commonFetch';
 
 const props = defineProps({
+    modelValue: { // v-model 바인딩을 위한 prop
+        type: Object,
+        default: () => ({
+            newFiles: [],
+            deletedFiles: []
+        })
+    },
     initialFiles: {
         type: Array,
         default: () => []
@@ -63,88 +67,96 @@ const props = defineProps({
         default: 'file', // 'image' or 'file'
         validator: val => ['image', 'file'].includes(val)
     }
-})
+});
 
-const fileInput = ref(null)
-const newFiles = ref([])
-const newFilesName = ref([])
-const deletedFiles = ref([])
+const emit = defineEmits(['update:modelValue']); // update:modelValue 이벤트 정의
 
-const existingFiles = computed(() => props.initialFiles)
+const fileInput = ref(null);
+const newFiles = ref([...(props.modelValue?.newFiles || [])]); // 초기값 설정
+const newFilesName = computed(() => newFiles.value.map(f => f.name));
+const deletedFiles = ref([...(props.modelValue?.deletedFiles || [])]); // 초기값 설정
+
+const existingFiles = ref(props.initialFiles.map(file => ({ ...file }))); // ref로 변경 및 얕은 복사
 
 const acceptType = computed(() =>
     props.type === 'image' ? 'image/*' : '*/*'
-)
+);
+
+// modelValue prop 감시 및 내부 상태 업데이트
+watch(() => props.modelValue, (newValue) => {
+    newFiles.value = [...(newValue?.newFiles || [])];
+    deletedFiles.value = [...(newValue?.deletedFiles || [])];
+});
+
+// initialFiles prop 감시 및 existingFiles 업데이트 (배열과 내부 객체 복사)
+watch(() => props.initialFiles, (newInitialFiles) => {
+    existingFiles.value = newInitialFiles.map(file => ({ ...file }));
+}, { deep: true });
+
+function updateModelValue() {
+    emit('update:modelValue', {
+        newFiles: newFiles.value,
+        deletedFiles: deletedFiles.value
+    });
+}
 
 function handleFileAdd(e) {
-    const files = e.target.files
-    if (!files || files.length === 0) return
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
-    const validFiles = []
+    const validFiles = [];
 
     for (let i = 0; i < files.length; i++) {
-        const file = files[i]
+        const file = files[i];
 
         // 최대 크기 초과 필터링
         if (file.size > props.maxSize) {
-            alert(`'${file.name}'은(는) 허용된 최대 크기(${(props.maxSize / 1024 / 1024).toFixed(1)}MB)를 초과했습니다.`)
-            continue
+            alert(`'${file.name}'은(는) 허용된 최대 크기(${(props.maxSize / 1024 / 1024).toFixed(1)}MB)를 초과했습니다.`);
+            continue;
         }
 
         // 이미지 전용일 경우 type 검사
         if (props.type === 'image' && !file.type.startsWith('image/')) {
-            alert(`'${file.name}'은(는) 이미지 파일이 아닙니다.`)
-            continue
+            alert(`'${file.name}'은(는) 이미지 파일이 아닙니다.`);
+            continue;
         }
 
-        validFiles.push(file)
+        validFiles.push(file);
 
         // multiple이 false면 첫 파일만 허용
-        if (!props.multiple) break
+        if (!props.multiple) break;
     }
 
     // 유효한 파일이 없으면 기존 유지
     if (validFiles.length === 0) {
-        fileInput.value = null
-        return
+        fileInput.value = null;
+        return;
     }
 
     // multiple = false이면 이전 것 모두 제거하고 한 개만 유지
     if (!props.multiple) {
-        // 기존 newFiles 삭제
-        newFiles.value = []
-        newFilesName.value = []
-
-        // 기존 existingFiles는 삭제 처리
-        if (existingFiles.value.length > 0) {
-            existingFiles.value.forEach(f => {
-                deletedFiles.value.push({
-                    file_id: f.file_id,
-                    sn: f.sn
-                })
-            })
-
-            props.initialFiles.splice(0) // 강제로 비워주기
-        }
+        newFiles.value = [];
+        deletedFiles.value.push(...existingFiles.value.map(f => ({ file_id: f.file_id, sn: f.sn })));
+        existingFiles.value = [];
     }
 
-    newFiles.value.push(...validFiles)
-    newFilesName.value.push(...validFiles.map(f => f.name))
-
-    fileInput.value = null
+    newFiles.value.push(...validFiles);
+    fileInput.value = null;
+    updateModelValue(); // modelValue 업데이트
 }
 
 function removeNewFile(index) {
-    newFiles.value.splice(index, 1)
-    newFilesName.value.splice(index, 1)
+    newFiles.value.splice(index, 1);
+    updateModelValue(); // modelValue 업데이트
 }
 
 function removeExistingFile(index) {
-    const removed = existingFiles.value.splice(index, 1)[0]
+    const removed = existingFiles.value.splice(index, 1)[0];
     deletedFiles.value.push({
         file_id: removed.file_id,
         sn: removed.sn
-    })
+    });
+    updateModelValue(); // modelValue 업데이트
 }
 
 const downloadFile = async (fileId, sn) => {
@@ -159,9 +171,8 @@ const downloadFile = async (fileId, sn) => {
     }
 };
 
-
 defineExpose({
     getNewFiles: () => newFiles.value,
     getDeletedFiles: () => deletedFiles.value
-})
+});
 </script>

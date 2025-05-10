@@ -5,6 +5,12 @@ export async function commonFetch(url, options = {}) {
 
     const isJson = body && typeof body === 'object' && !(body instanceof FormData);
 
+    // FormData인 경우 sendFileInfoLength를 확인하여 헤더에 포함
+    let sendFileInfoLength = 0;
+    if (body instanceof FormData) {
+        sendFileInfoLength = body.get('sendFileInfoLength') || 0;  // FormData에서 sendFileInfoLength 값 가져오기
+    }
+
     const token = localStorage.getItem('token');
 
     const finalOptions = {
@@ -13,7 +19,8 @@ export async function commonFetch(url, options = {}) {
         headers: {
             ...headers,
             ...(isJson ? { 'Content-Type': 'application/json; charset=UTF-8' } : {}),
-            ...(token ? { Authorization: `Bearer ${token}` } : {})
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            ...(sendFileInfoLength ? { 'X-File-Info-Length': sendFileInfoLength } : {})  // sendFileInfoLength가 있으면 헤더에 추가
         },
         body: isJson ? JSON.stringify(body) : body,
         credentials: 'include',
@@ -102,3 +109,58 @@ export async function commonFetch(url, options = {}) {
     }
 }
   
+
+/**
+ * 객체를 FormData로 변환하는 공통 함수
+ * @param {Object} data - 변환할 객체
+ * @returns {FormData} - 변환된 FormData 인스턴스
+ */
+export const getNewFormData = (data) => {
+    const formData = new FormData();
+    const sendFile = new Array();  // 파일을 담을 FormData
+    const sendFileInfo = new Array();  // 파일 정보를 담을 FormData
+
+    // FormData에 데이터를 추가하는 공통 함수
+    const appendFormData = (parentKey, value) => {
+        if (value instanceof File) {
+            // 📌 파일은 sendFile에 추가
+            sendFile.push(value);
+            sendFileInfo.push(parentKey);  // 파일이 추가된 필드 이름 기록
+            formData.append(parentKey, '');
+        } else if (Array.isArray(value)) {
+            // 📌 배열 처리
+            value.forEach((item, index) => {
+                appendFormData(`${parentKey}[${index}]`, item);
+            });
+        } else if (typeof value === 'object' && value !== null) {
+            // 📌 객체 처리 (재귀적 탐색)
+            Object.keys(value).forEach(key => {
+                appendFormData(`${parentKey}[${key}]`, value[key]);
+            });
+        } else if (value instanceof Date) {
+            // 📌 날짜 처리 (YYYY-MM-DD 형식으로 변환)
+            const formattedDate = value.toISOString().split('T')[0];
+            formData.append(parentKey, formattedDate);
+        } else {
+            // 📌 기본 자료형 처리 (숫자, 문자열, 불리언)
+            formData.append(parentKey, value ?? '');
+        }
+    };
+
+    // 🔹 최상위 키 순회
+    Object.keys(data).forEach(key => {
+        appendFormData(key, data[key]);
+    });
+
+    sendFile.forEach((file, index) => {
+        formData.append(`sendFile[${index}]`, file);
+    });
+
+    sendFileInfo.forEach((fileName, index) => {
+        formData.append(`sendFileInfo[${index}]`, fileName);
+    })
+
+    formData.append(`sendFileInfoLength`, sendFileInfo.length);
+
+    return formData;  // FormData 객체만 반환
+};
