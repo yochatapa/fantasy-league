@@ -428,7 +428,21 @@ const fetchPlayer = async () => {
                     , path              : playerInfo.path
                     , mimetype          : playerInfo.mimetype
                 }]
-        initialSeasonImages.value = seasons.map((_, index) => seasonImages?.[index] ? [seasonImages?.[index]] : null);
+
+        initialSeasonImages.value = seasons.map((season) => {
+            if (season.file_id) {
+                return [{
+                    file_id        : season.file_id,
+                    sn             : season.sn,
+                    original_name  : season.original_name,
+                    size           : season.size,
+                    path           : season.path,
+                    mimetype       : season.mimetype
+                }];
+            }
+            return []; // file_id가 없으면 빈 배열
+        });
+
         await fetchAllTeamOptionsForSeasons();
     }
 };
@@ -453,6 +467,7 @@ const addSeason = async () => {
         end_date: getLastDayOfYear(year),
         flag: 'I',
         profile_image: null,
+        is_active : true
     };
     form.value.seasons.push(newSeason);
 
@@ -469,6 +484,8 @@ const removeSeason = (index) => {
             initialSeasonImages.value.splice(index, 1);
         } else {
             form.value.seasons[index].flag = 'D';
+            teamOptionsPerSeason.value.splice(index, 1);
+            initialSeasonImages.value.splice(index, 1);
         }
     } else {
         form.value.seasons.splice(index, 1);
@@ -511,44 +528,6 @@ const submitForm = async () => {
     if (!formRef.value?.validate()) return;
 
     const formData = getNewFormData(form.value);
-
-    // 기본 폼 데이터 추가
-    // for (const key in form.value) {
-    //     if (key === 'main_profile_image') {
-    //         // 대표 이미지가 있으면 FormData에 추가
-    //         form.value.main_profile_image = mainImageUploader.value?.getNewFiles()[0] || form.value.main_profile_image?.[0]
-    //         if (form.value.main_profile_image) {
-    //             formData.append('main_profile_image', form.value.main_profile_image);
-    //         }
-    //     } else if (key === 'seasons') {
-    //         form.value.seasons.forEach((season, index) => {
-    //             /*const uploader = seasonImageUploaders.value[index]; // index별로 참조 (수정된 ref 사용)
-    //             const newSeasonFiles = uploader?.getNewFiles();
-
-    //             // 파일 데이터 추가
-    //             if (newSeasonFiles && newSeasonFiles.length > 0) {
-    //                 formData.append(`seasons[${index}][profile_image]`, newSeasonFiles[0]);
-    //             } else if (season.profile_image && typeof season.profile_image[0] !== 'string' && season.profile_image[0] instanceof File) {
-    //                 formData.append(`seasons[${index}][profile_image]`, season.profile_image[0]);
-    //             }*/
-
-    //             // 일반 시즌 데이터 추가
-    //             for (const key in season) {
-    //                 if(key === "position"){
-    //                     season[key].forEach((pos,idx)=>{
-    //                         formData.append(`seasons[${index}][position][${idx}]`, pos ?? '');
-    //                     })
-    //                 }else if(key === "start_date" || key === "end_date"){
-    //                     formData.append(`seasons[${index}][${key}]`, formatDate(season[key]) ?? '');
-    //                 }else if (key !== 'profile_image') { // profile_image는 이미 처리했으므로 건너뜁니다.
-    //                     formData.append(`seasons[${index}][${key}]`, season[key] ?? '');
-    //                 }
-    //             }
-    //         });
-    //     } else {
-    //         formData.append(key, form.value[key] ?? '');
-    //     }
-    // }
 
     const method = isEditMode.value ? 'PUT' : 'POST';
     const url = isEditMode.value

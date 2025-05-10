@@ -67,7 +67,6 @@ export const handleUpload = () => {
                 parseNestedField(req.body, parsedFieldName, fileInfo);
             });
 
-            console.log('Updated req.body:', req.body); // 디버그용
             next();
         });
     };
