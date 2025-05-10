@@ -179,7 +179,7 @@ export const createKboPlayer = async (req, res) => {
     } catch (err) {
         return sendBadRequest(res, '유효하지 않은 토큰입니다.');
     }
-    console.log(name, birth_date, player_type, primary_position, seasons)
+    
     // 필수값 검증
     if (!name || !birth_date || !player_type || !primary_position || !Array.isArray(seasons)) {
         return sendBadRequest(res, "필수 입력값을 모두 입력해주세요.");
@@ -409,8 +409,30 @@ export const updateKboPlayer = async (req, res) => {
             /* file 처리 - 메인 프로필 이미지 */
             if (main_profile_image) {
                 const { newFiles = [], deletedFiles = [] } = main_profile_image;
+
+                // [Delete 처리] deletedFiles가 있을 경우 처리
+                if (deletedFiles.length > 0) {
+                    for (const fileInfo of deletedFiles) {
+                        // DB에서 삭제할 파일 경로 조회
+                        const { rows: fileRows } = await client.query(
+                            'SELECT path FROM file_table WHERE file_id = $1 and sn = $2',
+                            [fileInfo.file_id, fileInfo.sn]
+                        );
             
-                // 1️⃣ [Insert 처리] newFiles가 있을 경우 처리
+                        // 실제 파일 삭제
+                        for (const file of fileRows) {
+                            await deleteFile(file.path);
+                        }
+            
+                        // DB에서 파일 정보 삭제
+                        await client.query(
+                            'DELETE FROM file_table WHERE file_id = $1 and sn = $2',
+                            [fileInfo.file_id,fileInfo.sn]
+                        );
+                    }
+                }
+            
+                // [Insert 처리] newFiles가 있을 경우 처리
                 if (newFiles.length > 0) {
                     for (const mainProfileImageFile of newFiles) {
                         const userSpecificUploadDir = path.join(finalUploadsBaseDir, 'kboPlayer', playerId.toString(), 'profile');
@@ -466,28 +488,6 @@ export const updateKboPlayer = async (req, res) => {
                             SET main_profile_image = $1
                             WHERE id = $2
                         `, [mainProfileFileId, playerId]);
-                    }
-                }
-            
-                // 2️⃣ [Delete 처리] deletedFiles가 있을 경우 처리
-                if (deletedFiles.length > 0) {
-                    for (const fileInfo of deletedFiles) {
-                        // DB에서 삭제할 파일 경로 조회
-                        const { rows: fileRows } = await client.query(
-                            'SELECT path FROM file_table WHERE file_id = $1 and sn = $2',
-                            [fileInfo.file_id, fileInfo.sn]
-                        );
-            
-                        // 실제 파일 삭제
-                        for (const file of fileRows) {
-                            await deleteFile(file.path);
-                        }
-            
-                        // DB에서 파일 정보 삭제
-                        await client.query(
-                            'DELETE FROM file_table WHERE file_id = $1 and sn = $2',
-                            [fileInfo.file_id,fileInfo.sn]
-                        );
                     }
                 }
             }
