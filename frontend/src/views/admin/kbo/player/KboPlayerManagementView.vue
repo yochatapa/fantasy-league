@@ -433,6 +433,19 @@ const handleRowClick = (e, { item }) => {
     router.push(`/admin/player/add?playerId=${encodeURIComponent(encryptData(item.id))}`);
 };
 
+// ✅ 2. page 또는 itemsPerPage 변경 시
+watch([page, itemsPerPage], () => {
+    fetchPlayerList();
+    
+    // router.replace로 URL 쿼리 업데이트 (뒤로가기 히스토리 X)
+    router.replace({
+        query: {
+            ...route.query,
+            page: String(page.value)
+        }
+    });
+});
+
 onMounted(async () => {
     await fetchTeamOptions();
     fetchActiveYearOptions();
