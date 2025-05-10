@@ -271,6 +271,9 @@
                 <v-btn :disabled="!formValid" color="primary" @click="submitForm">
                     {{ isEditMode ? '수정' : '등록' }}
                 </v-btn>
+                <v-btn v-if="isEditMode" color="primary" @click="deleteForm">
+                    삭제
+                </v-btn>
             </v-card-actions>
         </v-card>
     </v-container>
@@ -493,7 +496,7 @@ const updateSeasonDetails = async (index, newYear) => {
     }
 
     form.value.seasons[index].start_date = getFirstDayOfYear(newYear);
-    form.value.seasons[index].end_date = getLastDayOfYear(newYear);
+    form.value.seasons[index].end_date = getLastDayOfYear(newYear); 
 };
 
 const submitForm = async () => {
@@ -554,10 +557,42 @@ const submitForm = async () => {
             alert(isEditMode.value ? '선수 정보가 수정되었습니다.' : '선수 정보가 등록되었습니다.');
             router.push('/admin/player/management');
         } else {
-            alert(res.message || '저장 실패', 'error');
+            alert(res.message || `선수 정보 ${isEditMode.value?'수정':'저장'}에 실패하였습니다.`, 'error');
         }
     } catch (err) {
         alert('서버에서 에러가 발생하였습니다.\n다시 시도해주세요.', 'error');
+    }
+};
+
+const deleteForm = async () => {
+    if (!playerId.value) {
+        alert('삭제할 선수가 존재하지 않습니다.', "error");
+        return;
+    }
+
+    const confirmed = await confirm('정말 이 선수를 삭제하시겠습니까?');
+
+    if (!confirmed) return; 
+
+    try {
+        const res = await commonFetch(
+            `/api/admin/player/delete`,
+            {
+                method: 'DELETE',
+                body : {
+                    playerId : playerId.value
+                }
+            }
+        );
+
+        if (res.success) {
+            router.push('/admin/player/management');
+            alert('선수 정보가 삭제되었습니다.');
+        } else {
+            alert(res.message || '선수 정보 삭제에 실패했습니다.', "error");
+        }
+    } catch (err) {
+        alert('서버 오류가 발생했습니다.\n다시 시도해주세요.', "error");
     }
 };
 </script>

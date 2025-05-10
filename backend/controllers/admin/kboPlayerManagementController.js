@@ -190,6 +190,9 @@ export const createKboPlayer = async (req, res) => {
         return sendBadRequest(res, "선수 유형 값이 올바르지 않습니다.");
     }
 
+    const uploadedFilesInfo = req.filesInfo || [];
+    const mainProfileImageInfo = uploadedFilesInfo.find(f => f.fieldName === 'main_profile_image'); // multipart 이름 변경됨
+
     try {
         await withTransaction(async (client) => {
             // 선수 마스터 테이블 저장
@@ -198,16 +201,54 @@ export const createKboPlayer = async (req, res) => {
                     name, birth_date, player_type, primary_position, is_retired, 
                     draft_info, throwing_hand, batting_hand, height, weight, 
                     contract_bonus, is_foreign, created_at
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, CURRENT_TIMESTAMP)
                 RETURNING id
             `;
             const { rows } = await client.query(insertPlayerQuery, [
                 name, birth_date, player_type, primary_position, is_retired ?? false,
                 draft_info, throwing_hand, batting_hand, height, weight,
-                contract_bonus, is_foreign ?? false, user.user_id
+                contract_bonus, is_foreign ?? false
             ]);
 
             const playerId = rows[0].id;
+
+            // ⚠️ 파일 처리 - 메인 프로필 이미지
+            if (mainProfileImageInfo) {
+                const userSpecificUploadDir = path.join(finalUploadsBaseDir, 'kboPlayer', playerId.toString(), 'profile');
+                const finalFileSavedInfo = await saveUploadedFile(mainProfileImageInfo, userSpecificUploadDir);
+                const finalFileUrlForDB = path.join('uploads', 'kboPlayer', playerId.toString(), 'profile', finalFileSavedInfo.finalFileName);
+
+                const mainProfileFileId = uuidv4();
+                const maxSn = await client.query("SELECT COALESCE(max(sn),0) as sn FROM file_table WHERE file_id = $1", [mainProfileFileId]);
+
+                const insertFileQuery = `
+                    INSERT INTO file_table (
+                        file_id, sn, original_name, unique_name,
+                        mimetype, size, path, category, uploaded_by
+                    ) VALUES (
+                        $1, $2, $3, $4, $5, $6, $7, $8, $9
+                    )
+                `;
+                await client.query(insertFileQuery, [
+                    mainProfileFileId,
+                    maxSn.rows[0].sn + 1,
+                    mainProfileImageInfo.originalName,
+                    finalFileSavedInfo.finalFileName,
+                    mainProfileImageInfo.mimetype,
+                    mainProfileImageInfo.size,
+                    finalFileUrlForDB,
+                    'kboPlayerProfile',
+                    user.user_id
+                ]);
+
+                // kbo_player_master 테이블에 profile_image_url 업데이트 (file_id 저장)
+                const updatePlayerMasterQueryForImage = `
+                    UPDATE kbo_player_master
+                    SET main_profile_image = $1
+                    WHERE id = $2
+                `;
+                await client.query(updatePlayerMasterQueryForImage, [mainProfileFileId, playerId]);
+            }
 
             // 시즌 정보 저장
             for (const season of seasons) {
@@ -244,7 +285,7 @@ export const createKboPlayer = async (req, res) => {
         switch(error.message){
             case "-1" : errorMessage = "선수이력 항목에 필수값이 누락되었습니다."; break;
         }
-        return sendServerError(res, error, errorMessage??"선수 생성 중 오류가 발생했습니다. 다시 시도해주세요.");
+        return sendServerError(res, error, errorMessage ?? "선수 생성 중 오류가 발생했습니다. 다시 시도해주세요.");
     }
 };
 
@@ -554,61 +595,68 @@ export const getKboPlayerDetail = async (req, res) => {
     }
 };
 
-// export const deleteKboTeam = async (req, res) => {
-//     const accessToken = req.headers['authorization']?.split(' ')[1];
+export const deleteKboPlayer = async (req, res) => {
+    const accessToken = req.headers['authorization']?.split(' ')[1];
 
-//     if (!accessToken) {
-//         return sendBadRequest(res, '토큰이 제공되지 않았습니다.');
-//     }
+    if (!accessToken) {
+        return sendBadRequest(res, '토큰이 제공되지 않았습니다.');
+    }
 
-//     let { teamId } = req.body;
-//     if (!teamId) {
-//         return sendBadRequest(res, "삭제할 팀 ID가 제공되지 않았습니다.");
-//     }
+    let { playerId } = req.body;
+    if (!playerId) {
+        return sendBadRequest(res, "삭제할 선수 ID가 제공되지 않았습니다.");
+    }
 
-//     try {
-//         const user = jwt.verify(accessToken, process.env.JWT_SECRET);
-//         teamId = decryptData(teamId);
+    try {
+        const user = jwt.verify(accessToken, process.env.JWT_SECRET);
+        playerId = decryptData(playerId);
 
-//         await withTransaction(async (client) => {
-//             // 팀 존재 여부 확인
-//             const { rows: teamRows } = await client.query(
-//                 'SELECT logo_url FROM kbo_team_master WHERE id = $1',
-//                 [teamId]
-//             );
+        await withTransaction(async (client) => {
+            // 1️⃣ **선수 존재 여부 확인**
+            const { rows: playerRows } = await client.query(
+                'SELECT main_profile_image FROM kbo_player_master WHERE id = $1',
+                [playerId]
+            );
 
-//             if (teamRows.length === 0) {
-//                 return sendBadRequest(res, "존재하지 않는 팀입니다.");
-//             }
+            if (playerRows.length === 0) {
+                return sendBadRequest(res, "존재하지 않는 선수입니다.");
+            }
 
-//             const logoFileId = teamRows[0].logo_url;
+            const mainProfileFileId = playerRows[0].main_profile_image;
 
-//             // 파일 삭제
-//             if (logoFileId) {
-//                 const { rows: fileRows } = await client.query(
-//                     'SELECT path FROM file_table WHERE file_id = $1',
-//                     [logoFileId]
-//                 );
+            // 2️⃣ **파일 삭제 처리**
+            if (mainProfileFileId) {
+                const { rows: fileRows } = await client.query(
+                    'SELECT path FROM file_table WHERE file_id = $1',
+                    [mainProfileFileId]
+                );
 
-//                 for (const file of fileRows) {
-//                     await deleteFile(file.path);
-//                 }
+                for (const file of fileRows) {
+                    await deleteFile(file.path);
+                }
 
-//                 await client.query(
-//                     'DELETE FROM file_table WHERE file_id = $1',
-//                     [logoFileId]
-//                 );
-//             }
+                await client.query(
+                    'DELETE FROM file_table WHERE file_id = $1',
+                    [mainProfileFileId]
+                );
+            }
 
-//             // 팀 삭제
-//             await client.query(
-//                 'DELETE FROM kbo_team_master WHERE id = $1',
-//                 [teamId]
-//             );
+            // 3️⃣ **선수 시즌 정보 삭제**
+            await client.query(
+                'DELETE FROM kbo_player_season WHERE player_id = $1',
+                [playerId]
+            );
 
-//             return sendSuccess(res, "팀이 성공적으로 삭제되었습니다.");
-//         });
-//     } catch (error) {
-//         return sendServerError(res, error, "팀 삭제 중 오류가 발생했습니다.");
-//     }
-// };
+            // 4️⃣ **선수 마스터 정보 삭제**
+            await client.query(
+                'DELETE FROM kbo_player_master WHERE id = $1',
+                [playerId]
+            );
+
+            return sendSuccess(res, "선수가 성공적으로 삭제되었습니다.");
+        });
+    } catch (error) {
+        console.error('선수 삭제 중 오류 발생:', error);
+        return sendServerError(res, error, "선수 삭제 중 오류가 발생했습니다.");
+    }
+};

@@ -181,7 +181,7 @@ const submitForm = async () => {
 
 const deleteForm = async () => {
     if (!teamId.value) {
-        alert('삭제할 팀이 존재하지 않습니다.'), "error";
+        alert('삭제할 팀이 존재하지 않습니다.', "error");
         return;
     }
 
