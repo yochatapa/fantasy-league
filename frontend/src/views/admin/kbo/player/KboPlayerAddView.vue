@@ -81,27 +81,25 @@
                             <v-text-field
                                 v-model="form.height"
                                 label="신장 (cm)"
-                                type="text"
-                                :rules="[v => !!v || '신장을 입력해주세요.', v => /^\d{0,3}$/.test(v) || '최대 3자리 숫자만 입력 가능합니다.']"
+                                type="number"
+                                :rules="[v => !v || /^\d{1,3}$/.test(v) || '최대 3자리 숫자만 입력 가능합니다.']"
                                 @input="form.height = form.height.replace(/[^0-9]/g, '').slice(0, 3)"
-                                required
                             />
                         </v-col>
                         <v-col cols="12" md="6" class="pa-2">
                             <v-text-field
                                 v-model="form.weight"
                                 label="체중 (kg)"
-                                type="text"
-                                :rules="[v => !!v || '체중을 입력해주세요.', v => /^\d{0,3}$/.test(v) || '최대 3자리 숫자만 입력 가능합니다.']"
+                                type="number"
+                                :rules="[v => !v || /^\d{1,3}$/.test(v) || '최대 3자리 숫자만 입력 가능합니다.']"
                                 @input="form.weight = form.weight.replace(/[^0-9]/g, '').slice(0, 3)"
-                                required
                             />
                         </v-col>
                         <v-col cols="12" md="6" class="pa-2">
                             <v-select
                                 v-model="form.throwing_hand"
                                 label="던지는 팔"
-                                :items="[ { label: '좌투', value: 'L' }, { label: '우투', value: 'R' }, { label: '양투', value: 'B' } ]"
+                                :items="[ { label: '우투', value: 'R' }, { label: '좌투', value: 'L' }, { label: '양투', value: 'B' } ]"
                                 item-title="label"
                                 item-value="value"
                             />
@@ -110,7 +108,7 @@
                             <v-select
                                 v-model="form.batting_hand"
                                 label="치는 팔"
-                                :items="[ { label: '좌타', value: 'L' }, { label: '우타', value: 'R' }, { label: '양타', value: 'B' } ]"
+                                :items="[ { label: '우타', value: 'R' }, { label: '좌타', value: 'L' }, { label: '양타', value: 'B' } ]"
                                 item-title="label"
                                 item-value="value"
                             />
@@ -203,6 +201,8 @@
                                     v-model="season.uniform_number"
                                     label="등번호"
                                     type="number"
+                                    :rules="[v => !v || /^\d{1,3}$/.test(v) || '최대 3자리 숫자만 입력 가능합니다.']"
+                                    @input="season.uniform_number = season.uniform_number.replace(/[^0-9]/g, '').slice(0, 3)"
                                     required
                                 />
                             </v-col>
@@ -319,12 +319,12 @@ const birthDateMenu = ref(false);
 const form = ref({
     name: '',
     birth_date: '',
-    player_type: '',
+    player_type: null,
     primary_position: null,
     is_retired: false,
     draft_info: '',
-    throwing_hand: '',
-    batting_hand: '',
+    throwing_hand: null,
+    batting_hand: null,
     height: null,
     weight: null,
     contract_bonus: null,

@@ -181,7 +181,7 @@ export const createKboPlayer = async (req, res) => {
     }
     
     // 필수값 검증
-    if (!name || !birth_date || !player_type || !primary_position || !Array.isArray(seasons)) {
+    if (!name || !birth_date || !player_type || !primary_position) {
         return sendBadRequest(res, "필수 입력값을 모두 입력해주세요.");
     }
     
@@ -203,8 +203,8 @@ export const createKboPlayer = async (req, res) => {
             `;
             const { rows } = await client.query(insertPlayerQuery, [
                 name, birth_date, player_type, primary_position, is_retired ?? false,
-                draft_info, throwing_hand, batting_hand, height, weight,
-                contract_bonus, is_foreign ?? false
+                draft_info, throwing_hand, batting_hand, height===''?null:height, weight===''?null:weight,
+                contract_bonus===''?null:contract_bonus, is_foreign ?? false
             ]);
 
             const playerId = rows[0].id;
@@ -305,7 +305,7 @@ export const createKboPlayer = async (req, res) => {
                     year,
                     team_id,
                     position.join(","),
-                    uniform_number,
+                    uniform_number===''?null:uniform_number,
                     is_active || true,
                     contract_type ?? null,
                     salaryValue,
@@ -429,7 +429,7 @@ export const updateKboPlayer = async (req, res) => {
     }
     
     // 필수값 검증
-    if (!name || !birth_date || !player_type || !primary_position || !Array.isArray(seasons)) {
+    if (!name || !birth_date || !player_type || !primary_position) {
         return sendBadRequest(res, "필수 입력값을 모두 입력해주세요.");
     }
 
@@ -842,8 +842,8 @@ export const getKboPlayerDetail = async (req, res) => {
                 kpm.primary_position,
                 kpm.is_retired,
                 kpm.draft_info,
-                kpm.throwing_hand,
-                kpm.batting_hand,
+                NULLIF(kpm.throwing_hand,'') as throwing_hand,
+                NULLIF(kpm.batting_hand,'') as batting_hand,
                 kpm.height,
                 kpm.weight,
                 kpm.contract_bonus,
@@ -881,7 +881,7 @@ export const getKboPlayerDetail = async (req, res) => {
                 ft.size,
                 ft.path,
                 ft.mimetype,
-                kps.contract_type,  -- 계약 유형
+                NULLIF(kps.contract_type,'') as contract_type,  -- 계약 유형
                 kps.salary,         -- 연봉
                 TO_CHAR(kps.start_date, 'YYYY.MM.DD') as start_date,     -- 계약 시작일
                 TO_CHAR(kps.end_date, 'YYYY.MM.DD') as end_date        -- 계약 종료일
