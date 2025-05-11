@@ -1,1 +1,7 @@
 @import './base.css';
+
+.v-field__field:has(input[required]) label:after {
+    content: "*";
+    color: red;
+    margin-left: 2px;
+}
