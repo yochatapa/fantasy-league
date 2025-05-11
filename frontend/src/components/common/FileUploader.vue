@@ -5,36 +5,117 @@
             :multiple="multiple"
             show-size
             :accept="acceptType"
-            label="파일을 업로드하거나 드래그 앤 드롭하세요"
-            prepend-icon="mdi-paperclip"
+            :label="(type==='image'?'사진':'파일')+'을 업로드하거나 드래그 앤 드롭하세요'"
+            :prepend-icon="prependIcon"
             @change="handleFileAdd"
             :clearable="false"
         />
 
-        <v-list v-if="newFiles.length > 0" class="pa-0">
-            <v-list-item
-                v-for="(file, index) in newFilesName"
-                :key="'new-' + index"
-                :title="file"
-            >
-                <template #append>
-                    <v-icon @click="removeNewFile(index)">mdi-delete</v-icon>
-                </template>
-            </v-list-item>
-        </v-list>
+        <div v-if="type === 'image'">
+            <v-row>
+                <v-col
+                    v-for="(file, index) in newFilesName"
+                    :key="'new-' + index"
+                    cols="12"
+                    md="6"
+                    lg="4"
+                    class="mb-4"
+                >
+                    <v-card>
+                        <div class="d-flex justify-center align-center" style="height: 200px;">
+                            <v-img
+                                v-if="file.path"
+                                :src="file.path"
+                                class="rounded"
+                                contain
+                                style="height: 200px; width: 200px;"
+                            />
+                            <v-icon
+                                v-else
+                                size="150"
+                                class="ma-auto"
+                            >
+                                mdi-file
+                            </v-icon>
+                        </div>
 
-        <v-list v-if="existingFiles.length > 0" class="pa-0">
-            <v-list-item
-                v-for="(file, index) in existingFiles"
-                :key="'existing-' + file.file_id"
-                :title="file.original_name"
-            >
-                <template #append>
-                    <v-icon class="mr-2" @click="downloadFile(file.file_id,file.sn)">mdi-download</v-icon>
-                    <v-icon @click="removeExistingFile(index)">mdi-delete</v-icon>
-                </template>
-            </v-list-item>
-        </v-list>
+                        <v-card-actions class="d-flex justify-between">
+                            <div class="flex-grow-1 text-truncate pl-2">
+                                {{ file.name }}
+                            </div>
+
+                            <div class="pr-2 d-flex">
+                                <v-icon class="" color="red" @click="removeNewFile(index)">mdi-delete</v-icon>
+                            </div>
+                        </v-card-actions>
+                    </v-card>
+                </v-col>
+                <v-col
+                    v-for="(file, index) in existingFiles"
+                    :key="'new-' + index"
+                    cols="12"
+                    md="6"
+                    lg="4"
+                    class="mb-4"
+                >
+                    <v-card>
+                        <div class="d-flex justify-center align-center" style="height: 200px;">
+                            <v-img
+                                v-if="file.path"
+                                :src="file.path"
+                                class="rounded"
+                                contain
+                                style="height: 200px; width: 200px;"
+                            />
+                            <v-icon
+                                v-else
+                                size="150"
+                                class="ma-auto"
+                            >
+                                mdi-file
+                            </v-icon>
+                        </div>
+
+                        <v-card-actions class="d-flex justify-between">
+                            <div class="flex-grow-1 text-truncate pl-2">
+                                {{ file.original_name }}
+                            </div>
+
+                            <div class="pr-2 d-flex">
+                                <v-icon class="mx-2" color="primary" @click="downloadFile(file.file_id, file.sn)">mdi-download</v-icon>
+                                <v-icon class="" color="red" @click="removeNewFile(index)">mdi-delete</v-icon>
+                            </div>
+                        </v-card-actions>
+                    </v-card>
+                </v-col>
+            </v-row>
+        </div>
+        <div v-else>
+            <v-list v-if="newFiles.length > 0" class="pa-0">
+                <v-list-item
+                    v-for="(file, index) in newFilesName"
+                    :key="'new-' + index"
+                    :title="(index + 1) + '. '+ file"
+                >
+                    <template #append>
+                        <v-icon @click="removeNewFile(index)">mdi-delete</v-icon>
+                    </template>
+                </v-list-item>
+            </v-list>
+
+            <v-list v-if="existingFiles.length > 0" class="pa-0">
+                <v-list-item
+                    v-for="(file, index) in existingFiles"
+                    :key="'existing-' + file.file_id"
+                    :title="(newFilesName.length + index + 1) + '. '+ file.original_name"
+                >
+                    <template #append>
+                        <v-icon class="mr-2" @click="downloadFile(file.file_id,file.sn)">mdi-download</v-icon>
+                        <v-icon @click="removeExistingFile(index)">mdi-delete</v-icon>
+                    </template>
+                </v-list-item>
+            </v-list>
+        </div>
     </div>
 </template>
 
@@ -73,7 +154,12 @@ const emit = defineEmits(['update:modelValue']); // update:modelValue 이벤트 
 
 const fileInput = ref(null);
 const newFiles = ref([...(props.modelValue?.newFiles || [])]); // 초기값 설정
-const newFilesName = computed(() => newFiles.value.map(f => f.name));
+const newFilesName = computed(() => 
+    newFiles.value.map(f => ({
+        name: f.name,
+        path: URL.createObjectURL(f)
+    }))
+);
 const deletedFiles = ref([...(props.modelValue?.deletedFiles || [])]); // 초기값 설정
 
 const existingFiles = ref(props.initialFiles.map(file => ({ ...file }))); // ref로 변경 및 얕은 복사
@@ -81,6 +167,10 @@ const existingFiles = ref(props.initialFiles.map(file => ({ ...file }))); // ref
 const acceptType = computed(() =>
     props.type === 'image' ? 'image/*' : '*/*'
 );
+
+const prependIcon = computed(()=>
+    props.type === 'image' ? "mdi-image" : "mdi-paperclip"
+)
 
 // modelValue prop 감시 및 내부 상태 업데이트
 watch(() => props.modelValue, (newValue) => {

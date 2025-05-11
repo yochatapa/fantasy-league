@@ -421,7 +421,7 @@ const fetchPlayer = async () => {
                     , sn                : playerInfo.sn
                     , original_name     : playerInfo.original_name
                     , size              : playerInfo.size
-                    , path              : playerInfo.path
+                    , path              : playerInfo.profile_image
                     , mimetype          : playerInfo.mimetype
                 }]
 
@@ -432,7 +432,7 @@ const fetchPlayer = async () => {
                     sn             : season.sn,
                     original_name  : season.original_name,
                     size           : season.size,
-                    path           : season.path,
+                    path           : season.profile_image,
                     mimetype       : season.mimetype
                 }];
             }
