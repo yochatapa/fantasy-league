@@ -88,8 +88,9 @@ onMounted(() => {
 // ✅ DatePicker 값이 변경될 때 처리
 const handleDatePickerChange = (newVal) => {
     if (newVal && isWithinRange(newVal)) {
-        emit('update:modelValue', newVal);
-        input.value = formatDate(newVal);
+        const formattedDate = formatDate(newVal);
+        emit('update:modelValue', formattedDate);
+        input.value = formattedDate;
     } else {
         innerValue.value = '';
         input.value = '';
@@ -105,12 +106,12 @@ const handleBlur = () => {
         const yyyy = digits.slice(0, 4);
         const mm = digits.slice(4, 6);
         const dd = digits.slice(6, 8);
-        const formatted = `${yyyy}-${mm}-${dd}`;
-
+        const formatted = `${yyyy}.${mm}.${dd}`;
+        
         if (isValidDate(formatted) && isWithinRange(formatted)) {
             emit('update:modelValue', formatted);
             innerValue.value = formatted;
-            input.value = formatDate(formatted);
+            input.value = formatted;
         } else {
             emit('update:modelValue', '');
             innerValue.value = '';

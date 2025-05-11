@@ -337,11 +337,11 @@ const initialMainProfileImage = ref(null);
 const initialSeasonImages = ref([]);
 
 const getFirstDayOfYear = (year) => {
-    return `${year}-01-01`;
+    return `${year}.01.01`;
 }
 
 const getLastDayOfYear = (year) => {
-    return `${year}-12-31`;
+    return `${year}.12.31`;
 }
 
 const activeSeasons = computed(() => {
@@ -357,10 +357,6 @@ const seasonStartEndDateOptions = computed(() => {
         const defaultEndDate = getLastDayOfYear(year);
         return { minDate, maxDate, defaultStartDate, defaultEndDate };
     });
-});
-
-watch(() => form.value.birth_date, (newVal) => {
-    birthDateInput.value = formatDate(newVal);
 });
 
 const filteredPositions = computed(() => {
