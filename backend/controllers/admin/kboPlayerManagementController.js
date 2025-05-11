@@ -101,6 +101,7 @@ export const getKboPlayerList = async (req, res) => {
         // 조회 쿼리
         const kboPlayerList = await query(`
             SELECT
+                (ROW_NUMBER() OVER (ORDER BY kpm.name, kpm.birth_date)) AS row_number,
                 kpm.id,
                 kpm.name,
                 TO_CHAR(kpm.birth_date, 'YYYY.MM.DD') as birth_date,
@@ -270,6 +271,7 @@ export const createKboPlayer = async (req, res) => {
             }
 
             // 3️⃣ 시즌 정보 저장
+            if(seasons)
             for (const season of seasons) {
                 const {
                     year,
@@ -565,6 +567,7 @@ export const updateKboPlayer = async (req, res) => {
             }
 
             // 시즌 정보 처리
+            if(seasons)
             for (const season of seasons) {
                 const { year, team_id, position, uniform_number, is_active, flag, id, contract_type, salary: salaryStr, start_date, end_date, profile_image } = season;
                 

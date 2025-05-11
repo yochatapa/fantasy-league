@@ -41,8 +41,10 @@ export const getKboTeamList = async (req, res) => {
             paginationClause = `LIMIT $${queryParams.length - 1} OFFSET $${queryParams.length}`;
         }
 
+        // 메인 쿼리 실행
         const kboTeamList = await query(`
             SELECT
+                ROW_NUMBER() OVER (ORDER BY ktm.status, ktm.founding_year, ktm.disband_year, ktm.id) AS row_number,
                 ktm.id,
                 ktm.name,
                 ktm.code,
@@ -97,6 +99,7 @@ export const getKboTeamList = async (req, res) => {
         return sendServerError(res, error, '팀 목록 조회 중 문제가 발생하였습니다. 다시 시도해주세요.');
     }
 };
+
 
 
 

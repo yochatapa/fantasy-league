@@ -188,9 +188,6 @@
                     loading-text="선수 목록을 불러오는 중입니다..."
                     @click:row="handleRowClick"
                 >
-                    <template #item.index="{ index }">
-                        {{ (page - 1) * itemsPerPage + index + 1 }}
-                    </template>
                     <template #item.name="{ item }">
                         {{ item.name }}
                     </template>
@@ -238,7 +235,7 @@
                         <v-card class="mb-2 pa-3" @click="(event) => handleRowClick(event, { item })">
                             <div class="d-flex justify-space-between align-center mb-2">
                                 <div class="text-subtitle-1 font-weight-bold">
-                                    #{{ (page - 1) * itemsPerPage + index + 1 }}
+                                    #{{ item.row_number }}
                                 </div>
                             </div>
                             <div class="text-body-2">
@@ -304,7 +301,7 @@ const foreignerOptions = [
 const activeYearOptions = ref([]); // 활동 연도 옵션
 
 const headers = [
-    { title: '번호', value: 'index', width: 80, align: 'center' },
+    { title: '번호', value: 'row_number', width: 80, align: 'center' },
     { title: '이름', value: 'name', align: 'center' },
     { title: '생년월일', value: 'birth_date', align: 'center' },
     { title: '주 포지션', value: 'primary_position', align: 'center' },
