@@ -200,9 +200,9 @@ const addMatchup = async () => {
                 season_year : formattedDate.value.split(".")[0],
                 away_team_id: selectedAwayTeam.value,
                 home_team_id: selectedHomeTeam.value,
-                stadium: stadium.value,
-                game_date: formattedDate.value,
-                game_time: gameTime.value
+                stadium     : stadium.value,
+                game_date   : formattedDate.value,
+                game_time   : gameTime.value
             }
         })
     } catch (error) {
