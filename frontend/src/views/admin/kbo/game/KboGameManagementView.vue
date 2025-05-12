@@ -33,7 +33,7 @@
                         @click="selectMatchup(index)"
                     >
                         <v-list-item-title>
-                            {{ getTeamName(matchup.away_team_id) }} @ {{ getTeamName(matchup.home_team_id) }}
+                            {{ matchup.away_team_id }} @ {{ matchup.home_team_id }}
                         </v-list-item-title>
                         <v-list-item-subtitle>
                             {{ matchup.game_date }} | {{ matchup.game_time }} | {{ matchup.stadium }}
@@ -47,7 +47,7 @@
                         <v-col cols="6">
                             <v-select
                                 v-model="selectedAwayTeam"
-                                :items="teamList"
+                                :items="teamList.filter(team=>team.id !== selectedHomeTeam)"
                                 item-value="id"
                                 item-title="name"
                                 label="원정팀"
@@ -57,7 +57,7 @@
                         <v-col cols="6">
                             <v-select
                                 v-model="selectedHomeTeam"
-                                :items="teamList"
+                                :items="teamList.filter(team=>team.id !== selectedAwayTeam)"
                                 item-value="id"
                                 item-title="name"
                                 label="홈팀"
@@ -105,8 +105,8 @@
                 <v-card-text>
                     <div v-if="selectedMatchup">
                         <p>📌 <strong>팀:</strong> 
-                            {{ getTeamName(selectedMatchup.away_team_id) }} @ 
-                            {{ getTeamName(selectedMatchup.home_team_id) }}
+                            {{ selectedMatchup.away_team_id }} @ 
+                            {{ selectedMatchup.home_team_id }}
                         </p>
                         <p>🏟️ <strong>경기장:</strong> {{ selectedMatchup.stadium }}</p>
                         <p>📅 <strong>날짜:</strong> {{ selectedMatchup.game_date }}</p>
@@ -126,8 +126,8 @@
                 <v-card-text>
                     <div v-if="selectedMatchup">
                         <p>📌 <strong>팀:</strong> 
-                            {{ getTeamName(selectedMatchup.away_team_id) }} @ 
-                            {{ getTeamName(selectedMatchup.home_team_id) }}
+                            {{ selectedMatchup.away_team_id }} @ 
+                            {{ selectedMatchup.home_team_id }}
                         </p>
                         <p>🏟️ <strong>경기장:</strong> {{ selectedMatchup.stadium }}</p>
                         <p>📅 <strong>날짜:</strong> {{ selectedMatchup.game_date }}</p>
@@ -143,8 +143,9 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { STADIUMS } from '@/utils/code/code.js';
+import { commonFetch, getNewFormData } from '@/utils/common/commonFetch';
 import { formatDate } from '@/utils/common/dateUtils.js';
 
 const selectedDate = ref(new Date());
@@ -153,31 +154,18 @@ const calendarOpen = ref(false);
 const matchups = ref([]);
 const selectedMatchup = ref(null);
 
-const teamList = [
-    { id: 1, name: '두산 베어스' },
-    { id: 2, name: 'LG 트윈스' },
-    { id: 3, name: 'KT 위즈' },
-    { id: 4, name: 'NC 다이노스' },
-    { id: 5, name: 'SSG 랜더스' },
-    { id: 6, name: '한화 이글스' },
-    { id: 7, name: '삼성 라이온즈' },
-    { id: 8, name: '롯데 자이언츠' },
-    { id: 9, name: 'KIA 타이거즈' },
-    { id: 10, name: '키움 히어로즈' }
-];
+const teamList = ref([]);
 
 const selectedAwayTeam = ref(null);
 const selectedHomeTeam = ref(null);
 const stadium = ref('');
-const gameDate = ref('');
-const gameTime = ref('');
+const gameTime = ref('18:30');
 
 const canAddMatchup = computed(() => {
     return (
         selectedAwayTeam.value &&
         selectedHomeTeam.value &&
         stadium.value &&
-        gameDate.value &&
         gameTime.value &&
         selectedAwayTeam.value !== selectedHomeTeam.value
     );
@@ -185,6 +173,11 @@ const canAddMatchup = computed(() => {
 
 watch(()=>selectedDate.value, (newVal)=>{
     formattedDate.value = formatDate(newVal)
+})
+
+watch(()=>selectedHomeTeam.value, newVal => {
+    console.log(newVal,teamList.value)
+    if(newVal) stadium.value = teamList.value.find(team=>team.id===newVal)?.main_stadium
 })
 
 const toggleCalendar = () => {
@@ -199,12 +192,28 @@ const selectMatchup = (index) => {
     selectedMatchup.value = matchups.value[index];
 };
 
-const addMatchup = () => {
+const addMatchup = async () => {
+    try {
+        const response = await commonFetch("/api/admin/game/create",{
+            method : "POST"
+            , body : {
+                season_year : formattedDate.value.split(".")[0],
+                away_team_id: selectedAwayTeam.value,
+                home_team_id: selectedHomeTeam.value,
+                stadium: stadium.value,
+                game_date: formattedDate.value,
+                game_time: gameTime.value
+            }
+        })
+    } catch (error) {
+        
+    }
+    
     matchups.value.push({
         away_team_id: selectedAwayTeam.value,
         home_team_id: selectedHomeTeam.value,
         stadium: stadium.value,
-        game_date: gameDate.value,
+        game_date: formattedDate.value,
         game_time: gameTime.value
     });
 
@@ -212,12 +221,21 @@ const addMatchup = () => {
     selectedAwayTeam.value = null;
     selectedHomeTeam.value = null;
     stadium.value = '';
-    gameDate.value = '';
-    gameTime.value = '';
+    gameTime.value = '1830';
 };
 
-const getTeamName = (id) => {
-    const team = teamList.find(team => team.id === id);
-    return team ? team.name : 'Unknown';
-};
+onMounted(async ()=>{
+    try {
+        const response = await commonFetch(`/api/admin/team/list?year=${new Date().getUTCFullYear()}`);
+        
+        if(response.success){
+            teamList.value = response.data.teamList
+        }else{
+            throw new Error();
+        }
+    } catch (error) {
+        alert("팀 정보 조회 중 문제가 발생하였습니다.\n 다시 한 번 시도해주세요.","error");
+    }
+    
+})
 </script>

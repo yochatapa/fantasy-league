@@ -51,6 +51,7 @@ export const getKboTeamList = async (req, res) => {
                 ktm.founding_year,
                 ktm.disband_year,
                 ktm.status,
+                ktm.main_stadium,
                 ft.file_id,
                 ft.sn,
                 ft.original_name,
