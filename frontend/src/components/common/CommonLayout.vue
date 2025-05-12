@@ -8,7 +8,7 @@
                         v-if="menu.subMenu.length === 0"
                         :to="menu.path"
                         class="menu-item"
-                        :class="{ active: isActive(menu.path) }"
+                        :class="{ active: selectedMainIndex === index }"
                     >
                         {{ menu.name }}
                     </router-link>
@@ -18,7 +18,7 @@
                         class="menu-item with-sub"
                         @mouseenter="openDropdownIndex = index"
                         @mouseleave="openDropdownIndex = null"
-                        :class="{ active: isParentActive(menu) }"
+                        :class="{ active: selectedMainIndex === index }"
                     >
                         {{ menu.name }}
                         <v-icon size="20" class="ml-1">mdi-menu-down</v-icon>
@@ -29,7 +29,7 @@
                                 :key="subIndex"
                                 :to="subItem.path"
                                 class="dropdown-item"
-                                :class="{ active: isActive(subItem.path) }"
+                                :class="{ active: selectedMainIndex === index && selectedSubIndex === subIndex }"
                             >
                                 {{ subItem.name }}
                             </router-link>
@@ -44,7 +44,7 @@
             <v-row dense align="center">
                 <v-icon @click="drawer = true" class="mr-1">mdi-menu</v-icon>
                 <div class="menu-display">
-                    <span class="main-menu-name">{{ selectedMainMenu?.name ?? '메인 메뉴' }}</span>
+                    <span class="main-menu-name">{{ selectedMainMenu?.name ?? '' }}</span>
                     <span v-if="selectedSubMenu" class="sub-menu-name"> / {{ selectedSubMenu?.name }}</span>
                 </div>
 
@@ -82,7 +82,7 @@
                                     :key="`mobile-sub-menu-${index}-${subIndex}`"
                                     :to="subItem.path"
                                     class="sub-menu-item"
-                                    :class="{ active: isActive(subItem.path) }"
+                                    :class="{ active: selectedMainIndex === index && selectedSubIndex === subIndex }"
                                     :title="subItem.name"
                                     @click="drawer = false"
                                     active-class=""
@@ -125,6 +125,7 @@ const drawer = ref(false);
 const selectedMainMenu = ref(null);
 const selectedMainIndex = ref(null);
 const selectedSubMenu = ref(null);
+const selectedSubIndex = ref(null)
 
 const openDropdownIndex = ref(null);
 const menus = props.menus;
@@ -141,6 +142,7 @@ const setActiveMenu = () => {
     selectedMainIndex.value = null;
     selectedMainMenu.value = null;
     selectedSubMenu.value = null;
+    selectedSubIndex.value = null;
 
     for (let idx=0;idx<menus.length;idx++) {
         const menu = menus[idx];
@@ -149,13 +151,28 @@ const setActiveMenu = () => {
             selectedMainIndex.value = idx;
             return;
         }
-        
-        const matchedSub = menu.subMenu.find(sub => isActive(sub.path));
-        if (matchedSub) {
-            selectedMainMenu.value = menu;
-            selectedMainIndex.value = idx;
-            selectedSubMenu.value = matchedSub;
-            return;
+
+        for(let idx2=0;idx2<menu.subMenu.length;idx2++){
+            const subMenu = menu.subMenu[idx2];
+
+            if (isActive(subMenu.path)) {
+                selectedMainMenu.value = menu;
+                selectedMainIndex.value = idx;
+                selectedSubMenu.value = subMenu;
+                selectedSubIndex.value = idx2;
+                return;
+            }
+
+            if(subMenu.subMenu){
+                const matchedSub = subMenu.subMenu?.find(sub => isActive(sub.path));
+                if (matchedSub) {
+                    selectedMainMenu.value = menu;
+                    selectedMainIndex.value = idx;
+                    selectedSubMenu.value = subMenu;
+                    selectedSubIndex.value = idx2;
+                    return;
+                }
+            }
         }
     }
 };
