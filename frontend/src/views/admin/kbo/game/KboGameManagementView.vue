@@ -28,7 +28,7 @@
                 <v-divider></v-divider>
                 <v-list>
                     <v-list-item 
-                        v-for="(matchup, index) in matchups" 
+                        v-for="(matchup, index) in gameList" 
                         :key="index" 
                         @click="selectMatchup(index)"
                     >
@@ -155,6 +155,7 @@ const matchups = ref([]);
 const selectedMatchup = ref(null);
 
 const teamList = ref([]);
+const gameList = ref([]);
 
 const selectedAwayTeam = ref(null);
 const selectedHomeTeam = ref(null);
@@ -226,15 +227,24 @@ const addMatchup = async () => {
 
 onMounted(async ()=>{
     try {
-        const response = await commonFetch(`/api/admin/team/list?year=${new Date().getUTCFullYear()}`);
-        
-        if(response.success){
-            teamList.value = response.data.teamList
-        }else{
-            throw new Error();
-        }
+        Promise.all([
+            commonFetch(`/api/admin/team/list?year=${selectedDate.value.getUTCFullYear()}`)
+            , commonFetch(`/api/admin/game/list?gameDate=${formattedDate.value}`)
+        ]).then(([teamResponse, gameResponse])=>{
+            if(teamResponse.success){
+                teamList.value = teamResponse.data.teamList
+            }else{
+                throw new Error();
+            }
+
+            if(gameResponse.success){
+                gameList.value = gameResponse.data.gameList
+            }else{
+                throw new Error();
+            }
+        })
     } catch (error) {
-        alert("팀 정보 조회 중 문제가 발생하였습니다.\n 다시 한 번 시도해주세요.","error");
+        alert("화면 조회 중 문제가 발생하였습니다.\n 다시 한 번 시도해주세요.","error");
     }
     
 })
