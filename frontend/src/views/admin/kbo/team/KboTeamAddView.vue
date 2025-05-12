@@ -40,6 +40,14 @@
                         required
                     />
 
+                    <v-select
+                        v-model="form.main_stadium"
+                        label="주경기장"
+                        :items="STADIUMS"
+                        item-title="name"
+                        item-value="code"
+                    />
+
                     <FileUploader
                         v-model="form.logo"
                         label="로고 이미지"
@@ -68,6 +76,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { commonFetch, getNewFormData } from '@/utils/common/commonFetch';
+import { STADIUMS } from '@/utils/code/code.js';
 import FileUploader from '@/components/common/FileUploader.vue';
 
 const route = useRoute();
@@ -84,6 +93,7 @@ const form = ref({
     disband_year: null,
     status: 'active',
     logo: null,
+    main_stadium: null,
 });
 
 const initialLogo = ref(null);
@@ -112,6 +122,7 @@ const fetchTeam = async () => {
                 founding_year: teamInfo.founding_year,
                 disband_year: teamInfo.disband_year,
                 status: teamInfo.status,
+                main_stadium : teamInfo.main_stadium,
             };
 
             if(teamInfo.file_id)

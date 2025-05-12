@@ -105,10 +105,8 @@ export const getKboTeamList = async (req, res) => {
 
 export const createKboTeam = async (req, res) => {
     const { 
-        name, code, founding_year, status, disband_year, logo
+        name, code, founding_year, status, disband_year, logo, main_stadium
     } = req.body;
-
-    const { newFiles = [], deletedFiles = [] } = logo;
 
     const accessToken = req.headers['authorization']?.split(' ')[1];
 
@@ -137,18 +135,19 @@ export const createKboTeam = async (req, res) => {
         await withTransaction(async (client) => {
             // 1️⃣ 팀 마스터 테이블 저장
             const insertQuery = `
-                INSERT INTO kbo_team_master (name, code, founding_year, status, disband_year, created_at)
-                VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+                INSERT INTO kbo_team_master (name, code, founding_year, status, disband_year, main_stadium, created_at)
+                VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
                 RETURNING id
             `;
             const { rows } = await client.query(insertQuery, [
-                name, code, founding_year, status, disband_year || null
+                name, code, founding_year, status, disband_year || null, main_stadium || null
             ]);
 
             const teamId = rows[0].id;
 
             // 2️⃣ [Insert 처리] main_profile_image의 newFiles 처리
-            if (newFiles.length > 0) {
+            if (logo) {
+                const { newFiles = [], deletedFiles = [] } = logo;
                 for (const newFile of newFiles) {
                     const userSpecificUploadDir = path.join(finalUploadsBaseDir, 'kboTeam', teamId.toString(), 'logo');
 
@@ -221,8 +220,8 @@ export const createKboTeam = async (req, res) => {
 
 
 export const updateKboTeam = async (req, res) => {
-    const { name, code, founding_year, status, disband_year, logo } = req.body;
-    const { newFiles = [], deletedFiles = [] } = logo;
+    const { name, code, founding_year, status, disband_year, logo, main_stadium } = req.body;
+    
     let { teamId } = req.params;
 
     const accessToken = req.headers['authorization']?.split(' ')[1];
@@ -263,22 +262,22 @@ export const updateKboTeam = async (req, res) => {
                 [teamId]
             );
 
-            console.log("rows",rows)
-
             const updateQuery = `
                 UPDATE kbo_team_master SET
                     name = $2,
                     code = $3,
                     founding_year = $4,
                     status = $5,
-                    disband_year = $6
+                    disband_year = $6,
+                    main_stadium = $7
                 WHERE id = $1
             `;
-            const params = [teamId, name, code, founding_year, status, disband_year || null];
+            const params = [teamId, name, code, founding_year, status, disband_year || null, main_stadium || null];
             await client.query(updateQuery, params);
 
             /* 🔹 logo 파일 처리 */
             if (logo) {
+                const { newFiles = [], deletedFiles = [] } = logo;
                 const generatedFileId = rows[0].logo_url ?? uuidv4();
                 const userSpecificUploadDir = path.join(finalUploadsBaseDir, 'kboTeam', teamId.toString(), 'logo');
                 
@@ -382,6 +381,7 @@ export const getKboTeamDetail = async (req, res) => {
                 , ktm.founding_year
                 , ktm.status
                 , ktm.disband_year
+                , ktm.main_stadium
                 , ft.file_id
                 , ft.sn
                 , ft.original_name
