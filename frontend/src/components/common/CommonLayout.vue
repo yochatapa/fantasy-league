@@ -1,96 +1,114 @@
-<!-- components/layouts/CommonLayout.vue -->
 <template>
-    <v-container>
-        <!-- 메뉴 -->
-        <v-row>
-            <v-col cols="12" v-if="!mobile">
-                <div class="horizontal-list">
-                    <template v-for="(menu, index) in menus" :key="index">
-                        <!-- 서브메뉴 없는 경우 -->
-                        <router-link
-                            v-if="menu.subMenu.length === 0"
-                            :to="menu.path"
-                            class="menu-item"
-                            :class="{ active: isActive(menu.path) }"
-                        >
-                            {{ menu.name }}
-                        </router-link>
+    <!-- 메뉴 -->
+    <v-row class="bg-grey-lighten-5 position-sticky py-1" style="top: 64px;z-index: 1;">
+        <v-col cols="12" v-if="!mobile">
+            <div class="horizontal-list">
+                <template v-for="(menu, index) in menus" :key="index">
+                    <router-link
+                        v-if="menu.subMenu.length === 0"
+                        :to="menu.path"
+                        class="menu-item"
+                        :class="{ active: isActive(menu.path) }"
+                    >
+                        {{ menu.name }}
+                    </router-link>
 
-                        <!-- 서브메뉴 있는 경우 -->
-                        <div
-                            v-else
-                            class="menu-item with-sub"
-                            @mouseenter="openDropdownIndex = index"
-                            @mouseleave="openDropdownIndex = null"
-                            :class="{ active: isParentActive(menu) }"
-                        >
-                            {{ menu.name }}
-                            <v-icon size="20" class="ml-1">mdi-menu-down</v-icon>
+                    <div
+                        v-else
+                        class="menu-item with-sub"
+                        @mouseenter="openDropdownIndex = index"
+                        @mouseleave="openDropdownIndex = null"
+                        :class="{ active: isParentActive(menu) }"
+                    >
+                        {{ menu.name }}
+                        <v-icon size="20" class="ml-1">mdi-menu-down</v-icon>
 
-                            <div v-if="openDropdownIndex === index" class="dropdown">
-                                <router-link
-                                    v-for="(subItem, subIndex) in menu.subMenu.filter((sub)=>sub.visible!==false)"
-                                    :key="subIndex"
-                                    :to="subItem.path"
-                                    class="dropdown-item"
-                                    :class="{ active: isActive(subItem.path) }"
-                                >
-                                    {{ subItem.name }}
-                                </router-link>
-                            </div>
+                        <div v-if="openDropdownIndex === index" class="dropdown">
+                            <router-link
+                                v-for="(subItem, subIndex) in menu.subMenu.filter((sub)=>sub.visible!==false)"
+                                :key="subIndex"
+                                :to="subItem.path"
+                                class="dropdown-item"
+                                :class="{ active: isActive(subItem.path) }"
+                            >
+                                {{ subItem.name }}
+                            </router-link>
                         </div>
-                    </template>
+                    </div>
+                </template>
+            </div>
+        </v-col>
+
+        <!-- 모바일 메뉴 -->
+        <v-col cols="12" v-else>
+            <v-row dense align="center">
+                <v-icon @click="drawer = true" class="mr-1">mdi-menu</v-icon>
+                <div class="menu-display">
+                    <span class="main-menu-name">{{ selectedMainMenu?.name ?? '메인 메뉴' }}</span>
+                    <span v-if="selectedSubMenu" class="sub-menu-name"> / {{ selectedSubMenu?.name }}</span>
                 </div>
-            </v-col>
 
-            <!-- 모바일 메뉴 -->
-            <v-col cols="12" v-else>
-                <v-row dense>
-                    <v-col cols="6">
-                        <v-select
-                            v-model="selectedMainMenu"
-                            :items="menus"
-                            item-title="name"
-                            :item-value="(menu) => menu"
-                            label="메인 메뉴"
-                            hide-details
-                            dense
-                            outlined
-                            class="menu-select"
-                        />
-                    </v-col>
-
-                    <v-col cols="6">
-                        <v-select
-                            v-model="selectedSubMenu"
-                            :items="subMenuItems"
-                            item-title="name"
-                            :item-value="(subItem) => subItem"
-                            label="서브 메뉴"
-                            hide-details
-                            dense
-                            outlined
-                            :disabled="!subMenuItems.length"
-                            class="menu-select"
-                        />
-                    </v-col>
-                </v-row>
-            </v-col>
-        </v-row>
-
-        <!-- 콘텐츠 영역 -->
-        <v-row>
-            <v-col cols="12">
-                <router-view />
-            </v-col>
-        </v-row>
-    </v-container>
+                <v-navigation-drawer v-model="drawer" app temporary>
+                    <v-list>
+                        <v-list-item
+                            v-if="menus.length === 1 && menus[0].subMenu.length === 0"
+                            :to="menus[0].path"
+                            :title="menus[0].name"
+                            @click="drawer = false"
+                            :class="{ active: isActive(menu.path) }"
+                        ></v-list-item>
+                        <template v-for="(menu, index) in menus" :key="`mobile-menu-${index}`">
+                            <v-list-item
+                                v-if="menu.subMenu.length === 0"
+                                :title="menu.name"
+                                :to="menu.path"
+                                @click="drawer = false"
+                                :class="{ active: isActive(menu.path) }"
+                                active-class=""
+                                exact
+                            ></v-list-item>
+                            <v-list-group v-else :value="menu.name">
+                                <template v-slot:activator="{ props }">
+                                    <v-list-item
+                                        v-bind="props"
+                                        :title="menu.name"
+                                        :class="{ active: selectedMainIndex === index, expend: isExpandedList[index]}"
+                                        @click="isExpandedList[index] = !isExpandedList[index];"
+                                    ></v-list-item>
+                                    <v-divider v-if="isExpandedList[index]"></v-divider>
+                                </template>
+                                <v-list-item
+                                    v-for="(subItem, subIndex) in menu.subMenu.filter(sub => sub.visible !== false)"
+                                    :key="`mobile-sub-menu-${index}-${subIndex}`"
+                                    :to="subItem.path"
+                                    class="sub-menu-item"
+                                    :class="{ active: isActive(subItem.path) }"
+                                    :title="subItem.name"
+                                    @click="drawer = false"
+                                    active-class=""
+                                    exact
+                                ></v-list-item>
+                            </v-list-group>
+                            <v-divider v-if="index < menus.length - 1"></v-divider>
+                        </template>
+                    </v-list>
+                </v-navigation-drawer>
+            </v-row>
+        </v-col>
+    </v-row>
+    <!-- 콘텐츠 영역 -->
+    <v-row>
+        <v-col cols="12">
+            <router-view />
+        </v-col>
+    </v-row>
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useDisplay } from 'vuetify';
 import { useRouter, useRoute } from 'vue-router';
+import { id } from 'vuetify/locale';
 
 const props = defineProps({
     menus: {
@@ -103,109 +121,52 @@ const { mobile } = useDisplay();
 const router = useRouter();
 const route = useRoute();
 
-const openDropdownIndex = ref(null);
+const drawer = ref(false);
 const selectedMainMenu = ref(null);
+const selectedMainIndex = ref(null);
 const selectedSubMenu = ref(null);
 
+const openDropdownIndex = ref(null);
 const menus = props.menus;
 
-const subMenuItems = computed(() =>
-    selectedMainMenu.value?.subMenu?.filter(sub => sub.visible !== false) || []
-);
+const isExpandedList = ref(Array(menus.filter(menu=>menu.subMenu).length).fill(false))
 
-watch(selectedMainMenu, (newValue) => {
-    selectedSubMenu.value = null;
-    if (newValue) {
-        if (newValue.subMenu?.length > 0) {
-            const matchedSub = newValue.subMenu.find(sub => route.path.startsWith(sub.path));
-            
-            selectedSubMenu.value = matchedSub || newValue.subMenu[0];
-            if(!route.path.startsWith(selectedSubMenu.value.path)) router.push(selectedSubMenu.value.path);
-        } else if (newValue.path) {
-            router.push(newValue.path);
-        }
-    }
-});
-
-watch(selectedSubMenu, (newValue) => {
-    if (newValue?.path && !route.path.startsWith(newValue?.path)) {
-        router.push(newValue.path);
-    }
-});
-
-watch(mobile, (newValue) => {
-    if (newValue && menus.length > 0) {
-        const currentPath = route.path.split("?")[0];
-
-        const alreadyMatched = menus.some(menu => {
-            if (menu.subMenu.length > 0) {
-                return menu.subMenu.some(sub => sub.path.startsWith(currentPath));
-            } else {
-                return menu.path.startsWith(currentPath);
-            }
-        });
-
-        if (!alreadyMatched) {
-            selectedMainMenu.value = menus[0];
-        }
-    }
-});
-
-watch(
-    () => route.path,
-    (newPath) => {
-        const currentPath = newPath.split("?")[0];
-        for (const menu of menus) {
-            if (menu.subMenu.length > 0) {
-                const matched = menu.subMenu.find(sub => sub.path.startsWith(currentPath));
-                if (matched) {
-                    selectedMainMenu.value = menu;
-                    /*if(matched.visible !== false)*/ selectedSubMenu.value = matched;
-                    return;
-                }
-            } else if (menu.path.startsWith(currentPath)) {
-                selectedMainMenu.value = menu;
-                selectedSubMenu.value = null;
-                return;
-            }
-        }
-
-        // 경로가 어느 메뉴에도 일치하지 않을 경우 초기화 (선택 사항)
-        selectedMainMenu.value = null;
-        selectedSubMenu.value = null;
-    },
-    { immediate: true } // 초기화 시점에도 실행
-);
-
-onMounted(() => {
-    const currentPath = route.path.split("?")[0];
-    for (const menu of menus) {
-        if (menu.subMenu.length > 0) {
-            const matched = menu.subMenu.find(sub => sub.path.startsWith(currentPath));
-            if (matched) {
-                selectedMainMenu.value = menu;
-                selectedSubMenu.value = matched;
-                return;
-            }
-        } else if (menu.path.startsWith(currentPath)) {
-            selectedMainMenu.value = menu;
-            return;
-        }
-    }
-});
-
-// 현재 경로가 해당 path와 일치하는지 확인
 const isActive = (path) => {
-    const cleanRoutePath = route.path.split('?')[0]; // ? 뒤의 파라미터를 제거한 경로
-    const cleanPath = path.split('?')[0]; // path에서 ? 뒤의 파라미터를 제거한 경로
+    const cleanRoutePath = route?.path.split('?')[0];
+    const cleanPath = path?.split('?')[0];
     return cleanRoutePath === cleanPath;
 };
 
+const setActiveMenu = () => {
+    selectedMainIndex.value = null;
+    selectedMainMenu.value = null;
+    selectedSubMenu.value = null;
 
-// 서브메뉴 중 하나라도 활성화돼 있으면 부모도 활성화 처리
+    for (let idx=0;idx<menus.length;idx++) {
+        const menu = menus[idx];
+        if (isActive(menu.path)) {
+            selectedMainMenu.value = menu;
+            selectedMainIndex.value = idx;
+            return;
+        }
+        
+        const matchedSub = menu.subMenu.find(sub => isActive(sub.path));
+        if (matchedSub) {
+            selectedMainMenu.value = menu;
+            selectedMainIndex.value = idx;
+            selectedSubMenu.value = matchedSub;
+            return;
+        }
+    }
+};
+
 const isParentActive = (menu) => {
     return menu.subMenu.some(sub => isActive(sub.path));
 };
+
+watch(route, () => {
+    setActiveMenu();
+}, { immediate: true });
 </script>
 
 <style scoped>
@@ -280,5 +241,48 @@ const isParentActive = (menu) => {
 .dropdown-item.active {
     background-color: #1976d2;
     color: white;
+}
+
+.menu-display {
+    display: flex;
+    align-items: center;
+    font-size: 16px;
+    margin-left: 8px;
+    gap: 4px;
+}
+
+.main-menu-name {
+    font-weight: bold;
+}
+
+.sub-menu-name {
+    color: gray;
+}
+
+::v-deep .active .v-list-item__overlay{
+    background: transparent !important;
+}
+
+::v-deep .active .v-list-item__content{
+    padding: 4px 10px;
+    border-radius: 10px;
+    background-color: #1976d2;
+    
+    color: white;
+}
+
+::v-deep a.active .v-list-item__content{
+    transform: translateX(-10px);
+}
+
+::v-deep .v-navigation-drawer__scrim{
+    width: 100vw;
+    height: 100vh;
+    top: -11px;
+    left: -4px;
+}
+
+.v-navigation-drawer__scrim{
+    background-color: unset;
 }
 </style>
