@@ -36,6 +36,17 @@ const menus = [
                     }
                 ] 
             },
+            { 
+                name: 'KBO 경기 관리', 
+                path: '/admin/game/management', 
+                subMenu : [
+                    { 
+                        name: 'KBO 경기 추가', 
+                        path: '/admin/player/game', 
+                        visible: false
+                    }
+                ] 
+            },
         ]
     },
     {
