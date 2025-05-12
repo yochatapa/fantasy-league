@@ -33,6 +33,17 @@ const vuetify = createVuetify({
             }
         }
     },
+    defaults: {
+        VTextField: {
+            autocomplete: 'off',
+        },
+        VSelect: {
+            autocomplete: 'off',
+        },
+        VCombobox: {
+            autocomplete: 'off',
+        },
+    },
 });
 
 const app = createApp(App);
