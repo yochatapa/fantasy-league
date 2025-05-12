@@ -126,7 +126,6 @@
 
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue';
-import { KBO_TEAMS } from '@/utils/code/kboTeams';
 import validation from '@/utils/common/validation';
 import { commonFetch, getNewFormData } from '@/utils/common/commonFetch';
 import { useRouter } from 'vue-router';
