@@ -107,11 +107,10 @@
                                 :items="kboTeams"
                                 label="선호 구단"
                                 item-title="name"
-                                item-value="key"
+                                item-value="id"
                                 prepend-inner-icon="mdi-baseball"
                                 class="mb-2"
                             />
-
                             <!-- 제출 버튼 -->
                             <v-btn color="primary" :disabled="!valid" block type="submit">
                                 회원가입
@@ -125,7 +124,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick } from 'vue';
+import { ref, computed, watch, nextTick, onMounted } from 'vue';
 import validation from '@/utils/common/validation';
 import { commonFetch, getNewFormData } from '@/utils/common/commonFetch';
 import { useRouter } from 'vue-router';
@@ -159,10 +158,7 @@ const nicknameCheckStatus = ref(null);
 const showPassword = ref(false);
 const showPassword2 = ref(false);
 
-const kboTeams = Object.keys(KBO_TEAMS).map(key => ({
-    key,
-    name: KBO_TEAMS[key].name
-}));
+const kboTeams = ref([]);
 
 const emailRules = computed(() => {
     const rules = [
@@ -469,4 +465,20 @@ const handleServerError = (error) => {
         });*/
     }
 };
+
+onMounted(async ()=>{
+    try {
+        const response = await commonFetch(`/api/kbo/team/list?year=${new Date().getUTCFullYear()}`);
+        
+        if(response.success){
+            kboTeams.value = response.data.teamList
+        }else{
+            throw new Error();
+        }
+    } catch (error) {
+        alert("팀 정보 조회 중 문제가 발생하였습니다.\n 다시 한 번 시도해주세요.","error");
+        router.push("/")
+    }
+    
+})
 </script>

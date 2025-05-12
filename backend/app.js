@@ -8,6 +8,7 @@ import testRoutes from './routes/testRoutes.js';
 import usersRoutes from './routes/usersRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import leagueRoutes from './routes/leagueRoutes.js';
+import kboRoutes from './routes/kboRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import fileRoutes from './routes/fileRoutes.js';
 
@@ -35,6 +36,7 @@ app.use('/api/test' , testRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/auth' , authRoutes);
 app.use('/api/league', leagueRoutes);
+app.use('/api/kbo', kboRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/file', fileRoutes);
 
