@@ -127,7 +127,7 @@
                         </v-card-text>
                     </v-card>
                 </v-col>
-                <v-col cols="8">
+                <v-col cols="12" md="8">
                     <v-card>
                         <v-card-title>경기 정보</v-card-title>
                         <v-divider></v-divider>
@@ -136,7 +136,7 @@
                         </v-card-text>
                     </v-card>
                 </v-col>
-                <v-col cols="4">
+                <v-col cols="12" md="4">
                     <v-card>
                         <v-card-title>라인업</v-card-title>
                         <v-divider></v-divider>

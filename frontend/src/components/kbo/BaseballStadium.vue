@@ -62,9 +62,9 @@ const defenders = ref([
     { name: '2루수', position: '2B', x: 310, y: 245 },
     { name: '유격수', position: 'SS', x: 190, y: 245 },
     { name: '3루수', position: '3B', x: 148, y: 321 },
-    { name: '좌익수', position: 'LF', x: 50, y: 150 },
-    { name: '중견수', position: 'CF', x: 250, y: 60 },
-    { name: '우익수', position: 'RF', x: 450, y: 150 }
+    { name: '좌익수', position: 'LF', x: 80, y: 150 },
+    { name: '중견수', position: 'CF', x: 250, y: 70 },
+    { name: '우익수', position: 'RF', x: 420, y: 150 }
 ]);
 
 const pitcher = ref({ name: '투수', position: 'P', x: 250, y: 343 });
