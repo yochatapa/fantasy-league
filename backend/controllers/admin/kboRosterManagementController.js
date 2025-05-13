@@ -13,7 +13,7 @@ const finalUploadsBaseDir = path.join(process.cwd(), 'uploads');
 
 export const getTeamRosterList = async (req, res) => {
     try {
-        let { date, page, limit = 10 } = req.query;
+        let { date, teamId, page, limit = 10 } = req.query;
 
         const queryParams = [];
         let whereClauses = [];
@@ -30,6 +30,11 @@ export const getTeamRosterList = async (req, res) => {
             whereClauses.push(`ktr.season_year = $${queryParams.length} `);
         }
 
+        if(teamId){
+            queryParams.push(teamId);
+            whereClauses.push(`ktr.team_id = $${queryParams.length} `);
+        }
+
         const whereClause = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
 
         // 페이지네이션
@@ -42,7 +47,6 @@ export const getTeamRosterList = async (req, res) => {
             paginationParams = [limit, offset];
             paginationClause = `LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}`;
         }
-
         // 조회 쿼리
         const rosterList = await query(`
             SELECT

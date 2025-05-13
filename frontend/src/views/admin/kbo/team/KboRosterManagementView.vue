@@ -168,7 +168,7 @@ const getPlayerList = async (year) => {
 
 const getRoster = async (date) => {
     try {
-        const response = await commonFetch(`/api/admin/roster/list?date=${formatDate(date)}`);
+        const response = await commonFetch(`/api/admin/roster/list?date=${formatDate(date)}&teamId=${decryptData(teamId.value)}`);
 
         if(response.success){
             rosterList.value = response.data.rosterList;
