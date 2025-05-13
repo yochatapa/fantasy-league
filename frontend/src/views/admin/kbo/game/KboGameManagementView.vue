@@ -107,7 +107,7 @@
             </v-card>
         </v-col>
 
-        <v-col cols="12" md="8">
+        <v-col cols="12" md="8" v-if="selectedMatchup">
             <v-row align="stretch" class="h-100">
                 <v-col cols="12">
                     <v-card class="h-100">
@@ -184,11 +184,9 @@
                         <v-divider></v-divider>
                         <v-card-text>
                             <v-tabs v-model="activeTab">
-                                <v-tab value="0">기본 정보</v-tab>
-                                <v-tab value="1">라인업 설정</v-tab>
-                                <v-tab value="2">라인업 </v-tab>
-                                <v-tab value="3">타자 기록 등록</v-tab>
-                                <v-tab value="4">투수 기록 등록</v-tab>
+                                <v-tab value="0">라인업 설정</v-tab>
+                                <v-tab value="1">타자 기록 등록</v-tab>
+                                <v-tab value="2">투수 기록 등록</v-tab>
                             </v-tabs>
 
                             <v-window v-model="activeTab">
@@ -196,27 +194,107 @@
                                     <v-container>
                                         <v-row>
                                             <v-col cols="12">
-                                                <p>기본 정보 화면이 여기에 표시됩니다.</p>
+                                                <v-row>
+                                                    <!-- 팀 선택 -->
+                                                    <v-col cols="3">
+                                                        <v-select
+                                                            v-model="selectedTeam"
+                                                            :items="teams"
+                                                            label="팀 선택"
+                                                            density="compact"
+                                                            @change="fetchPlayers"
+                                                        />
+                                                    </v-col>
+
+                                                    <!-- 타순 선택 -->
+                                                    <v-col cols="3">
+                                                        <v-select
+                                                            v-model="item.batting_order"
+                                                            :items="battingOrders"
+                                                            label="타순"
+                                                            density="compact"
+                                                        />
+                                                    </v-col>
+
+                                                    <!-- 선수 선택 -->
+                                                    <v-col cols="3">
+                                                        <v-select
+                                                            v-model="item.player_id"
+                                                            :items="players"
+                                                            item-title="name"
+                                                            item-value="id"
+                                                            label="선수 선택"
+                                                            density="compact"
+                                                        />
+                                                    </v-col>
+
+                                                    <!-- 교체 선수 선택 -->
+                                                    <v-col cols="3">
+                                                        <v-select
+                                                            v-model="item.replaced_by"
+                                                            :items="players"
+                                                            item-title="name"
+                                                            item-value="id"
+                                                            label="교체 선수"
+                                                            density="compact"
+                                                        />
+                                                    </v-col>
+                                                </v-row>
+
+                                                <v-row>
+                                                    <!-- 역할 선택 -->
+                                                    <v-col cols="3">
+                                                        <v-select
+                                                            v-model="item.role"
+                                                            :items="roles"
+                                                            label="역할"
+                                                            density="compact"
+                                                        />
+                                                    </v-col>
+
+                                                    <!-- 이닝 선택 -->
+                                                    <v-col cols="3">
+                                                        <v-select
+                                                            v-model="item.replaced_inning"
+                                                            :items="innings"
+                                                            label="이닝"
+                                                            density="compact"
+                                                        />
+                                                    </v-col>
+
+                                                    <!-- 아웃 카운트 선택 -->
+                                                    <v-col cols="3">
+                                                        <v-select
+                                                            v-model="item.replaced_out"
+                                                            :items="outs"
+                                                            label="아웃 카운트"
+                                                            density="compact"
+                                                        />
+                                                    </v-col>
+
+                                                    <!-- 저장 버튼 -->
+                                                    <v-col cols="3" class="d-flex justify-end align-top">
+                                                        <v-btn color="primary" @click="saveItem">저장</v-btn>
+                                                    </v-col>
+                                                </v-row>
                                             </v-col>
                                         </v-row>
                                     </v-container>
                                 </v-window-item>
-
-                                <v-window-item value="1">
-                                    <v-container>
-                                        <v-row>
-                                            <v-col cols="12">
-                                                <p>라인업 설정 화면이 여기에 표시됩니다.</p>
-                                            </v-col>
-                                        </v-row>
-                                    </v-container>
-                                </v-window-item>
-
                                 <v-window-item value="2">
                                     <v-container>
                                         <v-row>
                                             <v-col cols="12">
-                                                <p>교체 기록 화면이 여기에 표시됩니다.</p>
+                                                <p>타자 기록 화면이 여기에 표시됩니다.</p>
+                                            </v-col>
+                                        </v-row>
+                                    </v-container>
+                                </v-window-item>
+                                <v-window-item value="3">
+                                    <v-container>
+                                        <v-row>
+                                            <v-col cols="12">
+                                                <p>투수 기록 화면이 여기에 표시됩니다.</p>
                                             </v-col>
                                         </v-row>
                                     </v-container>
@@ -226,6 +304,11 @@
                     </v-card>
                 </v-col>
             </v-row>
+        </v-col>
+        <v-col cols="12" md="8" v-else>
+            <v-card class="h-100 d-flex justify-center align-center">
+                <v-card-title>선택된 경기가 없습니다.</v-card-title>
+            </v-card>
         </v-col>
     </v-row>
 </template>
@@ -265,6 +348,30 @@ const canAddMatchup = computed(() => {
         selectedAwayTeam.value !== selectedHomeTeam.value
     );
 });
+
+const item = ref({
+    team_id: null,
+    player_id: null,
+    replaced_by: null,
+    role: null,
+    batting_order: null,
+    replaced_inning: null,
+    replaced_out: null,
+});
+
+const teams = ['Team A', 'Team B', 'Team C'];
+const battingOrders = Array.from({ length: 9 }, (_, i) => i + 1); // 1~9번 타순
+const roles = ['starter', 'bench', 'substitute'];
+const innings = Array.from({ length: 12 }, (_, i) => i + 1); // 1~12회
+const outs = [0, 1, 2];
+
+const saveItem = () => {
+    console.log('저장된 데이터:', item.value);
+};
+
+const deleteItem = () => {
+    console.log('삭제할 데이터:', item.value.id);
+};
 
 watch(()=>selectedDate.value, (newVal)=>{
     formattedDate.value = formatDate(newVal)
@@ -341,6 +448,7 @@ const getGameList = async (date) => {
         
         if(response.success){
             gameList.value = response.data.gameList
+            selectedMatchup.value = null;
         }else throw new Error();
 
         return true
