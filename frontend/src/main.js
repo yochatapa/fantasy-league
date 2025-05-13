@@ -63,7 +63,6 @@ app.mixin({
             if(this.$el.querySelectorAll){
                 const inputs = this.$el.querySelectorAll('input');
                 inputs.forEach((input) => {
-                    console.log(input)
                     input.setAttribute('autocomplete', 'off');
                     input.setAttribute('autocorrect', 'off');
                     input.setAttribute('autocapitalize', 'off');
