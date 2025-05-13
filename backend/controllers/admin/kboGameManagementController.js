@@ -43,34 +43,23 @@ export const getKboGameList = async (req, res) => {
             paginationClause = `LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}`; // 파라미터 순서 명시적으로 지정
         }
 
-        console.log(`
-            SELECT
-                (ROW_NUMBER() OVER (ORDER BY kgm.season_year, kgm.game_date, kgm.game_time)) AS row_number,
-                season_year , 
-                away_team_id, 
-                home_team_id, 
-                stadium , 
-                game_date , 
-                game_time ,
-                status
-            FROM kbo_game_master kgm
-            ${whereClause}
-            ORDER BY kgm.season_year, kgm.game_date, kgm.game_time
-            ${paginationClause}
-        `, [...queryParams, ...paginationParams])
-
         // 조회 쿼리
         const kboGameList = await query(`
             SELECT
                 (ROW_NUMBER() OVER (ORDER BY kgm.season_year, kgm.game_date, kgm.game_time)) AS row_number,
+                kgm.id as game_id,
                 season_year , 
                 away_team_id, 
+                ati.name as away_team_name,
                 home_team_id, 
+                hti.name as home_team_name,
                 stadium , 
-                game_date , 
-                game_time ,
-                status
+                TO_CHAR(kgm.game_date, 'YYYY.MM.DD') as game_date , 
+                TO_CHAR(kgm.game_time, 'HH24:MI') as game_time ,
+                kgm.status
             FROM kbo_game_master kgm
+                left join kbo_team_master ati on kgm.away_team_id = ati.id
+                left join kbo_team_master hti on kgm.home_team_id = hti.id
             ${whereClause}
             ORDER BY kgm.season_year, kgm.game_date, kgm.game_time
             ${paginationClause}
@@ -691,95 +680,43 @@ export const createKboGame = async (req, res) => {
 //     }
 // };
 
-// export const deleteKboPlayer = async (req, res) => {
-//     const accessToken = req.headers['authorization']?.split(' ')[1];
+export const deleteKboGame = async (req, res) => {
+    const accessToken = req.headers['authorization']?.split(' ')[1];
 
-//     if (!accessToken) {
-//         return sendBadRequest(res, '토큰이 제공되지 않았습니다.');
-//     }
+    if (!accessToken) {
+        return sendBadRequest(res, '토큰이 제공되지 않았습니다.');
+    }
 
-//     let { playerId } = req.body;
-//     if (!playerId) {
-//         return sendBadRequest(res, "삭제할 선수 ID가 제공되지 않았습니다.");
-//     }
+    let { gameId } = req.body;
+    if (!gameId) {
+        return sendBadRequest(res, "삭제할 게임 ID가 제공되지 않았습니다.");
+    }
 
-//     try {
-//         const user = jwt.verify(accessToken, process.env.JWT_SECRET);
-//         playerId = decryptData(playerId);
+    try {
+        const user = jwt.verify(accessToken, process.env.JWT_SECRET);
+        gameId = decryptData(gameId);
 
-//         await withTransaction(async (client) => {
-//             // **선수 존재 여부 확인**
-//             const { rows: playerRows } = await client.query(
-//                 'SELECT main_profile_image FROM kbo_player_master WHERE id = $1',
-//                 [playerId]
-//             );
+        await withTransaction(async (client) => {
+            // **게임 존재 여부 확인**
+            const { rows: gameRows } = await client.query(
+                'SELECT * FROM kbo_game_master WHERE id = $1',
+                [gameId]
+            );
 
-//             if (playerRows.length === 0) {
-//                 return sendBadRequest(res, "존재하지 않는 선수입니다.");
-//             }
+            if (gameRows.length === 0) {
+                return sendBadRequest(res, "존재하지 않는 경기입니다.");
+            }
 
-//             const mainProfileFileId = playerRows[0].main_profile_image;
+            // **게임 마스터 정보 삭제**
+            await client.query(
+                'DELETE FROM kbo_game_master WHERE id = $1',
+                [gameId]
+            );
 
-//             // **파일 삭제 처리**
-//             if (mainProfileFileId) {
-//                 const { rows: fileRows } = await client.query(
-//                     'SELECT path FROM file_table WHERE file_id = $1',
-//                     [mainProfileFileId]
-//                 );
-
-//                 for (const file of fileRows) {
-//                     await deleteFile(file.path);
-//                 }
-
-//                 await client.query(
-//                     'DELETE FROM file_table WHERE file_id = $1',
-//                     [mainProfileFileId]
-//                 );
-//             }
-            
-//             // **시즌 정보 조회**
-//             const { rows: seasonRows } = await client.query(
-//                 'SELECT id, profile_image FROM kbo_player_season WHERE player_id = $1',
-//                 [playerId]
-//             );
-
-//             for(const seasonRow of seasonRows){
-//                 const seasonId = seasonRow.id
-//                 const profile_image = seasonRow.profile_image
-
-//                 if(profile_image){
-//                     const { rows: seasonFileRows } = await client.query(
-//                         'SELECT path FROM file_table WHERE file_id = $1',
-//                         [profile_image]
-//                     );
-    
-//                     for (const seasonFile of seasonFileRows) {
-//                         await deleteFile(seasonFile.path);
-//                     }
-    
-//                     await client.query(
-//                         'DELETE FROM file_table WHERE file_id = $1',
-//                         [profile_image]
-//                     );
-//                 }
-
-//                 // **선수 시즌 정보 삭제**
-//                 await client.query(
-//                     'DELETE FROM kbo_player_season WHERE id = $1',
-//                     [seasonId]
-//                 );
-//             }            
-
-//             // **선수 마스터 정보 삭제**
-//             await client.query(
-//                 'DELETE FROM kbo_player_master WHERE id = $1',
-//                 [playerId]
-//             );
-
-//             return sendSuccess(res, "선수가 성공적으로 삭제되었습니다.");
-//         });
-//     } catch (error) {
-//         console.error('선수 삭제 중 오류 발생:', error);
-//         return sendServerError(res, error, "선수 삭제 중 오류가 발생했습니다.");
-//     }
-// };
+            return sendSuccess(res, "게임이 성공적으로 삭제되었습니다.");
+        });
+    } catch (error) {
+        console.error('게임 삭제 중 오류 발생:', error);
+        return sendServerError(res, error, "게임 삭제 중 오류가 발생했습니다.");
+    }
+};

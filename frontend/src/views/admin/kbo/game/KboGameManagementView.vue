@@ -32,22 +32,30 @@
                         :key="index" 
                         @click="selectMatchup(index)"
                     >
-                        <v-list-item-title>
-                            {{ matchup.away_team_id }} @ {{ matchup.home_team_id }}
-                        </v-list-item-title>
-                        <v-list-item-subtitle>
-                            {{ matchup.game_date }} | {{ matchup.game_time }} | {{ matchup.stadium }}
-                        </v-list-item-subtitle>
+                        <div class="d-flex justify-space-between align-center mb-4 mt-2">
+                            <div>
+                                <v-list-item-title>
+                                    {{ matchup.away_team_name }} vs {{ matchup.home_team_name }}
+                                </v-list-item-title>
+                                <v-list-item-subtitle>
+                                    {{ matchup.game_date }} | {{ matchup.game_time }} | {{ STADIUMS.find(sdm => sdm.code === matchup.stadium)?.name??'' }}
+                                </v-list-item-subtitle>
+                            </div>
+                            <v-btn icon @click="deleteMatchup(matchup.game_id)">
+                                <v-icon>mdi-delete</v-icon>
+                            </v-btn>
+                        </div> 
+                        <v-divider></v-divider>                       
                     </v-list-item>
                 </v-list>
                 
                 <!-- 매치업 추가 폼 -->
                 <v-container>
-                    <v-row class="mt-4">
+                    <v-row>
                         <v-col cols="6">
                             <v-select
                                 v-model="selectedAwayTeam"
-                                :items="teamList.filter(team=>team.id !== selectedHomeTeam)"
+                                :items="teamList.filter(team=>team.id !== selectedHomeTeam && !gameList.find(game => game.away_team_id === team.id || game.home_team_id === team.id))"
                                 item-value="id"
                                 item-title="name"
                                 label="원정팀"
@@ -57,7 +65,7 @@
                         <v-col cols="6">
                             <v-select
                                 v-model="selectedHomeTeam"
-                                :items="teamList.filter(team=>team.id !== selectedAwayTeam)"
+                                :items="teamList.filter(team=>team.id !== selectedAwayTeam && !gameList.find(game => game.away_team_id === team.id || game.home_team_id === team.id))"
                                 item-value="id"
                                 item-title="name"
                                 label="홈팀"
@@ -147,6 +155,7 @@ import { ref, computed, watch, onMounted } from 'vue';
 import { STADIUMS } from '@/utils/code/code.js';
 import { commonFetch, getNewFormData } from '@/utils/common/commonFetch';
 import { formatDate } from '@/utils/common/dateUtils.js';
+import { encryptData, decryptData } from '@/utils/common/crypto.js';
 
 const selectedDate = ref(new Date());
 const formattedDate = ref(formatDate(selectedDate.value));
@@ -177,13 +186,8 @@ watch(()=>selectedDate.value, (newVal)=>{
 })
 
 watch(()=>selectedHomeTeam.value, newVal => {
-    console.log(newVal,teamList.value)
     if(newVal) stadium.value = teamList.value.find(team=>team.id===newVal)?.main_stadium
 })
-
-const toggleCalendar = () => {
-    calendarOpen.value = !calendarOpen.value;
-};
 
 const updateMatchups = () => {
     console.log('경기 목록 업데이트');
@@ -206,41 +210,76 @@ const addMatchup = async () => {
                 game_time   : gameTime.value
             }
         })
+
+        if(response.success){
+            selectedAwayTeam.value = null;
+            selectedHomeTeam.value = null;
+            stadium.value = '';
+            gameTime.value = '18:30';
+            await getGameList(formattedDate.value);
+        }
     } catch (error) {
         
     }
-    
-    matchups.value.push({
-        away_team_id: selectedAwayTeam.value,
-        home_team_id: selectedHomeTeam.value,
-        stadium: stadium.value,
-        game_date: formattedDate.value,
-        game_time: gameTime.value
-    });
-
-    // 초기화
-    selectedAwayTeam.value = null;
-    selectedHomeTeam.value = null;
-    stadium.value = '';
-    gameTime.value = '1830';
 };
+
+const getTeamList = async (year) => {
+    try {
+        const response = await commonFetch(`/api/admin/team/list?year=${year}`);
+        
+        if(response.success){
+            teamList.value = response.data.teamList
+        }else throw new Error();
+
+        return true
+    } catch (error) {
+        
+    }
+}
+
+const getGameList = async (date) => {
+    try {
+        const response = await commonFetch(`/api/admin/game/list?gameDate=${date}`)
+        
+        if(response.success){
+            gameList.value = response.data.gameList
+        }else throw new Error();
+
+        return true
+    } catch (error) {
+        
+    }
+}
+
+const deleteMatchup = async (game_id) => {
+    if(!await confirm("매치업을 삭제하시겠습니까?")) return;
+    
+    try {
+        const response = await commonFetch(`/api/admin/game/delete`,{
+            method : "DELETE",
+            body : {
+                gameId : encryptData(game_id)
+            }
+        })
+        
+        if(response.success){
+            await getGameList(formattedDate.value)
+        }else throw new Error();
+
+        return true
+    } catch (error) {
+        
+    }
+}
 
 onMounted(async ()=>{
     try {
         Promise.all([
-            commonFetch(`/api/admin/team/list?year=${selectedDate.value.getUTCFullYear()}`)
-            , commonFetch(`/api/admin/game/list?gameDate=${formattedDate.value}`)
-        ]).then(([teamResponse, gameResponse])=>{
-            if(teamResponse.success){
-                teamList.value = teamResponse.data.teamList
-            }else{
-                throw new Error();
-            }
+            getTeamList(selectedDate.value.getUTCFullYear())
+            , getGameList(formattedDate.value)
+        ]).then(([teamYn, gameYn])=>{
+            if(gameYn){
 
-            if(gameResponse.success){
-                gameList.value = gameResponse.data.gameList
-            }else{
-                throw new Error();
             }
         })
     } catch (error) {
