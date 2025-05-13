@@ -29,8 +29,6 @@
                                     v-for="(roster, index) in rosterList"
                                     :key="index"
                                     cols="12"
-                                    md="6"
-                                    lg="4"
                                 >
                                     <v-card elevation="2">
                                         <v-card-text class="d-flex flex-column align-center">
@@ -62,7 +60,7 @@
                         </v-card-text>
                     </v-card>
                 </v-col>
-                <v-col col="12" md="4">
+                <v-col col="12" md="4" >
                     <v-card>
                         <v-card-title class="d-flex justify-space-between align-center">
                             <span class="text-h6" @click="addRoster">로스터 추가</span>

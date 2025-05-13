@@ -68,10 +68,11 @@
                             <div class="d-flex justify-space-between align-center mb-2">
                                 <div class="text-subtitle-1 font-weight-bold">
                                     # {{ item.row_number }}
+                                    <v-chip :color="item.status === 'active' ? 'green' : 'red'" label size="small">
+                                        {{ item.status === 'active' ? '활성' : '해체' }}
+                                    </v-chip>
                                 </div>
-                                <v-chip :color="item.status === 'active' ? 'green' : 'red'" label size="small">
-                                    {{ item.status === 'active' ? '활성' : '해체' }}
-                                </v-chip>
+                                <v-btn color="secondary" @click.native.stop="goToRosterManagement(item.id)">로스터 관리</v-btn>
                             </div>
                             <div class="text-body-2">
                                 <div class="d-flex align-center"><strong>팀명:</strong> <img :src="item.path" v-if="item.path" class="mx-1 mb-1" style="height: 24px;" :alt="item.name+'로고'">{{ item.name }}</div>
