@@ -115,11 +115,29 @@
                         <v-divider></v-divider>
                         <v-card-text>
                             <div v-if="selectedMatchup">
-                                <p>📌 <strong>팀:</strong> 
-                                    {{ selectedMatchup.away_team_name }} vs {{ selectedMatchup.home_team_name }}
-                                </p>
-                                <p>🏟️ <strong>경기장:</strong> {{ STADIUMS.find(sdm => sdm.code === selectedMatchup.stadium)?.name??'' }}</p>
-                                <p>📅 <strong>경기일시:</strong> {{ selectedMatchup.game_date }} {{ selectedMatchup.game_time }}</p>
+                                <div class="game-header d-flex justify-space-between align-center">
+                                    <div>
+                                        <img :src="selectedMatchup.away_team_logo" alt="Away Team Logo" class="team-logo" />
+                                        <span class="text-h6 font-weight-bold">{{ selectedMatchup.away_team_name }}</span>    
+                                    </div>
+                                    <div>
+                                        <span class="team-score"></span>
+                                    </div>
+                                    <div class="d-flex justify-center flex-column align-center">
+                                        <span class="vs">VS</span>
+                                    </div>
+                                    <div>
+                                        <span class="team-score"></span>
+                                    </div>
+                                    <div>
+                                        <span class="text-h6 font-weight-bold">{{ selectedMatchup.home_team_name }}</span>
+                                        <img :src="selectedMatchup.home_team_logo" alt="Home Team Logo" class="team-logo" />
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-center flex-column align-center">
+                                    <p><strong>경기장:</strong> {{ STADIUMS.find(sdm => sdm.code === selectedMatchup.stadium)?.name??'' }}</p>
+                                    <p><strong>경기일시:</strong> {{ selectedMatchup.game_date }} {{ selectedMatchup.game_time }}</p>
+                                </div>
                             </div>
                             <div v-else>
                                 선택된 경기가 없습니다.
