@@ -8,7 +8,7 @@
                 <v-col col="12" md="8">
                     <v-card>
                         <v-card-title class="d-flex justify-space-between align-center">
-                            <span class="text-h6">현 로스터 ({{ rosterList.length }}인)</span>
+                            <span class="text-h6">현 로스터 ({{ rosterList.filter(roster=>roster.left_date!==formattedDate).length }}인 등록)</span>
                             <div class="d-flex align-center">
                                 <v-menu v-model="calendarOpen" transition="scale-transition" max-width="290">
                                     <template v-slot:activator="{ props }" class="d-flex align-center">
@@ -53,8 +53,15 @@
                                                 <div><strong>말소일:</strong> {{ roster.left_date || '-' }}</div>
                                             </v-card-subtitle>
                                         </v-card-text>
-                                        <v-card-actions class="d-flex justify-end">
-                                            <v-icon color="error" @click="deleteRoster(roster.id)">mdi-delete</v-icon>
+                                        <v-card-actions class="d-flex justify-space-around">
+                                            <v-btn class="d-flex align-center" v-if="!!!roster.left_date">
+                                                <v-icon @click="deactiveRoster(roster.roster_id)">mdi-block-helper</v-icon>
+                                                말소
+                                            </v-btn>
+                                            <v-btn class="d-flex align-center">
+                                                <v-icon color="error" @click="deleteRoster(roster.roster_id)">mdi-delete</v-icon>
+                                                삭제
+                                            </v-btn>
                                         </v-card-actions>
                                     </v-card>
                                 </v-col>
@@ -204,6 +211,47 @@ const addRoster = async () => {
         }
     } catch (error) {
         alert("로스터 저장 중 에러가 발생하였습니다.\n 다시 한 번 시도해주세요.", "error")
+    }
+}
+
+const deactiveRoster = async (id) => {
+    try {
+        const response = await commonFetch(`/api/admin/roster/deactive`,{
+            method : 'PUT',
+            body : {
+                rosterId : id
+                , leftDate : formattedDate.value
+            }
+        });
+
+        if(response.success){
+            alert("성공적으로 말소되었습니다.");
+            await getRoster(selectedDate.value);
+        }else{
+            throw new Error()
+        }
+    } catch (error) {
+        alert("로스터 말소 중 에러가 발생하였습니다.\n 다시 한 번 시도해주세요.", "error")
+    }
+}
+
+const deleteRoster = async (id) => {
+    try {
+        const response = await commonFetch(`/api/admin/roster/delete`,{
+            method : 'DELETE',
+            body : {
+                rosterId : id
+            }
+        });
+
+        if(response.success){
+            alert("성공적으로 삭제되었습니다.");
+            await getRoster(selectedDate.value);
+        }else{
+            throw new Error()
+        }
+    } catch (error) {
+        alert("로스터 삭제 중 에러가 발생하였습니다.\n 다시 한 번 시도해주세요.", "error")
     }
 }
 

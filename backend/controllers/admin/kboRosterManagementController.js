@@ -158,8 +158,6 @@ export const createTeamRoster = async (req, res) => {
     }
 };
 
-
-
 // export const updateKboPlayer = async (req, res) => {
 //     const {
 //         name, birth_date, player_type, primary_position, seasons,
@@ -701,43 +699,82 @@ export const createTeamRoster = async (req, res) => {
 //     }
 // };
 
-export const deleteKboRoster = async (req, res) => {
+export const deleteTeamRoster = async (req, res) => {
     const accessToken = req.headers['authorization']?.split(' ')[1];
 
     if (!accessToken) {
         return sendBadRequest(res, '토큰이 제공되지 않았습니다.');
     }
 
-    let { gameId } = req.body;
-    if (!gameId) {
-        return sendBadRequest(res, "삭제할 게임 ID가 제공되지 않았습니다.");
+    let { rosterId } = req.body;
+    if (!rosterId) {
+        return sendBadRequest(res, "삭제할 로스터가 없습니다.");
     }
 
     try {
         const user = jwt.verify(accessToken, process.env.JWT_SECRET);
-        gameId = decryptData(gameId);
 
         await withTransaction(async (client) => {
             // **게임 존재 여부 확인**
-            const { rows: gameRows } = await client.query(
-                'SELECT * FROM kbo_game_master WHERE id = $1',
-                [gameId]
+            const { rows: rosterRows } = await client.query(
+                'SELECT * FROM kbo_team_roster WHERE id = $1',
+                [rosterId]
             );
 
-            if (gameRows.length === 0) {
-                return sendBadRequest(res, "존재하지 않는 경기입니다.");
+            if (rosterRows.length === 0) {
+                return sendBadRequest(res, "존재하지 않는 로스터입니다.");
             }
 
-            // **게임 마스터 정보 삭제**
+            // ** 로스터 정보 삭제**
             await client.query(
-                'DELETE FROM kbo_game_master WHERE id = $1',
-                [gameId]
+                'DELETE FROM kbo_team_roster WHERE id = $1',
+                [rosterId]
             );
 
-            return sendSuccess(res, "게임이 성공적으로 삭제되었습니다.");
+            return sendSuccess(res, "로스터가 성공적으로 삭제되었습니다.");
         });
     } catch (error) {
-        console.error('게임 삭제 중 오류 발생:', error);
-        return sendServerError(res, error, "게임 삭제 중 오류가 발생했습니다.");
+        console.error('로스터 삭제 중 오류 발생:', error);
+        return sendServerError(res, error, "로스터 삭제 중 오류가 발생했습니다.");
+    }
+};
+
+export const deactiveTeamRoster = async (req, res) => {
+    const accessToken = req.headers['authorization']?.split(' ')[1];
+
+    if (!accessToken) {
+        return sendBadRequest(res, '토큰이 제공되지 않았습니다.');
+    }
+
+    let { rosterId, leftDate } = req.body;
+    if (!rosterId || !leftDate) {
+        return sendBadRequest(res, "말소할 로스터가 없습니다.");
+    }
+
+    try {
+        const user = jwt.verify(accessToken, process.env.JWT_SECRET);
+
+        await withTransaction(async (client) => {
+            // **로스터 존재 여부 확인**
+            const { rows: rosterRows } = await client.query(
+                'SELECT * FROM kbo_team_roster WHERE id = $1',
+                [rosterId]
+            );
+
+            if (rosterRows.length === 0) {
+                return sendBadRequest(res, "존재하지 않는 로스터입니다.");
+            }
+
+            // ** 로스터 정보 삭제**
+            await client.query(
+                'UPDATE kbo_team_roster SET left_date = $2 WHERE id = $1',
+                [rosterId, leftDate]
+            );
+
+            return sendSuccess(res, "로스터가 성공적으로 삭제되었습니다.");
+        });
+    } catch (error) {
+        console.error('로스터 삭제 중 오류 발생:', error);
+        return sendServerError(res, error, "로스터 삭제 중 오류가 발생했습니다.");
     }
 };
