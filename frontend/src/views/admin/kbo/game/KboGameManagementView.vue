@@ -116,22 +116,22 @@
                         <v-card-text>
                             <div v-if="selectedMatchup">
                                 <div class="game-header d-flex justify-space-between align-center">
-                                    <div>
-                                        <img :src="selectedMatchup.away_team_logo" alt="Away Team Logo" class="team-logo" />
+                                    <div class="d-flex align-center">
+                                        <img :src="selectedMatchup.away_team_path" alt="Away Team Logo" class="team-logo" />
                                         <span class="text-h6 font-weight-bold">{{ selectedMatchup.away_team_name }}</span>    
                                     </div>
-                                    <div>
+                                    <div class="d-flex align-center">
                                         <span class="team-score"></span>
                                     </div>
                                     <div class="d-flex justify-center flex-column align-center">
                                         <span class="vs">VS</span>
                                     </div>
-                                    <div>
+                                    <div class="d-flex align-center">
                                         <span class="team-score"></span>
                                     </div>
-                                    <div>
+                                    <div class="d-flex align-center">
                                         <span class="text-h6 font-weight-bold">{{ selectedMatchup.home_team_name }}</span>
-                                        <img :src="selectedMatchup.home_team_logo" alt="Home Team Logo" class="team-logo" />
+                                        <img :src="selectedMatchup.home_team_path" alt="Home Team Logo" class="team-logo" />
                                     </div>
                                 </div>
                                 <div class="d-flex justify-center flex-column align-center">
@@ -234,6 +234,7 @@ const updateMatchups = async (newVal) => {
 
 const selectMatchup = (index) => {
     selectedMatchup.value = gameList.value[index];
+    console.log(gameList.value[index].away_team_path)
 };
 
 const addMatchup = async () => {

@@ -57,9 +57,21 @@ export const getKboGameList = async (req, res) => {
                 TO_CHAR(kgm.game_date, 'YYYY.MM.DD') as game_date , 
                 TO_CHAR(kgm.game_time, 'HH24:MI') as game_time ,
                 kgm.status
+                , fta.sn as away_team_sn
+                , fta.original_name as away_team_original_name
+                , fta.size as away_team_size
+                , fta.path as away_team_path
+                , fta.mimetype as away_team_mimetype
+                , fth.sn as home_team_sn
+                , fth.original_name as home_team_original_name
+                , fth.size as home_team_size
+                , fth.path as home_team_path
+                , fth.mimetype as home_team_mimetype
             FROM kbo_game_master kgm
                 left join kbo_team_master ati on kgm.away_team_id = ati.id
                 left join kbo_team_master hti on kgm.home_team_id = hti.id
+                left join file_table fta on fta.file_id = ati.logo_url::uuid and fta.sn = 1
+                left join file_table fth on fth.file_id = hti.logo_url::uuid and fth.sn = 1
             ${whereClause}
             ORDER BY kgm.season_year, kgm.game_date, kgm.game_time
             ${paginationClause}
@@ -75,6 +87,30 @@ export const getKboGameList = async (req, res) => {
             `, queryParams);
             total = parseInt(countResult.rows[0].total, 10);
         }
+
+        const gameList = kboGameList.rows
+        
+        for(let idx=0;idx<gameList.length;idx++){
+            let game = gameList[idx];
+
+            let base64Image = null;
+            if(game.away_team_path){
+                const filePath = path.join(process.cwd(), game.away_team_path);
+    
+                base64Image = await convertFileToBase64(filePath, game.away_team_mimetype);
+                kboGameList.rows[idx].away_team_path = base64Image;
+            }
+    
+            let base64Image2 = null;
+            if(game.home_team_path){
+                const filePath = path.join(process.cwd(), game.home_team_path);
+    
+                base64Image2 = await convertFileToBase64(filePath, game.home_team_mimetype);
+                kboGameList.rows[idx].home_team_path = base64Image2;
+            }
+        }
+    
+        
 
         return sendSuccess(res, {
             message: "게임 목록을 성공적으로 조회하였습니다.",
