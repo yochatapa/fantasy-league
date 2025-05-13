@@ -22,7 +22,12 @@ const menus = [
                         name: 'KBO 팀 추가', 
                         path: '/admin/team/add', 
                         visible: false
-                    }
+                    },
+                    { 
+                        name: 'KBO 로스터 관리', 
+                        path: '/admin/roster/management', 
+                        visible: false
+                    },
                 ] 
             },
             { 

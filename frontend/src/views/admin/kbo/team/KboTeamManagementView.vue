@@ -44,6 +44,9 @@
                         <span v-if="item.disband_year">{{ item.disband_year }}년</span>
                         <span v-else>-</span>
                     </template>
+                    <template #item.id="{ item }">
+                        <v-btn color="secondary" @click.native.stop="goToRosterManagement(item.id)">로스터 관리</v-btn>
+                    </template>
                 </v-data-table-server>
                 
                 <v-data-table-server
@@ -108,6 +111,7 @@ const headers = [
     { title: '팀명', value: 'name', align: 'center' },
     { title: '상태', value: 'status', align: 'center' },
     { title: '기간', value: 'founding_year', align: 'center' },
+    { title: '', value : 'id', align: 'center', width: 100}
 ];
 
 const fetchTeamList = async () => {
@@ -133,6 +137,10 @@ const fetchTeamList = async () => {
 const goToAddTeam = () => {
     router.push('/admin/team/add');
 };
+
+const goToRosterManagement = (id) => {
+    router.push(`/admin/roster/management?teamId=${encodeURIComponent(encryptData(id))}`);
+}
 
 const handleRowClick = (e, { item }) => {
     router.push(`/admin/team/add?teamId=${encodeURIComponent(encryptData(item.id))}`);
