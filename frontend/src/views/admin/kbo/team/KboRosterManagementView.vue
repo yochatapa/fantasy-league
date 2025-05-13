@@ -29,6 +29,8 @@
                                     v-for="(roster, index) in rosterList"
                                     :key="index"
                                     cols="12"
+                                    md="6"
+                                    lg="4"
                                 >
                                     <v-card elevation="2">
                                         <v-card-text class="d-flex flex-column align-center">
@@ -47,7 +49,7 @@
                                                 <span class="text-h6">{{ roster.player_name }} ({{ roster.uniform_number }})</span>
                                             </div>
                                             <v-card-subtitle class="text-center">
-                                                <div><strong>합류일:</strong> {{ roster.joined_date || '-' }}</div>
+                                                <div><strong>등록일:</strong> {{ roster.joined_date || '-' }}</div>
                                                 <div><strong>말소일:</strong> {{ roster.left_date || '-' }}</div>
                                             </v-card-subtitle>
                                         </v-card-text>
@@ -81,10 +83,10 @@
                                         />
                                         <CommonDateInput
                                             v-model="joined_date"
-                                            label="합류일"
+                                            label="등록일"
                                             :min="selectedDate.getUTCFullYear()+'0101'"
                                             :max="selectedDate.getUTCFullYear()+'1231'"
-                                            :rules="[v => !!v || '합류일을 선택해주세요.']"
+                                            :rules="[v => !!v || '등록일을 선택해주세요.']"
                                             required
                                         />
                                         <CommonDateInput
