@@ -20,17 +20,18 @@
         </v-col>
     </v-row>
 
-    <!-- 매치업 목록과 경기 정보 -->
+    <!-- 경기 목록과 경기 정보 -->
     <v-row>
         <v-col cols="12" md="4">
             <v-card>
-                <v-card-title>매치업 목록</v-card-title>
+                <v-card-title>경기 목록</v-card-title>
                 <v-divider></v-divider>
                 <v-list>
                     <v-list-item 
                         v-for="(matchup, index) in gameList" 
                         :key="index" 
                         @click="selectMatchup(index)"
+                        :class="{selected : selectedMatchup?.game_id === matchup.game_id}"
                     >
                         <div class="d-flex justify-space-between align-center mb-4 mt-2">
                             <div>
@@ -49,7 +50,7 @@
                     </v-list-item>
                 </v-list>
                 
-                <!-- 매치업 추가 폼 -->
+                <!-- 경기 추가 폼 -->
                 <v-container>
                     <v-row>
                         <v-col cols="6">
@@ -98,7 +99,7 @@
                                 color="primary"
                                 block
                             >
-                                매치업 추가
+                                경기 추가
                             </v-btn>
                         </v-col>
                     </v-row>
@@ -106,46 +107,55 @@
             </v-card>
         </v-col>
 
-        <v-col cols="12" md="4">
-            <v-card>
-                <v-card-title>경기 정보</v-card-title>
-                <v-divider></v-divider>
-                <v-card-text>
-                    <div v-if="selectedMatchup">
-                        <p>📌 <strong>팀:</strong> 
-                            {{ selectedMatchup.away_team_id }} @ 
-                            {{ selectedMatchup.home_team_id }}
-                        </p>
-                        <p>🏟️ <strong>경기장:</strong> {{ selectedMatchup.stadium }}</p>
-                        <p>📅 <strong>날짜:</strong> {{ selectedMatchup.game_date }}</p>
-                        <p>🕒 <strong>시간:</strong> {{ selectedMatchup.game_time }}</p>
-                    </div>
-                    <div v-else>
-                        선택된 경기 없음
-                    </div>
-                </v-card-text>
-            </v-card>
-        </v-col>
-
-        <v-col cols="12" md="4">
-            <v-card>
-                <v-card-title>경기 정보</v-card-title>
-                <v-divider></v-divider>
-                <v-card-text>
-                    <div v-if="selectedMatchup">
-                        <p>📌 <strong>팀:</strong> 
-                            {{ selectedMatchup.away_team_id }} @ 
-                            {{ selectedMatchup.home_team_id }}
-                        </p>
-                        <p>🏟️ <strong>경기장:</strong> {{ selectedMatchup.stadium }}</p>
-                        <p>📅 <strong>날짜:</strong> {{ selectedMatchup.game_date }}</p>
-                        <p>🕒 <strong>시간:</strong> {{ selectedMatchup.game_time }}</p>
-                    </div>
-                    <div v-else>
-                        선택된 경기 없음
-                    </div>
-                </v-card-text>
-            </v-card>
+        <v-col cols="12" md="8">
+            <v-row>
+                <v-col cols="12">
+                    <v-card>
+                        <v-card-title>경기 정보</v-card-title>
+                        <v-divider></v-divider>
+                        <v-card-text>
+                            <div v-if="selectedMatchup">
+                                <p>📌 <strong>팀:</strong> 
+                                    {{ selectedMatchup.away_team_name }} vs {{ selectedMatchup.home_team_name }}
+                                </p>
+                                <p>🏟️ <strong>경기장:</strong> {{ STADIUMS.find(sdm => sdm.code === selectedMatchup.stadium)?.name??'' }}</p>
+                                <p>📅 <strong>경기일시:</strong> {{ selectedMatchup.game_date }} {{ selectedMatchup.game_time }}</p>
+                            </div>
+                            <div v-else>
+                                선택된 경기가 없습니다.
+                            </div>
+                        </v-card-text>
+                    </v-card>
+                </v-col>
+                <v-col cols="8">
+                    <v-card>
+                        <v-card-title>경기 정보</v-card-title>
+                        <v-divider></v-divider>
+                        <v-card-text>
+                            <baseball-stadium></baseball-stadium>
+                        </v-card-text>
+                    </v-card>
+                </v-col>
+                <v-col cols="4">
+                    <v-card>
+                        <v-card-title>라인업</v-card-title>
+                        <v-divider></v-divider>
+                        <v-card-text>
+                            <div v-if="selectedMatchup">
+                                <p>📌 <strong>팀:</strong> 
+                                    {{ selectedMatchup.away_team_name }} vs
+                                    {{ selectedMatchup.home_team_name }}
+                                </p>
+                                <p>🏟️ <strong>경기장:</strong> {{ STADIUMS.find(sdm => sdm.code === selectedMatchup.stadium)?.name??'' }}</p>
+                                <p>📅 <strong>경기일시:</strong> {{ selectedMatchup.game_date }} {{ selectedMatchup.game_time }}</p>
+                            </div>
+                            <div v-else>
+                                선택된 경기 없음
+                            </div>
+                        </v-card-text>
+                    </v-card>
+                </v-col>
+            </v-row>
         </v-col>
     </v-row>
 </template>
@@ -156,11 +166,11 @@ import { STADIUMS } from '@/utils/code/code.js';
 import { commonFetch, getNewFormData } from '@/utils/common/commonFetch';
 import { formatDate } from '@/utils/common/dateUtils.js';
 import { encryptData, decryptData } from '@/utils/common/crypto.js';
+import BaseballStadium from '@/components/kbo/BaseballStadium.vue';
 
 const selectedDate = ref(new Date());
 const formattedDate = ref(formatDate(selectedDate.value));
 const calendarOpen = ref(false);
-const matchups = ref([]);
 const selectedMatchup = ref(null);
 
 const teamList = ref([]);
@@ -189,12 +199,23 @@ watch(()=>selectedHomeTeam.value, newVal => {
     if(newVal) stadium.value = teamList.value.find(team=>team.id===newVal)?.main_stadium
 })
 
-const updateMatchups = () => {
-    console.log('경기 목록 업데이트');
+const updateMatchups = async (newVal) => {
+    try {
+        Promise.all([
+            getTeamList(newVal.getUTCFullYear())
+            , getGameList(formatDate(newVal))
+        ]).then(([teamYn, gameYn])=>{
+            if(gameYn){
+
+            }
+        })
+    } catch (error) {
+        alert("화면 조회 중 문제가 발생하였습니다.\n 다시 한 번 시도해주세요.","error");
+    }
 };
 
 const selectMatchup = (index) => {
-    selectedMatchup.value = matchups.value[index];
+    selectedMatchup.value = gameList.value[index];
 };
 
 const addMatchup = async () => {
@@ -252,7 +273,7 @@ const getGameList = async (date) => {
 }
 
 const deleteMatchup = async (game_id) => {
-    if(!await confirm("매치업을 삭제하시겠습니까?")) return;
+    if(!await confirm("경기를 삭제하시겠습니까?")) return;
     
     try {
         const response = await commonFetch(`/api/admin/game/delete`,{
@@ -273,18 +294,13 @@ const deleteMatchup = async (game_id) => {
 }
 
 onMounted(async ()=>{
-    try {
-        Promise.all([
-            getTeamList(selectedDate.value.getUTCFullYear())
-            , getGameList(formattedDate.value)
-        ]).then(([teamYn, gameYn])=>{
-            if(gameYn){
-
-            }
-        })
-    } catch (error) {
-        alert("화면 조회 중 문제가 발생하였습니다.\n 다시 한 번 시도해주세요.","error");
-    }
-    
+    await updateMatchups(selectedDate.value);
 })
 </script>
+
+<style scoped>
+::v-deep .selected .v-list-item__overlay{
+    background-color: currentColor;
+    opacity: var(--v-selected-opacity);
+}
+</style>
