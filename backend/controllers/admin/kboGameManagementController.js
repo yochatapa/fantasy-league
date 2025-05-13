@@ -600,121 +600,66 @@ export const createKboGame = async (req, res) => {
 //     }
 // };
 
-// export const getKboPlayerDetail = async (req, res) => {
-//     let { playerId } = req.params;
+export const getKboGameDetail = async (req, res) => {
+    let { gameId } = req.params;
 
-//     // 1️⃣ playerId 복호화
-//     playerId = decryptData(playerId);
+    if (!gameId) {
+        return sendBadRequest(res, "게임 정보가 잘못되었습니다.");
+    }
 
-//     if (!playerId) {
-//         return sendBadRequest(res, "선수 정보가 잘못되었습니다.");
-//     }
-
-//     try {
-//         // 2️⃣ 선수 기본 정보 조회
-//         const playerInfoQuery = `
-//             SELECT
-//                 kpm.id,
-//                 kpm.name,
-//                 TO_CHAR(kpm.birth_date, 'YYYY.MM.DD') as birth_date,
-//                 kpm.player_type,
-//                 kpm.primary_position,
-//                 kpm.is_retired,
-//                 kpm.draft_info,
-//                 NULLIF(kpm.throwing_hand,'') as throwing_hand,
-//                 NULLIF(kpm.batting_hand,'') as batting_hand,
-//                 kpm.height,
-//                 kpm.weight,
-//                 kpm.contract_bonus,
-//                 kpm.is_foreign,
-//                 ft.file_id,
-//                 ft.sn,
-//                 ft.original_name,
-//                 ft.size,
-//                 ft.path,
-//                 ft.mimetype
-//             FROM kbo_player_master kpm
-//             LEFT JOIN file_table ft ON ft.file_id = kpm.main_profile_image::uuid AND ft.sn = 1
-//             WHERE kpm.id = $1
-//         `;
+    try {
+        const gameInfoQuery = `
+            SELECT 
+                CASE 
+                    WHEN kgr.team_id = kgm.away_team_id THEN 'away'
+                    ELSE 'home'
+                END AS team_type,
+                kgr.id AS roster_id,
+                kgr.game_id,
+                kgr.team_id,
+                ktm.name AS team_name,
+                kgr.player_id,
+                kp.name AS player_name,
+                kgr.position,
+                kgr.batting_order,
+                kgr.role,
+                kgr.replaced_by,
+                krp.name AS replaced_player_name,
+                kgr.replaced_inning,
+                kgr.replaced_out,
+                kgr.status,
+                kgr.created_at,
+                kgr.updated_at
+            FROM kbo_game_roster kgr
+            JOIN kbo_game_master kgm ON kgr.game_id = kgm.id
+            LEFT JOIN kbo_team_master ktm ON kgr.team_id = ktm.id
+            LEFT JOIN kbo_player_master kp ON kgr.player_id = kp.id
+            LEFT JOIN kbo_player_master krp ON kgr.replaced_by = krp.id
+            WHERE kgr.game_id = $1
+            ORDER BY kgr.batting_order, kgr.replaced_inning, kgr.replaced_out;
+        `;
         
-//         const playerInfo = await query(playerInfoQuery, [playerId]);
-
-//         if (playerInfo.rowCount === 0) {
-//             return sendBadRequest(res, '선수 정보가 없습니다.');
-//         }
-
-//         // 3️⃣ 시즌별 기록 조회
-//         const playerSeasonsQuery = `
-//             SELECT
-//                 kps.id,
-//                 kps.year,
-//                 kps.team_id,
-//                 ktm.name AS team_name,
-//                 string_to_array(kps.position, ',') AS position,
-//                 kps.uniform_number,
-//                 kps.is_active,
-//                 ft.file_id,
-//                 ft.sn,
-//                 ft.original_name,
-//                 ft.size,
-//                 ft.path,
-//                 ft.mimetype,
-//                 NULLIF(kps.contract_type,'') as contract_type,  -- 계약 유형
-//                 kps.salary,         -- 연봉
-//                 TO_CHAR(kps.start_date, 'YYYY.MM.DD') as start_date,     -- 계약 시작일
-//                 TO_CHAR(kps.end_date, 'YYYY.MM.DD') as end_date        -- 계약 종료일
-//             FROM kbo_player_season kps
-//             LEFT JOIN kbo_team_master ktm ON ktm.id = kps.team_id
-//             LEFT JOIN file_table ft ON ft.file_id = kps.profile_image::uuid AND ft.sn = 1
-//             WHERE kps.player_id = $1
-//             ORDER BY kps.year DESC
-//         `;
-
-//         const playerSeasons = await query(playerSeasonsQuery, [playerId]);
-
-//         // 4️⃣ 프로필 이미지 처리
-//         const playerData = playerInfo.rows[0];
-//         let base64MainImage = null;
-
-//         // 메인 프로필 이미지 처리
-//         if (playerData.path) {
-//             const filePath = path.join(process.cwd(), playerData.path);
-//             base64MainImage = await convertFileToBase64(filePath, playerData.mimetype);
-//         }
+        const { rows : gameInfo} = await query(gameInfoQuery, [gameId]);
         
-//         playerData.profile_image = base64MainImage;
-//         delete playerData.path; // path 정보는 필요 없으므로 삭제
+        const awayTeamInfo = new Array();
+        const homeTeamInfo = new Array();
 
-//         // 5️⃣ 시즌별 이미지 처리
-//         for (const season of playerSeasons.rows) {
-//             if (season.path) {
-//                 const seasonFilePath = path.join(process.cwd(), season.path);
-//                 season.profile_image = await convertFileToBase64(seasonFilePath, season.mimetype);
-//             } else {
-//                 season.profile_image = null;
-//             }
-//             delete season.path;
-//             delete season.mimetype;
-//         }
+        gameInfo.forEach(game => {
+            if(game.team_type === "away") awayTeamInfo.push(game)
+            else homeTeamInfo.push(game)
+        })
 
-//         // 6️⃣ 중복된 팀명 제거 (최근 시즌 기준으로 하나만 유지)
-//         const uniqueTeams = new Set();
-//         playerSeasons.rows.forEach(season => uniqueTeams.add(season.team_name));
-//         playerData.team_names = Array.from(uniqueTeams).join(', ');
+        return sendSuccess(res, {
+            message: '게임 정보가 조회되었습니다.',
+            awayTeamInfo,
+            homeTeamInfo
+        });
 
-//         // 7️⃣ 최종 응답 구성
-//         return sendSuccess(res, {
-//             message: '선수 정보가 조회되었습니다.',
-//             playerInfo: playerData,
-//             seasons: playerSeasons.rows
-//         });
-
-//     } catch (error) {
-//         console.error('선수 정보 조회 오류:', error);
-//         return sendServerError(res, error, '선수 정보 조회 중 문제가 발생했습니다. 다시 시도해주세요.');
-//     }
-// };
+    } catch (error) {
+        console.error('게임 정보 조회 오류:', error);
+        return sendServerError(res, error, '게임 정보 조회 중 문제가 발생했습니다. 다시 시도해주세요.');
+    }
+};
 
 export const deleteKboGame = async (req, res) => {
     const accessToken = req.headers['authorization']?.split(' ')[1];

@@ -21,9 +21,9 @@
     </v-row>
 
     <!-- 경기 목록과 경기 정보 -->
-    <v-row>
+    <v-row align="stretch">
         <v-col cols="12" md="4">
-            <v-card>
+            <v-card class="h-100">
                 <v-card-title>경기 목록</v-card-title>
                 <v-divider></v-divider>
                 <v-list>
@@ -108,9 +108,9 @@
         </v-col>
 
         <v-col cols="12" md="8">
-            <v-row>
+            <v-row align="stretch" class="h-100">
                 <v-col cols="12">
-                    <v-card>
+                    <v-card class="h-100">
                         <v-card-title>경기 정보</v-card-title>
                         <v-divider></v-divider>
                         <v-card-text>
@@ -139,14 +139,14 @@
                                     <p><strong>경기일시:</strong> {{ selectedMatchup.game_date }} {{ selectedMatchup.game_time }}</p>
                                 </div>
                             </div>
-                            <div v-else>
-                                선택된 경기가 없습니다.
+                            <div v-else class="text-center">
+                                <span class="text-h6">선택된 경기가 없습니다.</span>
                             </div>
                         </v-card-text>
                     </v-card>
                 </v-col>
                 <v-col cols="12" md="8">
-                    <v-card>
+                    <v-card class="h-100">
                         <v-card-title>경기 정보</v-card-title>
                         <v-divider></v-divider>
                         <v-card-text>
@@ -155,21 +155,73 @@
                     </v-card>
                 </v-col>
                 <v-col cols="12" md="4">
-                    <v-card>
+                    <v-card class="h-100">
                         <v-card-title>라인업</v-card-title>
                         <v-divider></v-divider>
                         <v-card-text>
-                            <div v-if="selectedMatchup">
-                                <p>📌 <strong>팀:</strong> 
-                                    {{ selectedMatchup.away_team_name }} vs
-                                    {{ selectedMatchup.home_team_name }}
-                                </p>
-                                <p>🏟️ <strong>경기장:</strong> {{ STADIUMS.find(sdm => sdm.code === selectedMatchup.stadium)?.name??'' }}</p>
-                                <p>📅 <strong>경기일시:</strong> {{ selectedMatchup.game_date }} {{ selectedMatchup.game_time }}</p>
-                            </div>
-                            <div v-else>
-                                선택된 경기 없음
-                            </div>
+                            <v-row class="text-center font-bold">
+                                <v-col>원정팀</v-col>
+                                <v-col>타순</v-col>
+                                <v-col>홈팀</v-col>
+                            </v-row>
+                            
+                            <v-row
+                                v-for="(lineup, index) in lineupList"
+                                :key="index"
+                                class="text-center"
+                            >
+                                <v-divider></v-divider>
+                                <v-col>{{ lineup.awayPlayer }}</v-col>
+                                <v-col>{{ ((index + 1)%10)===0 ? "투수" : ((index + 1)%10) + "번" }}</v-col>
+                                <v-col>{{ lineup.homePlayer }}</v-col>
+                            </v-row>
+                        </v-card-text>
+                    </v-card>
+                </v-col>
+                <v-col cols="12">
+                    <v-card class="h-100">
+                        <v-card-title>경기 정보 등록</v-card-title>
+                        <v-divider></v-divider>
+                        <v-card-text>
+                            <v-tabs v-model="activeTab">
+                                <v-tab value="0">기본 정보</v-tab>
+                                <v-tab value="1">라인업 설정</v-tab>
+                                <v-tab value="2">라인업 </v-tab>
+                                <v-tab value="3">타자 기록 등록</v-tab>
+                                <v-tab value="4">투수 기록 등록</v-tab>
+                            </v-tabs>
+
+                            <v-window v-model="activeTab">
+                                <v-window-item value="0">
+                                    <v-container>
+                                        <v-row>
+                                            <v-col cols="12">
+                                                <p>기본 정보 화면이 여기에 표시됩니다.</p>
+                                            </v-col>
+                                        </v-row>
+                                    </v-container>
+                                </v-window-item>
+
+                                <v-window-item value="1">
+                                    <v-container>
+                                        <v-row>
+                                            <v-col cols="12">
+                                                <p>라인업 설정 화면이 여기에 표시됩니다.</p>
+                                            </v-col>
+                                        </v-row>
+                                    </v-container>
+                                </v-window-item>
+
+                                <v-window-item value="2">
+                                    <v-container>
+                                        <v-row>
+                                            <v-col cols="12">
+                                                <p>교체 기록 화면이 여기에 표시됩니다.</p>
+                                            </v-col>
+                                        </v-row>
+                                    </v-container>
+                                </v-window-item>
+                            </v-window>
                         </v-card-text>
                     </v-card>
                 </v-col>
@@ -180,7 +232,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
-import { STADIUMS } from '@/utils/code/code.js';
+import { STADIUMS, POSITIONS } from '@/utils/code/code.js';
 import { commonFetch, getNewFormData } from '@/utils/common/commonFetch';
 import { formatDate } from '@/utils/common/dateUtils.js';
 import { encryptData, decryptData } from '@/utils/common/crypto.js';
@@ -193,6 +245,11 @@ const selectedMatchup = ref(null);
 
 const teamList = ref([]);
 const gameList = ref([]);
+const lineupList = ref(new Array(10).fill(null).map(() => ({ away: [], home: [] })))
+const awayTeamInfo = ref([]);
+const homeTeamInfo = ref([]);
+
+const activeTab = ref(0);
 
 const selectedAwayTeam = ref(null);
 const selectedHomeTeam = ref(null);
@@ -234,7 +291,8 @@ const updateMatchups = async (newVal) => {
 
 const selectMatchup = (index) => {
     selectedMatchup.value = gameList.value[index];
-    console.log(gameList.value[index].away_team_path)
+    
+    getGameDetailInfo(selectedMatchup.value.game_id)
 };
 
 const addMatchup = async () => {
@@ -304,6 +362,21 @@ const deleteMatchup = async (game_id) => {
         
         if(response.success){
             await getGameList(formattedDate.value)
+        }else throw new Error();
+
+        return true
+    } catch (error) {
+        
+    }
+}
+
+const getGameDetailInfo = async (game_id) => {
+    try {
+        const response = await commonFetch(`/api/admin/game/${game_id}`)
+        
+        if(response.success){
+            awayTeamInfo.value = response.data.awayTeamInfo
+            homeTeamInfo.value = response.data.homeTeamInfo
         }else throw new Error();
 
         return true
