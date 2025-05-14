@@ -293,7 +293,7 @@ export const createKboGameRoster = async (req, res) => {
     }
     
     // 필수값 검증
-    if (!game_id || !team_id || !batting_order || !player_id || !position) {
+    if (!game_id || !team_id || batting_order === null || batting_order === undefined || !player_id || !position) {
         return sendBadRequest(res, "필수 입력값을 모두 입력해주세요.");
     }
 

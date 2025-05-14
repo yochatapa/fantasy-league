@@ -164,14 +164,13 @@
                                 <v-col>타순</v-col>
                                 <v-col>홈팀</v-col>
                             </v-row>
-                            
                             <v-row
                                 v-for="(lineup, index) in lineupList"
                                 :key="index"
                                 class="d-flex align-center text-center"
                             >
                                 <v-divider></v-divider>
-                                <v-col>({{ lineupList[((index + 1)%10)]?.away?.[0]?.position }}) {{ lineupList[((index + 1)%10)]?.away?.[0]?.player_name }}</v-col>
+                                <v-col>{{ lineupList[((index + 1)%10)]?.away?.[0]?.position?'(':'' }}{{ lineupList[((index + 1)%10)]?.away?.[0]?.position }}{{ lineupList[((index + 1)%10)]?.away?.[0]?.position?') ':'' }}{{ lineupList[((index + 1)%10)]?.away?.[0]?.player_name }}</v-col>
                                 <v-col>{{ ((index + 1)%10)===0 ? "투수" : ((index + 1)%10) + "번" }}</v-col>
                                 <v-col>{{ lineupList[((index + 1)%10)]?.home?.[0]?.position?'(':'' }}{{ lineupList[((index + 1)%10)]?.home?.[0]?.position }}{{ lineupList[((index + 1)%10)]?.home?.[0]?.position?') ':'' }}{{ lineupList[((index + 1)%10)]?.home?.[0]?.player_name }}</v-col>
                             </v-row>
@@ -457,14 +456,14 @@ watch(()=>lineup.value.player_id,(newVal)=>{
 
 watch(()=>awayTeamInfo.value, (newVal)=>{
     newVal.forEach(val => {
-        if(!val.batting_order) return;
+        if(val.batting_order === null || val.batting_order === undefined) return;
         lineupList.value[val.batting_order]?.["away"].push(val)
     })
 })
 
 watch(()=>homeTeamInfo.value, (newVal)=>{
     newVal.forEach(val => {
-        if(!val.batting_order) return;
+        if(val.batting_order === null || val.batting_order === undefined) return;
         lineupList.value[val.batting_order]?.["home"].push(val)
     })
 })
