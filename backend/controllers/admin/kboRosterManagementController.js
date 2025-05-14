@@ -191,6 +191,7 @@ export const getTeamRosterDetail = async (req, res) => {
                 ktr.updated_at,
                 kps.uniform_number,
                 kpm.primary_position,
+                kpm.player_type,
                 ft.file_id,
                 ft.sn,
                 ft.original_name,
@@ -204,7 +205,7 @@ export const getTeamRosterDetail = async (req, res) => {
                 LEFT JOIN kbo_player_season kps ON ktr.player_id = kps.player_id and kps.year = ktr.season_year
             WHERE ktr.team_id = $1
                 AND ktr.joined_date <= $2
-                AND COALESCE(ktr.left_date,null) IS NULL
+                AND AND (ktr.left_date IS NULL OR ktr.left_date >= $2)
             ORDER BY ktr.season_year, ktr.joined_date
         `, [teamId, date]);
 
