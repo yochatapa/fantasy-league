@@ -240,7 +240,7 @@
                                                                     if(hasPlayer) return false
                                                                     else return true
                                                                 }
-                                                            })"
+                                                            })?.toSorted((a,b)=>lineup.batting_order===0?b.player_type.localeCompare(a.player_type):a.player_type.localeCompare(b.player_type))"
                                                             item-title="player_name"
                                                             item-value="player_id"
                                                             label="선수 선택"
@@ -250,7 +250,7 @@
                                                     <v-col cols="12" md="3">
                                                         <v-select
                                                             v-model="lineup.position"
-                                                            :items="POSITIONS"
+                                                            :items="POSITIONS.toSorted((a,b)=>lineup.batting_order===0?b.player_type.localeCompare(a.player_type):a.player_type.localeCompare(b.player_type))"
                                                             item-title="name"
                                                             item-value="code"
                                                             label="포지션"
