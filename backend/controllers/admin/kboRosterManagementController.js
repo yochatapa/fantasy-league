@@ -190,6 +190,7 @@ export const getTeamRosterDetail = async (req, res) => {
                 ktr.created_at,
                 ktr.updated_at,
                 kps.uniform_number,
+                kpm.primary_position,
                 ft.file_id,
                 ft.sn,
                 ft.original_name,
@@ -197,10 +198,10 @@ export const getTeamRosterDetail = async (req, res) => {
                 ft.path,
                 ft.mimetype
             FROM kbo_team_roster ktr
-            LEFT JOIN kbo_team_master ktm ON ktm.id = ktr.team_id
-            LEFT JOIN kbo_player_master kpm ON kpm.id = ktr.player_id
-            LEFT JOIN file_table ft ON ft.file_id = kpm.main_profile_image::uuid AND ft.sn = 1
-            LEFT JOIN kbo_player_season kps ON ktr.player_id = kps.player_id and kps.year = ktr.season_year
+                LEFT JOIN kbo_team_master ktm ON ktm.id = ktr.team_id
+                LEFT JOIN kbo_player_master kpm ON kpm.id = ktr.player_id
+                LEFT JOIN file_table ft ON ft.file_id = kpm.main_profile_image::uuid AND ft.sn = 1
+                LEFT JOIN kbo_player_season kps ON ktr.player_id = kps.player_id and kps.year = ktr.season_year
             WHERE ktr.team_id = $1
                 AND ktr.joined_date <= $2
                 AND COALESCE(ktr.left_date,null) IS NULL

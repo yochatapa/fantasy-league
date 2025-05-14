@@ -145,7 +145,7 @@
                         </v-card-text>
                     </v-card>
                 </v-col>
-                <v-col cols="12" md="8">
+                <v-col cols="12" md="7">
                     <v-card class="h-100">
                         <v-card-title>경기 정보</v-card-title>
                         <v-divider></v-divider>
@@ -154,7 +154,7 @@
                         </v-card-text>
                     </v-card>
                 </v-col>
-                <v-col cols="12" md="4">
+                <v-col cols="12" md="5">
                     <v-card class="h-100">
                         <v-card-title>라인업</v-card-title>
                         <v-divider></v-divider>
@@ -168,12 +168,12 @@
                             <v-row
                                 v-for="(lineup, index) in lineupList"
                                 :key="index"
-                                class="text-center"
+                                class="d-flex align-center text-center"
                             >
                                 <v-divider></v-divider>
-                                <v-col>{{ lineup.awayPlayer }}</v-col>
+                                <v-col>({{ lineupList[((index + 1)%10)]?.away?.[0]?.position }}) {{ lineupList[((index + 1)%10)]?.away?.[0]?.player_name }}</v-col>
                                 <v-col>{{ ((index + 1)%10)===0 ? "투수" : ((index + 1)%10) + "번" }}</v-col>
-                                <v-col>{{ lineup.homePlayer }}</v-col>
+                                <v-col>{{ lineupList[((index + 1)%10)]?.home?.[0]?.position?'(':'' }}{{ lineupList[((index + 1)%10)]?.home?.[0]?.position }}{{ lineupList[((index + 1)%10)]?.home?.[0]?.position?') ':'' }}{{ lineupList[((index + 1)%10)]?.home?.[0]?.player_name }}</v-col>
                             </v-row>
                         </v-card-text>
                     </v-card>
@@ -199,36 +199,61 @@
                                                         <span class="text-h6">선수 선택</span>
                                                     </v-col>
                                                     <!-- 팀 선택 -->
-                                                    <v-col cols="12" md="4">
+                                                    <v-col cols="12" md="3">
                                                         <v-select
                                                             v-model="lineup.team_id"
                                                             :items="teams"
                                                             label="팀 선택"
                                                             item-value="id"
                                                             item-title="name"
-                                                            @change="changePlayers"
                                                         />
                                                     </v-col>
 
                                                     <!-- 타순 선택 -->
-                                                    <v-col cols="12" md="4">
+                                                    <v-col cols="12" md="3">
                                                         <v-select
                                                             v-model="lineup.batting_order"
                                                             :items="battingOrders"
                                                             item-title="name"
-                                                            item-value="id"
+                                                            item-value="code"
                                                             label="타순"
                                                         />
                                                     </v-col>
 
                                                     <!-- 선수 선택 -->
-                                                    <v-col cols="12" md="4">
+                                                    <v-col cols="12" md="3">
                                                         <v-select
                                                             v-model="lineup.player_id"
-                                                            :items="activeRoster"
+                                                            :items="!!!lineupTeam?[]:activeRoster.filter(ar => {
+                                                                if(lineupList[lineup.batting_order]?.[lineupTeam]?.length>0){
+                                                                    if(lineupList[lineup.batting_order]?.[lineupTeam]?.find(ll=>ll.player_id === ar.player_id)) return true
+                                                                    else return false
+                                                                }else{
+                                                                    let hasPlayer = false;
+                                                                    for(let idx=0;idx<lineupList.length;idx++){
+                                                                        if(lineupList[idx]?.[lineupTeam]?.find(ll => ll.player_id === ar.player_id)){
+                                                                            hasPlayer = true;
+                                                                            break;
+                                                                        }
+                                                                    }
+                                                                    
+                                                                    if(hasPlayer) return false
+                                                                    else return true
+                                                                }
+                                                            })"
                                                             item-title="player_name"
                                                             item-value="player_id"
                                                             label="선수 선택"
+                                                        />
+                                                    </v-col>
+
+                                                    <v-col cols="12" md="3">
+                                                        <v-select
+                                                            v-model="lineup.position"
+                                                            :items="POSITIONS"
+                                                            item-title="name"
+                                                            item-value="code"
+                                                            label="포지션"
                                                         />
                                                     </v-col>
                                                 </v-row>
@@ -237,8 +262,16 @@
                                                     <v-col cols="12">
                                                         <span class="text-h6">교체 선수 선택</span>
                                                     </v-col>
+                                                    <v-col cols="12" md="3">
+                                                        <v-select
+                                                            v-model="lineup.replaced_out"
+                                                            :items="outs"
+                                                            label="역할"
+                                                        />
+                                                    </v-col>
+
                                                     <!-- 교체 선수 선택 -->
-                                                    <v-col cols="12" md="4">
+                                                    <v-col cols="12" md="3">
                                                         <v-select
                                                             v-model="lineup.replaced_by"
                                                             :items="players"
@@ -249,7 +282,7 @@
                                                     </v-col>
 
                                                     <!-- 이닝 선택 -->
-                                                    <v-col cols="12" md="4">
+                                                    <v-col cols="12" md="3">
                                                         <v-select
                                                             v-model="lineup.replaced_inning"
                                                             :items="innings"
@@ -258,7 +291,7 @@
                                                     </v-col>
 
                                                     <!-- 아웃 카운트 선택 -->
-                                                    <v-col cols="12" md="4">
+                                                    <v-col cols="12" md="3">
                                                         <v-select
                                                             v-model="lineup.replaced_out"
                                                             :items="outs"
@@ -269,7 +302,7 @@
                                                 <v-row>
                                                     <!-- 저장 버튼 -->
                                                     <v-col cols="12" class="d-flex justify-end">
-                                                        <v-btn color="primary" @click="saveItem">저장</v-btn>
+                                                        <v-btn color="primary" @click="saveRoster">저장</v-btn>
                                                     </v-col>
                                                 </v-row>
                                             </v-col>
@@ -315,6 +348,7 @@ import { commonFetch, getNewFormData } from '@/utils/common/commonFetch';
 import { formatDate } from '@/utils/common/dateUtils.js';
 import { encryptData, decryptData } from '@/utils/common/crypto.js';
 import BaseballStadium from '@/components/kbo/BaseballStadium.vue';
+import { tr } from 'vuetify/locale';
 
 const selectedDate = ref(new Date());
 const formattedDate = ref(formatDate(selectedDate.value));
@@ -347,6 +381,7 @@ const canAddMatchup = computed(() => {
     );
 });
 
+const lineupTeam = ref(null);
 const lineup = ref({
     team_id: null,
     player_id: null,
@@ -354,6 +389,8 @@ const lineup = ref({
     batting_order: null,
     replaced_inning: null,
     replaced_out: null,
+    role : null,
+    position : null,
 });
 
 const teams = ref([]);
@@ -361,14 +398,6 @@ const battingOrders = new Array(10).fill(null).map((val,idx) => ({ code :  (idx+
 const roles = ['starter', 'bench', 'substitute'];
 const innings = Array.from({ length: 12 }, (_, i) => i + 1); // 1~12회
 const outs = [0, 1, 2];
-
-const saveItem = () => {
-    console.log('저장된 데이터:', item.value);
-};
-
-const deleteItem = () => {
-    console.log('삭제할 데이터:', item.value.id);
-};
 
 watch(()=>selectedMatchup.value, (newVal) => {
     teams.value = [
@@ -392,8 +421,51 @@ watch(()=>selectedHomeTeam.value, newVal => {
 })
 
 watch(()=>lineup.value.team_id,(newVal) => {
-    activeRoster.value = !!!newVal?[]:(selectedMatchup.value.away_team_id === newVal?awayTeamRosterInfo.value:(selectedMatchup.value.home_team_id === newVal?homeTeamRosterInfo.value:[]))
+    lineupTeam.value = !!!newVal?null:(selectedMatchup.value.away_team_id === newVal?"away":(selectedMatchup.value.home_team_id === newVal?"home":null))
+    activeRoster.value = !!!lineupTeam.value?[]:(lineupTeam.value === "away"?awayTeamRosterInfo.value:homeTeamRosterInfo.value)
+
+    const lineupPlayer = lineupList.value?.[lineup.value.batting_order]?.[lineupTeam.value]?.[lineupList.value?.[lineup.value.batting_order]?.[lineupTeam.value]?.length-1];
+    if(lineupPlayer){
+        lineup.value.player_id = lineupPlayer.player_id
+        lineup.value.position = lineupPlayer.position
+    }
+    else{
+        lineup.value.player_id = null
+        lineup.value.position = null
+    }
 }) 
+
+watch(()=>lineup.value.batting_order,(newVal)=>{
+    const lineupPlayer = lineupList.value?.[lineup.value.batting_order]?.[lineupTeam.value]?.[lineupList.value?.[lineup.value.batting_order]?.[lineupTeam.value]?.length-1];
+    if(lineupPlayer){
+        lineup.value.player_id = lineupPlayer.player_id
+        lineup.value.position = lineupPlayer.position
+    }
+    else{
+        lineup.value.player_id = null
+        lineup.value.position = null
+    }
+})
+
+watch(()=>lineup.value.player_id,(newVal)=>{
+    if(!lineup.value.position){
+        lineup.value.position = activeRoster.value.find(ar=>ar.player_id === newVal)?.primary_position
+    }
+})
+
+watch(()=>awayTeamInfo.value, (newVal)=>{
+    newVal.forEach(val => {
+        if(!val.batting_order) return;
+        lineupList.value[val.batting_order]?.["away"].push(val)
+    })
+})
+
+watch(()=>homeTeamInfo.value, (newVal)=>{
+    newVal.forEach(val => {
+        if(!val.batting_order) return;
+        lineupList.value[val.batting_order]?.["home"].push(val)
+    })
+})
 
 const updateMatchups = async (newVal) => {
     try {
@@ -528,13 +600,46 @@ const getRosterDetailInfo = async (awayTeamId, homeTeamId) => {
     }
 }
 
+const saveRoster = async () => {
+    try {
+        lineup.value.role = (!!!lineup.value.role && !!!lineup.value.replaced_by && !!!lineup.value.replaced_inning && !!!lineup.value.replaced_out)?'starter':lineup.value.role
+        const response = await commonFetch("/api/admin/game/roster/create",{
+            method : "POST"
+            , body : {
+                ...lineup.value
+                , game_id : selectedMatchup.value.game_id
+            }
+        })
+
+        if(response.success){
+            lineup.value = {
+                team_id: null,
+                player_id: null,
+                replaced_by: null,
+                batting_order: null,
+                replaced_inning: null,
+                replaced_out: null,
+                role : null,
+                position : null,
+            }
+            getGameDetailInfo(selectedMatchup.value.game_id)
+        }
+    } catch (error) {
+        
+    }
+};
+
+const deleteItem = () => {
+    console.log('삭제할 데이터:', item.value.id);
+};
+
 onMounted(async ()=>{
     await updateMatchups(selectedDate.value);
 })
 </script>
 
 <style scoped>
-::v-deep .selected .v-list-item__overlay{
+:deep(.selected .v-list-item__overlay){
     background-color: currentColor;
     opacity: var(--v-selected-opacity);
 }
