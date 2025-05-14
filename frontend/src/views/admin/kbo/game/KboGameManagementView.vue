@@ -205,6 +205,8 @@
                                                             label="팀 선택"
                                                             item-value="id"
                                                             item-title="name"
+                                                            :rules="[v => !!v || '팀을 선택해 주세요.']"
+                                                            required
                                                         />
                                                     </v-col>
 
@@ -216,12 +218,15 @@
                                                             item-title="name"
                                                             item-value="code"
                                                             label="타순"
+                                                            :rules="[v => (v!==null && v!==undefined) || '타순을 선택해 주세요.']"
+                                                            required
                                                         />
                                                     </v-col>
 
                                                     <!-- 선수 선택 -->
                                                     <v-col cols="12" md="3">
                                                         <v-select
+                                                            :disabled="isReplace"
                                                             v-model="lineup.player_id"
                                                             :items="!!!lineupTeam?[]:activeRoster.filter(ar => {
                                                                 if(lineupList[lineup.batting_order]?.[lineupTeam]?.length>0){
@@ -243,29 +248,43 @@
                                                             item-title="player_name"
                                                             item-value="player_id"
                                                             label="선수 선택"
+                                                            :rules="[v => !!v || '선수를 선택해 주세요.']"
+                                                            required
                                                         />
                                                     </v-col>
 
                                                     <v-col cols="12" md="3">
-                                                        <v-select
+                                                        <v-select 
+                                                            :disabled="isReplace"
                                                             v-model="lineup.position"
                                                             :items="POSITIONS.toSorted((a,b)=>lineup.batting_order===0?b.player_type.localeCompare(a.player_type):a.player_type.localeCompare(b.player_type))"
                                                             item-title="name"
                                                             item-value="code"
                                                             label="포지션"
+                                                            :rules="[v => !!v || '포지션을 선택해 주세요.']"
+                                                            required
                                                         />
                                                     </v-col>
                                                 </v-row>
                                                 <v-divider class="mb-4"></v-divider>
-                                                <v-row>
+                                                <v-row v-if="isReplace">
                                                     <v-col cols="12">
                                                         <span class="text-h6">교체 선수 선택</span>
                                                     </v-col>
                                                     <v-col cols="12" md="3">
                                                         <v-select
-                                                            v-model="lineup.replaced_out"
-                                                            :items="outs"
-                                                            label="역할"
+                                                            v-model="lineup.replaced_position"
+                                                            :items="POSITIONS.filter(pr=>{
+                                                                if(lineup.batting_order === 0){
+                                                                    return pr.player_type === 'P'
+                                                                }
+                                                                return true
+                                                            }).toSorted((a,b)=>lineup.batting_order===0?b.player_type.localeCompare(a.player_type):a.player_type.localeCompare(b.player_type))"
+                                                            item-title="name"
+                                                            item-value="code"
+                                                            label="교체 포지션"
+                                                            :rules="[v => !!v || '교체 포지션을 선택해 주세요.']"
+                                                            required
                                                         />
                                                     </v-col>
 
@@ -273,10 +292,23 @@
                                                     <v-col cols="12" md="3">
                                                         <v-select
                                                             v-model="lineup.replaced_by"
-                                                            :items="players"
-                                                            item-title="name"
-                                                            item-value="id"
+                                                            :items="activeRoster.filter(ar => {
+                                                                let hasPlayer = false;
+                                                                for(let idx=0;idx<lineupList.length;idx++){
+                                                                    if(lineupList[idx]?.[lineupTeam]?.find(ll => ll.player_id === ar.player_id)){
+                                                                        hasPlayer = true;
+                                                                        break;
+                                                                    }
+                                                                }
+                                                                
+                                                                if(hasPlayer) return false
+                                                                else return true
+                                                            })?.toSorted((a,b)=>lineup.batting_order===0?b.player_type.localeCompare(a.player_type):a.player_type.localeCompare(b.player_type))"
+                                                            item-title="player_name"
+                                                            item-value="player_id"
                                                             label="교체 선수"
+                                                            :rules="[v => !!v || '교체 선수를 선택해 주세요.']"
+                                                            required
                                                         />
                                                     </v-col>
 
@@ -286,6 +318,8 @@
                                                             v-model="lineup.replaced_inning"
                                                             :items="innings"
                                                             label="이닝"
+                                                            :rules="[v => !!v || '이닝을 선택해 주세요.']"
+                                                            required
                                                         />
                                                     </v-col>
 
@@ -295,13 +329,15 @@
                                                             v-model="lineup.replaced_out"
                                                             :items="outs"
                                                             label="아웃 카운트"
+                                                            :rules="[v => !!v || '아웃 카운트를 선택해 주세요.']"
+                                                            required
                                                         />
                                                     </v-col>
                                                 </v-row>
                                                 <v-row>
                                                     <!-- 저장 버튼 -->
                                                     <v-col cols="12" class="d-flex justify-end">
-                                                        <v-btn color="primary" @click="saveRoster">저장</v-btn>
+                                                        <v-btn :disabled="!lineupValid" color="primary" @click="saveRoster">저장</v-btn>
                                                     </v-col>
                                                 </v-row>
                                             </v-col>
@@ -381,6 +417,24 @@ const canAddMatchup = computed(() => {
 });
 
 const lineupTeam = ref(null);
+const isReplace = ref(false);
+const lineupValid = computed(() => {
+    if(!isReplace.value){
+        return  lineup.value.team_id        !== null && lineup.value.team_id        !== undefined &&
+                lineup.value.player_id      !== null && lineup.value.player_id      !== undefined &&
+                lineup.value.batting_order  !== null && lineup.value.batting_order  !== undefined &&
+                lineup.value.position       !== null && lineup.value.position       !== undefined
+    }else{
+        return  lineup.value.team_id        !== null && lineup.value.team_id        !== undefined &&
+                lineup.value.player_id      !== null && lineup.value.player_id      !== undefined &&
+                lineup.value.batting_order  !== null && lineup.value.batting_order  !== undefined &&
+                lineup.value.position       !== null && lineup.value.position       !== undefined &&
+                lineup.value.replaced_by    !== null && lineup.value.replaced_by    !== undefined &&
+                lineup.value.replaced_inning!== null && lineup.value.replaced_inning!== undefined &&
+                lineup.value.replaced_out   !== null && lineup.value.replaced_out   !== undefined &&
+                lineup.value.position       !== null && lineup.value.position       !== undefined
+    }
+});
 const lineup = ref({
     team_id: null,
     player_id: null,
@@ -388,7 +442,7 @@ const lineup = ref({
     batting_order: null,
     replaced_inning: null,
     replaced_out: null,
-    role : null,
+    replaced_position : null,
     position : null,
 });
 
@@ -429,10 +483,12 @@ watch(()=>lineup.value.team_id,(newVal) => {
     if(lineupPlayer){
         lineup.value.player_id = lineupPlayer.player_id
         lineup.value.position = lineupPlayer.position
+        isReplace.value = true;
     }
     else{
         lineup.value.player_id = null
         lineup.value.position = null
+        isReplace.value = false;
     }
 }) 
 
@@ -441,10 +497,12 @@ watch(()=>lineup.value.batting_order,(newVal)=>{
     if(lineupPlayer){
         lineup.value.player_id = lineupPlayer.player_id
         lineup.value.position = lineupPlayer.position
+        isReplace.value = true;
     }
     else{
         lineup.value.player_id = null
         lineup.value.position = null
+        isReplace.value = false;
     }
 })
 
@@ -573,7 +631,7 @@ const clearLineup = () => {
         batting_order: null,
         replaced_inning: null,
         replaced_out: null,
-        role : null,
+        replaced_position : null,
         position : null,
     }
 }
@@ -622,7 +680,6 @@ const getRosterDetailInfo = async (awayTeamId, homeTeamId) => {
 
 const saveRoster = async () => {
     try {
-        lineup.value.role = (!!!lineup.value.role && !!!lineup.value.replaced_by && !!!lineup.value.replaced_inning && !!!lineup.value.replaced_out)?'starter':lineup.value.role
         const response = await commonFetch("/api/admin/game/roster/create",{
             method : "POST"
             , body : {
