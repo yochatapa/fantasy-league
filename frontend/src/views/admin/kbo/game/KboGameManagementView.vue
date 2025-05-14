@@ -196,84 +196,81 @@
                                             <v-col cols="12">
                                                 <v-row>
                                                     <!-- 팀 선택 -->
-                                                    <v-col cols="3">
+                                                    <v-col cols="12" md="3">
                                                         <v-select
-                                                            v-model="selectedTeam"
+                                                            v-model="lineup.team_id"
                                                             :items="teams"
                                                             label="팀 선택"
-                                                            density="compact"
+                                                            item-value="id"
+                                                            item-title="name"
                                                             @change="fetchPlayers"
                                                         />
                                                     </v-col>
 
                                                     <!-- 타순 선택 -->
-                                                    <v-col cols="3">
+                                                    <v-col cols="12" md="3">
                                                         <v-select
-                                                            v-model="item.batting_order"
+                                                            v-model="lineup.batting_order"
                                                             :items="battingOrders"
+                                                            item-title="name"
+                                                            item-value="id"
                                                             label="타순"
-                                                            density="compact"
                                                         />
                                                     </v-col>
 
                                                     <!-- 선수 선택 -->
-                                                    <v-col cols="3">
+                                                    <v-col cols="12" md="3">
                                                         <v-select
-                                                            v-model="item.player_id"
+                                                            v-model="lineup.player_id"
                                                             :items="players"
                                                             item-title="name"
                                                             item-value="id"
                                                             label="선수 선택"
-                                                            density="compact"
                                                         />
                                                     </v-col>
 
                                                     <!-- 교체 선수 선택 -->
-                                                    <v-col cols="3">
+                                                    <v-col cols="12" md="3">
                                                         <v-select
-                                                            v-model="item.replaced_by"
+                                                            v-model="lineup.replaced_by"
                                                             :items="players"
                                                             item-title="name"
                                                             item-value="id"
                                                             label="교체 선수"
-                                                            density="compact"
                                                         />
                                                     </v-col>
                                                 </v-row>
 
                                                 <v-row>
                                                     <!-- 역할 선택 -->
-                                                    <v-col cols="3">
+                                                    <v-col cols="12" md="3">
                                                         <v-select
-                                                            v-model="item.role"
+                                                            v-model="lineup.role"
                                                             :items="roles"
                                                             label="역할"
-                                                            density="compact"
                                                         />
                                                     </v-col>
 
                                                     <!-- 이닝 선택 -->
-                                                    <v-col cols="3">
+                                                    <v-col cols="12" md="3">
                                                         <v-select
-                                                            v-model="item.replaced_inning"
+                                                            v-model="lineup.replaced_inning"
                                                             :items="innings"
                                                             label="이닝"
-                                                            density="compact"
                                                         />
                                                     </v-col>
 
                                                     <!-- 아웃 카운트 선택 -->
-                                                    <v-col cols="3">
+                                                    <v-col cols="12" md="3">
                                                         <v-select
-                                                            v-model="item.replaced_out"
+                                                            v-model="lineup.replaced_out"
                                                             :items="outs"
                                                             label="아웃 카운트"
-                                                            density="compact"
                                                         />
                                                     </v-col>
 
                                                     <!-- 저장 버튼 -->
-                                                    <v-col cols="3" class="d-flex justify-end align-top">
+                                                    <v-col cols="12" md="3" class="d-flex justify-end align-top">
                                                         <v-btn color="primary" @click="saveItem">저장</v-btn>
                                                     </v-col>
                                                 </v-row>
@@ -349,7 +346,7 @@ const canAddMatchup = computed(() => {
     );
 });
 
-const item = ref({
+const lineup = ref({
     team_id: null,
     player_id: null,
     replaced_by: null,
@@ -359,8 +356,8 @@ const item = ref({
     replaced_out: null,
 });
 
-const teams = ['Team A', 'Team B', 'Team C'];
-const battingOrders = Array.from({ length: 9 }, (_, i) => i + 1); // 1~9번 타순
+const teams = ref([]);
+const battingOrders = new Array(10).fill(null).map((val,idx) => ({ code :  (idx+1)%10 , name : (idx+1)%10 === 0 ? "투수" : (idx+1)%10 + "번 타자"}))
 const roles = ['starter', 'bench', 'substitute'];
 const innings = Array.from({ length: 12 }, (_, i) => i + 1); // 1~12회
 const outs = [0, 1, 2];
@@ -372,6 +369,19 @@ const saveItem = () => {
 const deleteItem = () => {
     console.log('삭제할 데이터:', item.value.id);
 };
+
+watch(()=>selectedMatchup.value, (newVal) => {
+    teams.value = [
+        {
+            id : newVal.away_team_id
+            , name : newVal.away_team_name
+        },
+        {
+            id : newVal.home_team_id
+            , name : newVal.home_team_name
+        }
+    ]
+})
 
 watch(()=>selectedDate.value, (newVal)=>{
     formattedDate.value = formatDate(newVal)
