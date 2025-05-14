@@ -400,16 +400,18 @@ const innings = Array.from({ length: 12 }, (_, i) => i + 1); // 1~12회
 const outs = [0, 1, 2];
 
 watch(()=>selectedMatchup.value, (newVal) => {
-    teams.value = [
-        {
-            id : newVal.away_team_id
-            , name : newVal.away_team_name
-        },
-        {
-            id : newVal.home_team_id
-            , name : newVal.home_team_name
-        }
-    ]
+    if(newVal)
+        teams.value = [
+            {
+                id : newVal.away_team_id
+                , name : newVal.away_team_name
+            },
+            {
+                id : newVal.home_team_id
+                , name : newVal.home_team_name
+            }
+        ]
+    else teams.value = [];
 })
 
 watch(()=>selectedDate.value, (newVal)=>{
