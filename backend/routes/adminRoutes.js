@@ -4,7 +4,7 @@ import { getKboTeamList, createKboTeam, updateKboTeam, deleteKboTeam, getKboTeam
 import { getKboPlayerList, createKboPlayer, getKboPlayerDetail, updateKboPlayer, deleteKboPlayer } from '../controllers/admin/kboPlayerManagementController.js';
 import handleUpload from '../middleware/upload.js';
 import { createKboGame, deleteKboGame, getKboGameDetail, getKboGameList } from '../controllers/admin/kboGameManagementController.js';
-import { createTeamRoster, deactiveTeamRoster, deleteTeamRoster, getTeamRosterList } from '../controllers/admin/kboRosterManagementController.js';
+import { createTeamRoster, deactiveTeamRoster, deleteTeamRoster, getTeamRosterDetail, getTeamRosterList } from '../controllers/admin/kboRosterManagementController.js';
 
 const router = express.Router();
 
@@ -28,6 +28,7 @@ router.delete('/game/delete', verifyToken, verifyAdmin, deleteKboGame);
 router.get('/game/:gameId',verifyToken, verifyAdmin, getKboGameDetail);
 
 router.get('/roster/list', verifyToken, verifyAdmin, getTeamRosterList);
+router.get('/roster/:teamId', verifyToken, verifyAdmin, getTeamRosterDetail);
 router.post('/roster/create', verifyToken, verifyAdmin, createTeamRoster);
 router.delete('/roster/delete', verifyToken, verifyAdmin, deleteTeamRoster);
 router.put('/roster/deactive', verifyToken, verifyAdmin, deactiveTeamRoster);
