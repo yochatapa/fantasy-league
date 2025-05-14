@@ -566,14 +566,33 @@ const deleteMatchup = async (game_id) => {
     }
 }
 
+const clearLineup = () => {
+     lineup.value = {
+        team_id: null,
+        player_id: null,
+        replaced_by: null,
+        batting_order: null,
+        replaced_inning: null,
+        replaced_out: null,
+        role : null,
+        position : null,
+    }
+}
+
 const getGameDetailInfo = async (game_id) => {
     try {
+        lineupList.value = new Array(10).fill(null).map(() => ({ away: [], home: [] }));
+        clearLineup();
         const response = await commonFetch(`/api/admin/game/${game_id}`)
-        getRosterDetailInfo(selectedMatchup.value.away_team_id,selectedMatchup.value.home_team_id);
+        await getRosterDetailInfo(selectedMatchup.value.away_team_id,selectedMatchup.value.home_team_id);
         if(response.success){
             awayTeamInfo.value = response.data.awayTeamInfo
             homeTeamInfo.value = response.data.homeTeamInfo
-        }else throw new Error();
+        }else{
+            awayTeamInfo.value = [];
+            homeTeamInfo.value = [];
+            throw new Error();
+        }
 
         return true
     } catch (error) {
@@ -614,16 +633,7 @@ const saveRoster = async () => {
         })
 
         if(response.success){
-            lineup.value = {
-                team_id: null,
-                player_id: null,
-                replaced_by: null,
-                batting_order: null,
-                replaced_inning: null,
-                replaced_out: null,
-                role : null,
-                position : null,
-            }
+            clearLineup();
             getGameDetailInfo(selectedMatchup.value.game_id)
         }
     } catch (error) {
