@@ -184,14 +184,22 @@
                                 class="d-flex align-center text-center"
                             >
                                 <v-divider></v-divider>
-                                <v-col><span v-for="(away, aIdx) in lineupList[((index + 1)%10)]?.away">
-                                    {{ lineupList[((index + 1)%10)]?.away?.[0]?.position?'(':'' }}{{ lineupList[((index + 1)%10)]?.away?.[0]?.position }}{{ lineupList[((index + 1)%10)]?.away?.[0]?.position?') ':'' }}{{ lineupList[((index + 1)%10)]?.away?.[0]?.player_name }}
-                                </span></v-col>
+                                <v-col>
+                                    <div v-for="(away, aIdx) in lineupList[((index + 1)%10)]?.away" class="d-flex justify-space-between">
+                                        <v-icon color="error" class="cursor-pointer">mdi-delete</v-icon>
+                                        <span class="w-100">
+                                            {{ lineupList[((index + 1)%10)]?.away?.[0]?.position?'(':'' }}{{ lineupList[((index + 1)%10)]?.away?.[0]?.position }}{{ lineupList[((index + 1)%10)]?.away?.[0]?.position?') ':'' }}{{ lineupList[((index + 1)%10)]?.away?.[0]?.player_name }}
+                                        </span>
+                                    </div>
+                                </v-col>
                                 <span class="py-3">{{ ((index + 1)%10)===0 ? "투수" : ((index + 1)%10) + "번" }}</span>
                                 <v-col class="d-flex flex-column">
-                                    <span v-for="(home, aIdx) in lineupList[((index + 1)%10)]?.home">
-                                        {{ (home?.replaced_position??home?.position)?'(':'' }}{{ (home?.replaced_position??home?.position) }}{{ (home?.replaced_position??home?.position)?') ':'' }}{{ home?.replaced_player_name??home?.player_name }}
-                                    </span>
+                                    <div v-for="(home, aIdx) in lineupList[((index + 1)%10)]?.home" class="d-flex justify-space-between">
+                                        <span class="w-100">
+                                            {{ (home?.replaced_position??home?.position)?'(':'' }}{{ (home?.replaced_position??home?.position) }}{{ (home?.replaced_position??home?.position)?') ':'' }}{{ home?.replaced_player_name??home?.player_name }}
+                                        </span>
+                                        <v-icon color="error" class="cursor-pointer">mdi-delete</v-icon>
+                                    </div>
                                 </v-col>
                             </v-row>
                         </v-card-text>
