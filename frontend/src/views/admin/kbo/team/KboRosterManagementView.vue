@@ -10,7 +10,7 @@
                         <v-card-title class="d-flex justify-space-between align-center">
                             <span class="text-h6">현 로스터 ({{ rosterList.filter(roster=>roster.left_date!==formattedDate).length }}인 등록)</span>
                             <div class="d-flex align-center">
-                                <v-menu v-model="calendarOpen" transition="scale-transition" max-width="290">
+                                <v-menu v-model="calendarOpen" transition="scale-transition" max-width="290" :close-on-content-click="false">
                                     <template v-slot:activator="{ props }" class="d-flex align-center">
                                         <v-icon v-bind="props" class="mr-2">mdi-calendar</v-icon>
                                         <span class="text-h6" v-bind="props" >{{ formattedDate }}</span>

@@ -5,7 +5,7 @@
             <span class="text-h6 font-weight-bold">KBO 경기 관리</span>
             <div class="d-flex align-center">
                 <span class="text-h6 mr-2">{{ formattedDate }}</span>
-                <v-menu v-model="calendarOpen" transition="scale-transition" max-width="290">
+                <v-menu v-model="calendarOpen" transition="scale-transition" max-width="290" :close-on-content-click="false">
                     <template v-slot:activator="{ props }">
                         <v-btn icon v-bind="props">
                             <v-icon>mdi-calendar</v-icon>
