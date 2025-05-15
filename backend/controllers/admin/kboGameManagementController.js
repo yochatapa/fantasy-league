@@ -411,8 +411,8 @@ export const createKboGameRoster = async (req, res) => {
             `;
             const { rows } = await client.query(insertGameQuery, [
                 game_id, team_id, player_id, batting_order, role,
-                replaced_by || null, replaced_inning || null, replaced_out || null, position, replaced_position || null
-            ]);
+                replaced_by || null, (replaced_inning === undefined || replaced_inning === null)?null:replaced_inning, (replaced_out === undefined || replaced_out === null)?null:replaced_out, position, replaced_position || null
+            ]);replaced_inning
 
             const gameRosterId = rows[0].id;
 
@@ -423,5 +423,44 @@ export const createKboGameRoster = async (req, res) => {
         });
     } catch (error) {
         return sendServerError(res, error, "게임 로스터 생성 중 오류가 발생했습니다. 다시 시도해주세요.");
+    }
+}
+
+export const deleteKboGameRoster = async (req, res) => {
+    const { 
+        roster_id
+    } = req.body;
+
+    const accessToken = req.headers['authorization']?.split(' ')[1];
+
+    if (!accessToken) {
+        return sendBadRequest(res, '토큰이 제공되지 않았습니다.');
+    }
+
+    let user;
+    try {
+        user = jwt.verify(accessToken, process.env.JWT_SECRET);
+    } catch (err) {
+        return sendBadRequest(res, '유효하지 않은 토큰입니다.');
+    }
+    
+    // 필수값 검증
+    if (!roster_id) {
+        return sendBadRequest(res, "필수 입력값을 모두 입력해주세요.");
+    }
+
+    try {
+        await withTransaction(async (client) => {
+            const deleteRosterQuery = `
+                DELETE FROM kbo_game_roster WHERE id = $1
+            `;
+            const { rows } = await client.query(deleteRosterQuery, [ roster_id ]);
+
+            return sendSuccess(res, {
+                message: "게임 로스터가 성공적으로 삭제되었습니다."
+            });
+        });
+    } catch (error) {
+        return sendServerError(res, error, "게임 로스터 삭제 중 오류가 발생했습니다. 다시 시도해주세요.");
     }
 }

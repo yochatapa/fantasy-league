@@ -3,7 +3,7 @@ import { verifyToken, verifyAdmin}  from '../middleware/auth.js'
 import { getKboTeamList, createKboTeam, updateKboTeam, deleteKboTeam, getKboTeamDetail } from '../controllers/admin/kboTeamManagementController.js';
 import { getKboPlayerList, createKboPlayer, getKboPlayerDetail, updateKboPlayer, deleteKboPlayer } from '../controllers/admin/kboPlayerManagementController.js';
 import handleUpload from '../middleware/upload.js';
-import { createKboGame, createKboGameRoster, deleteKboGame, getKboGameDetail, getKboGameList, updateKboGameStatus } from '../controllers/admin/kboGameManagementController.js';
+import { createKboGame, createKboGameRoster, deleteKboGame, deleteKboGameRoster, getKboGameDetail, getKboGameList, updateKboGameStatus } from '../controllers/admin/kboGameManagementController.js';
 import { createTeamRoster, deactiveTeamRoster, deleteTeamRoster, getTeamRosterDetail, getTeamRosterList } from '../controllers/admin/kboRosterManagementController.js';
 
 const router = express.Router();
@@ -29,6 +29,7 @@ router.get('/game/:gameId',verifyToken, verifyAdmin, getKboGameDetail);
 router.put('/game/status/update', verifyToken, verifyAdmin, updateKboGameStatus)
 
 router.post('/game/roster/create', verifyToken, verifyAdmin, createKboGameRoster);
+router.delete('/game/roster/delete', verifyToken, verifyAdmin, deleteKboGameRoster);
 
 router.get('/roster/list', verifyToken, verifyAdmin, getTeamRosterList);
 router.get('/roster/:teamId', verifyToken, verifyAdmin, getTeamRosterDetail);

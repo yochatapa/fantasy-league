@@ -186,19 +186,29 @@
                                 <v-divider></v-divider>
                                 <v-col>
                                     <div v-for="(away, aIdx) in lineupList[((index + 1)%10)]?.away" class="d-flex justify-space-between">
-                                        <v-icon color="error" class="cursor-pointer">mdi-delete</v-icon>
+                                        <v-icon 
+                                            v-if="(aIdx === 0 && selectedMatchup.status === 'scheduled') || (aIdx > 0 && selectedMatchup.status === 'playball')" 
+                                            color="error" 
+                                            class="cursor-pointer" 
+                                            @click="deleteRoster(away?.roster_id)"
+                                        >mdi-delete</v-icon>
                                         <span class="w-100">
-                                            {{ lineupList[((index + 1)%10)]?.away?.[0]?.position?'(':'' }}{{ lineupList[((index + 1)%10)]?.away?.[0]?.position }}{{ lineupList[((index + 1)%10)]?.away?.[0]?.position?') ':'' }}{{ lineupList[((index + 1)%10)]?.away?.[0]?.player_name }}
+                                            {{ away?.position?'(':'' }}{{ away?.position }}{{ away?.position?') ':'' }}{{ away?.player_name }}
                                         </span>
                                     </div>
                                 </v-col>
                                 <span class="py-3">{{ ((index + 1)%10)===0 ? "투수" : ((index + 1)%10) + "번" }}</span>
                                 <v-col class="d-flex flex-column">
-                                    <div v-for="(home, aIdx) in lineupList[((index + 1)%10)]?.home" class="d-flex justify-space-between">
+                                    <div v-for="(home, hIdx) in lineupList[((index + 1)%10)]?.home" class="d-flex justify-space-between">
                                         <span class="w-100">
                                             {{ (home?.replaced_position??home?.position)?'(':'' }}{{ (home?.replaced_position??home?.position) }}{{ (home?.replaced_position??home?.position)?') ':'' }}{{ home?.replaced_player_name??home?.player_name }}
                                         </span>
-                                        <v-icon color="error" class="cursor-pointer">mdi-delete</v-icon>
+                                        <v-icon 
+                                            v-if="(hIdx === 0 && selectedMatchup.status === 'scheduled') || (hIdx > 0 && selectedMatchup.status === 'playball')" 
+                                            color="error" 
+                                            class="cursor-pointer"
+                                            @click="deleteRoster(home?.roster_id)"
+                                        >mdi-delete</v-icon>
                                     </div>
                                 </v-col>
                             </v-row>
@@ -295,7 +305,7 @@
                                                     </v-col>
                                                 </v-row>
                                                 <v-divider class="mb-4"></v-divider>
-                                                <v-row v-if="isReplace">
+                                                <v-row v-if="isReplace && selectedMatchup.status !== 'scheduled' && lineupList.filter(ll => ll.away.length > 0 && ll.home.length >0).length === 10">
                                                     <v-col cols="12">
                                                         <span class="text-h6">교체 선수 선택</span>
                                                     </v-col>
@@ -741,17 +751,31 @@ const saveRoster = async () => {
         })
 
         if(response.success){
-            clearLineup();
             getGameDetailInfo(selectedMatchup.value.game_id)
         }
     } catch (error) {
-        
+        alert("라인업 저장 중 문제가 발생하였습니다.\n다시 한 번 시도해주세요.");
     }
 };
 
-const deleteItem = () => {
-    console.log('삭제할 데이터:', item.value.id);
-};
+const deleteRoster = async(roster_id) => {
+    if(!roster_id) return;
+
+    try {
+        const response = await commonFetch("/api/admin/game/roster/delete",{
+            method : "DELETE"
+            , body : {
+                roster_id
+            }
+        })
+
+        if(response.success){
+            getGameDetailInfo(selectedMatchup.value.game_id)
+        }
+    } catch (error) {
+        alert("라인업 삭제 중 문제가 발생하였습니다.\n다시 한 번 시도해주세요.");
+    }
+}
 
 onMounted(async ()=>{
     await updateMatchups(selectedDate.value);
