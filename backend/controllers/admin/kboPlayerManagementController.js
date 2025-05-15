@@ -150,10 +150,24 @@ export const getKboPlayerList = async (req, res) => {
             ${paginationClause}
         `, [...queryParams, ...paginationParams]);
 
+        // 총 개수 조회
+        let total = null;
+        if (page) {
+            const countParams = [...queryParams];
+            const totalPlayers = await query(`
+                SELECT COUNT(DISTINCT kpm.id) AS total
+                FROM kbo_player_master kpm
+                LEFT JOIN kbo_player_season kps ON kpm.id = kps.player_id
+                ${whereClause}
+            `, countParams);
+
+            total = parseInt(totalPlayers.rows[0].total, 10);
+        }
+
         return sendSuccess(res, {
             message: "선수 목록을 성공적으로 조회하였습니다.",
             playerList: kboPlayerList.rows,
-            ...(page ? { total: kboPlayerList.rows.length } : {})
+            ...(page ? { total } : {})
         });
     } catch (error) {
         return sendServerError(res, error, '선수 목록 조회 중 문제가 발생하였습니다. 다시 시도해주세요.');
