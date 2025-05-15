@@ -222,8 +222,8 @@
                         <v-card-text>
                             <v-tabs v-model="activeTab">
                                 <v-tab value="0">라인업 설정</v-tab>
-                                <v-tab value="1">타자 기록 등록</v-tab>
-                                <v-tab value="2">투수 기록 등록</v-tab>
+                                <v-tab value="1" v-if="selectedMatchup.status === 'playball'">타자 기록 등록</v-tab>
+                                <v-tab value="2" v-if="selectedMatchup.status === 'playball'">투수 기록 등록</v-tab>
                             </v-tabs>
 
                             <v-window v-model="activeTab">
@@ -383,7 +383,7 @@
                                         </v-row>
                                     </v-container>
                                 </v-window-item>
-                                <v-window-item value="2">
+                                <v-window-item value="2" v-if="selectedMatchup.status === 'playball'">
                                     <v-container>
                                         <v-row>
                                             <v-col cols="12">
@@ -392,7 +392,7 @@
                                         </v-row>
                                     </v-container>
                                 </v-window-item>
-                                <v-window-item value="3">
+                                <v-window-item value="3" v-if="selectedMatchup.status === 'playball'">
                                     <v-container>
                                         <v-row>
                                             <v-col cols="12">
@@ -422,10 +422,13 @@ import { commonFetch, getNewFormData } from '@/utils/common/commonFetch';
 import { formatDate } from '@/utils/common/dateUtils.js';
 import { encryptData, decryptData } from '@/utils/common/crypto.js';
 import BaseballStadium from '@/components/kbo/BaseballStadium.vue';
-import { tr } from 'vuetify/locale';
+import { useRouter, useRoute } from 'vue-router';
 
-const selectedDate = ref(new Date());
-const formattedDate = ref(formatDate(selectedDate.value));
+const router = useRouter();
+const route = useRoute();
+
+const selectedDate = ref(route.query.date?new Date(route.query.date):new Date());
+const formattedDate = ref(route.query.date??formatDate(selectedDate.value));
 const calendarOpen = ref(false);
 const selectedMatchup = ref(null);
 
@@ -566,6 +569,7 @@ watch(()=>homeTeamInfo.value, (newVal)=>{
 })
 
 const updateMatchups = async (newVal) => {
+    router.replace(`/admin/game/management?date=${formatDate(newVal)}`)
     try {
         Promise.all([
             getTeamList(newVal.getUTCFullYear())
