@@ -198,7 +198,7 @@
                         {{ item.primary_position }}
                     </template>
                     <template #item.last_uniform_number="{ item }">
-                        {{ item.last_uniform_number || '-' }}
+                        {{ (item.last_uniform_number !== null && item.last_uniform_number !== undefined)?item.last_uniform_number:'-' }}
                     </template>
                     <template #item.birth_date="{ item }">
                         {{ item.birth_date || '-' }}
@@ -242,7 +242,7 @@
                                 <div><strong>이름:</strong> {{ item.name }}</div>
                                 <div><strong>소속팀:</strong> {{ item.team_name || '-' }}</div>
                                 <div><strong>주 포지션:</strong> {{ item.primary_position }}</div>
-                                <div><strong>등번호:</strong> {{ item.last_uniform_number || '-' }}</div>
+                                <div><strong>등번호:</strong> {{ (item.last_uniform_number !== null && item.last_uniform_number !== undefined)?item.last_uniform_number:'-' }}</div>
                                 <div><strong>생년월일:</strong> {{ item.birth_date || '-' }}</div>
                                 <div><strong>유형:</strong> {{ item.player_type==="B"?"타자":"투수" }}</div>
                                 <div><strong>외국인:</strong> {{ item.is_foreign ? '외국인' : '국내' }}</div>
