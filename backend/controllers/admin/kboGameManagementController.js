@@ -199,6 +199,7 @@ export const getKboGameDetail = async (req, res) => {
                 krp.name AS replaced_player_name,
                 kgr.replaced_inning,
                 kgr.replaced_out,
+                kgr.replaced_position,
                 kgr.created_at,
                 kgr.updated_at,
                 kgr.position
@@ -208,7 +209,7 @@ export const getKboGameDetail = async (req, res) => {
             LEFT JOIN kbo_player_master kp ON kgr.player_id = kp.id
             LEFT JOIN kbo_player_master krp ON kgr.replaced_by = krp.id
             WHERE kgr.game_id = $1
-            ORDER BY kgr.batting_order, kgr.replaced_inning, kgr.replaced_out;
+            ORDER BY kgr.batting_order, CASE WHEN kgr.replaced_inning IS NULL THEN 0 ELSE kgr.replaced_inning END, CASE WHEN kgr.replaced_out IS NULL THEN 0 ELSE kgr.replaced_out END;
         `;
         
         const { rows : gameInfo} = await query(gameInfoQuery, [gameId]);
@@ -276,7 +277,7 @@ export const deleteKboGame = async (req, res) => {
 
 export const createKboGameRoster = async (req, res) => {
     const { 
-        game_id, team_id, player_id, batting_order, role, replaced_by, replaced_inning, replaced_out, position
+        game_id, team_id, player_id, batting_order, role, replaced_by, replaced_inning, replaced_out, position, replaced_position, isReplace
     } = req.body;
 
     const accessToken = req.headers['authorization']?.split(' ')[1];
@@ -293,8 +294,15 @@ export const createKboGameRoster = async (req, res) => {
     }
     
     // 필수값 검증
-    if (!game_id || !team_id || batting_order === null || batting_order === undefined || !player_id || !position) {
-        return sendBadRequest(res, "필수 입력값을 모두 입력해주세요.");
+    if(isReplace){
+        if (!game_id || !team_id || batting_order === null || batting_order === undefined || !player_id || !position || 
+            !replaced_by || !replaced_inning || replaced_out === undefined || !replaced_position) {
+            return sendBadRequest(res, "필수 입력값을 모두 입력해주세요.");
+        }
+    }else{
+        if (!game_id || !team_id || batting_order === null || batting_order === undefined || !player_id || !position) {
+            return sendBadRequest(res, "필수 입력값을 모두 입력해주세요.");
+        }
     }
 
     try {
@@ -303,16 +311,18 @@ export const createKboGameRoster = async (req, res) => {
             const insertGameQuery = `
                 INSERT INTO kbo_game_roster (
                     game_id, team_id, player_id, batting_order, role,
-                    replaced_by, replaced_inning, replaced_out, position, created_at
+                    replaced_by, replaced_inning, replaced_out, position, replaced_position,
+                    created_at
                 ) VALUES (
                     $1, $2, $3, $4, $5, 
-                    $6, $7, $8, $9, CURRENT_TIMESTAMP
+                    $6, $7, $8, $9, $10,
+                    CURRENT_TIMESTAMP
                 )
                 RETURNING id
             `;
             const { rows } = await client.query(insertGameQuery, [
                 game_id, team_id, player_id, batting_order, role,
-                replaced_by || null, replaced_inning || null, replaced_out || null, position
+                replaced_by || null, replaced_inning || null, replaced_out || null, position, replaced_position || null
             ]);
 
             const gameRosterId = rows[0].id;

@@ -161,7 +161,7 @@
                         <v-card-text>
                             <v-row class="text-center font-bold">
                                 <v-col>원정팀</v-col>
-                                <v-col>타순</v-col>
+                                <span class="py-3">타순</span>
                                 <v-col>홈팀</v-col>
                             </v-row>
                             <v-row
@@ -170,9 +170,15 @@
                                 class="d-flex align-center text-center"
                             >
                                 <v-divider></v-divider>
-                                <v-col>{{ lineupList[((index + 1)%10)]?.away?.[0]?.position?'(':'' }}{{ lineupList[((index + 1)%10)]?.away?.[0]?.position }}{{ lineupList[((index + 1)%10)]?.away?.[0]?.position?') ':'' }}{{ lineupList[((index + 1)%10)]?.away?.[0]?.player_name }}</v-col>
-                                <v-col>{{ ((index + 1)%10)===0 ? "투수" : ((index + 1)%10) + "번" }}</v-col>
-                                <v-col>{{ lineupList[((index + 1)%10)]?.home?.[0]?.position?'(':'' }}{{ lineupList[((index + 1)%10)]?.home?.[0]?.position }}{{ lineupList[((index + 1)%10)]?.home?.[0]?.position?') ':'' }}{{ lineupList[((index + 1)%10)]?.home?.[0]?.player_name }}</v-col>
+                                <v-col><span v-for="(away, aIdx) in lineupList[((index + 1)%10)]?.away">
+                                    {{ lineupList[((index + 1)%10)]?.away?.[0]?.position?'(':'' }}{{ lineupList[((index + 1)%10)]?.away?.[0]?.position }}{{ lineupList[((index + 1)%10)]?.away?.[0]?.position?') ':'' }}{{ lineupList[((index + 1)%10)]?.away?.[0]?.player_name }}
+                                </span></v-col>
+                                <span class="py-3">{{ ((index + 1)%10)===0 ? "투수" : ((index + 1)%10) + "번" }}</span>
+                                <v-col class="d-flex flex-column">
+                                    <span v-for="(home, aIdx) in lineupList[((index + 1)%10)]?.home">
+                                        {{ (home?.replaced_position??home?.position)?'(':'' }}{{ (home?.replaced_position??home?.position) }}{{ (home?.replaced_position??home?.position)?') ':'' }}{{ home?.replaced_player_name??home?.player_name }}
+                                    </span>
+                                </v-col>
                             </v-row>
                         </v-card-text>
                     </v-card>
@@ -230,12 +236,12 @@
                                                             v-model="lineup.player_id"
                                                             :items="!!!lineupTeam?[]:activeRoster.filter(ar => {
                                                                 if(lineupList[lineup.batting_order]?.[lineupTeam]?.length>0){
-                                                                    if(lineupList[lineup.batting_order]?.[lineupTeam]?.find(ll=>ll.player_id === ar.player_id)) return true
+                                                                    if(lineupList[lineup.batting_order]?.[lineupTeam]?.find(ll=>(ll.replaced_by??ll.player_id) === ar.player_id)) return true
                                                                     else return false
                                                                 }else{
                                                                     let hasPlayer = false;
                                                                     for(let idx=0;idx<lineupList.length;idx++){
-                                                                        if(lineupList[idx]?.[lineupTeam]?.find(ll => ll.player_id === ar.player_id)){
+                                                                        if(lineupList[idx]?.[lineupTeam]?.find(ll => (ll.replaced_by??ll.player_id) === ar.player_id)){
                                                                             hasPlayer = true;
                                                                             break;
                                                                         }
@@ -293,9 +299,10 @@
                                                         <v-select
                                                             v-model="lineup.replaced_by"
                                                             :items="activeRoster.filter(ar => {
+                                                                if(ar.player_id === lineup.player_id) return true
                                                                 let hasPlayer = false;
                                                                 for(let idx=0;idx<lineupList.length;idx++){
-                                                                    if(lineupList[idx]?.[lineupTeam]?.find(ll => ll.player_id === ar.player_id)){
+                                                                    if(lineupList[idx]?.[lineupTeam]?.find(ll => (ll.replaced_by??ll.player_id) === ar.player_id)){
                                                                         hasPlayer = true;
                                                                         break;
                                                                     }
@@ -329,7 +336,7 @@
                                                             v-model="lineup.replaced_out"
                                                             :items="outs"
                                                             label="아웃 카운트"
-                                                            :rules="[v => !!v || '아웃 카운트를 선택해 주세요.']"
+                                                            :rules="[v => (v!==null && v!==undefined) || '아웃 카운트를 선택해 주세요.']"
                                                             required
                                                         />
                                                     </v-col>
@@ -481,8 +488,8 @@ watch(()=>lineup.value.team_id,(newVal) => {
 
     const lineupPlayer = lineupList.value?.[lineup.value.batting_order]?.[lineupTeam.value]?.[lineupList.value?.[lineup.value.batting_order]?.[lineupTeam.value]?.length-1];
     if(lineupPlayer){
-        lineup.value.player_id = lineupPlayer.player_id
-        lineup.value.position = lineupPlayer.position
+        lineup.value.player_id = lineupPlayer.replaced_by??lineupPlayer.player_id
+        lineup.value.position = lineupPlayer.replaced_position??lineupPlayer.position
         isReplace.value = true;
     }
     else{
@@ -495,8 +502,8 @@ watch(()=>lineup.value.team_id,(newVal) => {
 watch(()=>lineup.value.batting_order,(newVal)=>{
     const lineupPlayer = lineupList.value?.[lineup.value.batting_order]?.[lineupTeam.value]?.[lineupList.value?.[lineup.value.batting_order]?.[lineupTeam.value]?.length-1];
     if(lineupPlayer){
-        lineup.value.player_id = lineupPlayer.player_id
-        lineup.value.position = lineupPlayer.position
+        lineup.value.player_id = lineupPlayer.replaced_by??lineupPlayer.player_id
+        lineup.value.position = lineupPlayer.replaced_position??lineupPlayer.position
         isReplace.value = true;
     }
     else{
@@ -685,6 +692,7 @@ const saveRoster = async () => {
             , body : {
                 ...lineup.value
                 , game_id : selectedMatchup.value.game_id
+                , isReplace : isReplace.value
             }
         })
 
