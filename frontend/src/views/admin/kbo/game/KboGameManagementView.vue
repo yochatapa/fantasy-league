@@ -42,7 +42,7 @@
                                     {{ matchup.game_date }} | {{ matchup.game_time }} | {{ STADIUMS.find(sdm => sdm.code === matchup.stadium)?.name??'' }}
                                 </v-list-item-subtitle>
                             </div>
-                            <v-btn icon @click="deleteMatchup(matchup.game_id)">
+                            <v-btn v-if="matchup.status === 'scheduled'" icon @click="deleteMatchup(matchup.game_id)">
                                 <v-icon>mdi-delete</v-icon>
                             </v-btn>
                         </div> 
