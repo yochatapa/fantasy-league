@@ -142,7 +142,7 @@
                                     <p><strong>경기일시:</strong> {{ selectedMatchup.game_date }} {{ selectedMatchup.game_time }}</p>
                                 </div>
                                 <div class="d-flex justify-center align-center mt-2" style="gap:8px;">
-                                    <v-chip link v-if="selectedMatchup.status === 'scheduled' && lineupList.filter(ll => ll.away.length > 0 && ll.home.length === 10).length>0" color="primary" @click="updateGameStatus('playball')">
+                                    <v-chip link v-if="selectedMatchup.status === 'scheduled' && lineupList.filter(ll => ll.away.length > 0 && ll.home.length >0).length=== 10" color="primary" @click="updateGameStatus('playball')">
                                         경기시작
                                     </v-chip>
                                     <v-chip link v-else-if="selectedMatchup.status === 'playball'" color="primary" @click="updateGameStatus('completed')">
