@@ -133,3 +133,10 @@ export const STADIUMS = [
         "end_date": "2015-03-18"
     }
 ];
+
+export const GAME_STATUS = {
+    "scheduled" : "경기 전",
+    "playball" : "경기 중",
+    "completed" : "경기 종료",
+    "cancelled" : "경기 취소",
+}

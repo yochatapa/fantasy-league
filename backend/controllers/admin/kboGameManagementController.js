@@ -213,6 +213,56 @@ export const getKboGameDetail = async (req, res) => {
         `;
         
         const { rows : gameInfo} = await query(gameInfoQuery, [gameId]);
+
+        // 조회 쿼리
+        const { rows : kboGameDetailInfo } = await query(`
+            SELECT
+                (ROW_NUMBER() OVER (ORDER BY kgm.season_year, kgm.game_date, kgm.game_time)) AS row_number,
+                kgm.id as game_id,
+                season_year , 
+                away_team_id, 
+                ati.name as away_team_name,
+                home_team_id, 
+                hti.name as home_team_name,
+                stadium , 
+                TO_CHAR(kgm.game_date, 'YYYY.MM.DD') as game_date , 
+                TO_CHAR(kgm.game_time, 'HH24:MI') as game_time ,
+                kgm.status
+                , fta.sn as away_team_sn
+                , fta.original_name as away_team_original_name
+                , fta.size as away_team_size
+                , fta.path as away_team_path
+                , fta.mimetype as away_team_mimetype
+                , fth.sn as home_team_sn
+                , fth.original_name as home_team_original_name
+                , fth.size as home_team_size
+                , fth.path as home_team_path
+                , fth.mimetype as home_team_mimetype
+            FROM kbo_game_master kgm
+                left join kbo_team_master ati on kgm.away_team_id = ati.id
+                left join kbo_team_master hti on kgm.home_team_id = hti.id
+                left join file_table fta on fta.file_id = ati.logo_url::uuid and fta.sn = 1
+                left join file_table fth on fth.file_id = hti.logo_url::uuid and fth.sn = 1
+            WHERE kgm.id = $1
+        `, [gameId]);
+
+        let game = kboGameDetailInfo[0];
+
+        let base64Image = null;
+        if(game.away_team_path){
+            const filePath = path.join(process.cwd(), game.away_team_path);
+
+            base64Image = await convertFileToBase64(filePath, game.away_team_mimetype);
+            kboGameDetailInfo[0].away_team_path = base64Image;
+        }
+
+        let base64Image2 = null;
+        if(game.home_team_path){
+            const filePath = path.join(process.cwd(), game.home_team_path);
+
+            base64Image2 = await convertFileToBase64(filePath, game.home_team_mimetype);
+            kboGameDetailInfo[0].home_team_path = base64Image2;
+        }
         
         const awayTeamInfo = new Array();
         const homeTeamInfo = new Array();
@@ -225,7 +275,8 @@ export const getKboGameDetail = async (req, res) => {
         return sendSuccess(res, {
             message: '게임 정보가 조회되었습니다.',
             awayTeamInfo,
-            homeTeamInfo
+            homeTeamInfo,
+            gameInfo : kboGameDetailInfo[0]
         });
 
     } catch (error) {
@@ -274,6 +325,44 @@ export const deleteKboGame = async (req, res) => {
         return sendServerError(res, error, "게임 삭제 중 오류가 발생했습니다.");
     }
 };
+
+export const updateKboGameStatus = async (req, res) => {
+    const { gameId, status } = req.body;
+
+    const accessToken = req.headers['authorization']?.split(' ')[1];
+
+    if (!accessToken) {
+        return sendBadRequest(res, '토큰이 제공되지 않았습니다.');
+    }
+
+    let user;
+    try {
+        user = jwt.verify(accessToken, process.env.JWT_SECRET);
+    } catch (err) {
+        return sendBadRequest(res, '유효하지 않은 토큰입니다.');
+    }
+    
+    // 필수값 검증
+    if (!gameId || !status) {
+        return sendBadRequest(res, "필수 입력값을 모두 입력해주세요.");
+    }
+
+    try {
+        await withTransaction(async (client) => {
+            // 게임 마스터 테이블 저장
+            const updateStatusQuery = `
+                UPDATE kbo_game_master SET status = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $1
+            `;
+            await client.query(updateStatusQuery, [ gameId, status ]);
+
+            return sendSuccess(res, {
+                message: "게임 상태가 성공적으로 변경되었습니다.",
+            });
+        });
+    } catch (error) {
+        return sendServerError(res, error, "게임 상태 변경 중 오류가 발생했습니다. 다시 시도해주세요.");
+    }
+}
 
 export const createKboGameRoster = async (req, res) => {
     const { 

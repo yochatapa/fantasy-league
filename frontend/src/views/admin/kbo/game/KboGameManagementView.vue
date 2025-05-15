@@ -53,7 +53,7 @@
                 <!-- 경기 추가 폼 -->
                 <v-container>
                     <v-row>
-                        <v-col cols="6">
+                        <v-col cols="6" class="py-0">
                             <v-select
                                 v-model="selectedAwayTeam"
                                 :items="teamList.filter(team=>team.id !== selectedHomeTeam && !gameList.find(game => game.away_team_id === team.id || game.home_team_id === team.id))"
@@ -63,7 +63,7 @@
                             />
                         </v-col>
 
-                        <v-col cols="6">
+                        <v-col cols="6" class="py-0">
                             <v-select
                                 v-model="selectedHomeTeam"
                                 :items="teamList.filter(team=>team.id !== selectedAwayTeam && !gameList.find(game => game.away_team_id === team.id || game.home_team_id === team.id))"
@@ -73,7 +73,7 @@
                             />
                         </v-col>
 
-                        <v-col cols="6">
+                        <v-col cols="6" class="py-0">
                             <v-select
                                 v-model="stadium"
                                 :items="STADIUMS"
@@ -83,7 +83,7 @@
                             />
                         </v-col>
 
-                        <v-col cols="6">
+                        <v-col cols="6" class="py-0">
                             <v-text-field
                                 v-model="gameTime"
                                 label="경기 시간"
@@ -115,6 +115,9 @@
                         <v-divider></v-divider>
                         <v-card-text>
                             <div v-if="selectedMatchup">
+                                <div class="d-flex justify-center align-center"> 
+                                    <p class="text-h6"><strong>{{ GAME_STATUS[selectedMatchup.status] }}</strong> </p>
+                                </div>
                                 <div class="game-header d-flex justify-space-between align-center">
                                     <div class="d-flex align-center">
                                         <img :src="selectedMatchup.away_team_path" alt="Away Team Logo" class="team-logo" />
@@ -134,9 +137,20 @@
                                         <img :src="selectedMatchup.home_team_path" alt="Home Team Logo" class="team-logo" />
                                     </div>
                                 </div>
-                                <div class="d-flex justify-center flex-column align-center">
+                                <div class="d-flex justify-center flex-column align-center mt-2">
                                     <p><strong>경기장:</strong> {{ STADIUMS.find(sdm => sdm.code === selectedMatchup.stadium)?.name??'' }}</p>
                                     <p><strong>경기일시:</strong> {{ selectedMatchup.game_date }} {{ selectedMatchup.game_time }}</p>
+                                </div>
+                                <div class="d-flex justify-center align-center mt-2" style="gap:8px;">
+                                    <v-chip link v-if="selectedMatchup.status === 'scheduled'" color="primary" @click="updateGameStatus('playball')">
+                                        경기시작
+                                    </v-chip>
+                                    <v-chip link v-else-if="selectedMatchup.status === 'playball'" color="primary" @click="updateGameStatus('completed')">
+                                        경기종료
+                                    </v-chip>
+                                    <v-chip link v-if="selectedMatchup.status !== 'completed' && selectedMatchup.status !== 'cancelled'" color="error" @click="updateGameStatus('cancelled')">
+                                        경기취소
+                                    </v-chip>
                                 </div>
                             </div>
                             <div v-else class="text-center">
@@ -385,7 +399,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
-import { STADIUMS, POSITIONS } from '@/utils/code/code.js';
+import { STADIUMS, POSITIONS, GAME_STATUS } from '@/utils/code/code.js';
 import { commonFetch, getNewFormData } from '@/utils/common/commonFetch';
 import { formatDate } from '@/utils/common/dateUtils.js';
 import { encryptData, decryptData } from '@/utils/common/crypto.js';
@@ -460,6 +474,7 @@ const innings = Array.from({ length: 12 }, (_, i) => i + 1); // 1~12회
 const outs = [0, 1, 2];
 
 watch(()=>selectedMatchup.value, (newVal) => {
+    console.log(newVal)
     if(newVal)
         teams.value = [
             {
@@ -549,9 +564,7 @@ const updateMatchups = async (newVal) => {
 };
 
 const selectMatchup = (index) => {
-    selectedMatchup.value = gameList.value[index];
-    
-    getGameDetailInfo(selectedMatchup.value.game_id)
+    getGameDetailInfo(gameList.value[index].game_id)
 };
 
 const addMatchup = async () => {
@@ -630,6 +643,27 @@ const deleteMatchup = async (game_id) => {
     }
 }
 
+const updateGameStatus = async (status) => {
+    const gameId = selectedMatchup.value.game_id;
+    try {
+        const response = await commonFetch(`/api/admin/game/status/update`,{
+            method : "PUT",
+            body : {
+                gameId
+                , status
+            }
+        })
+        
+        if(response.success){
+            getGameDetailInfo(gameId)
+        }else throw new Error();
+
+        return true
+    } catch (error) {
+        
+    }
+}
+
 const clearLineup = () => {
      lineup.value = {
         team_id: null,
@@ -648,13 +682,16 @@ const getGameDetailInfo = async (game_id) => {
         lineupList.value = new Array(10).fill(null).map(() => ({ away: [], home: [] }));
         clearLineup();
         const response = await commonFetch(`/api/admin/game/${game_id}`)
-        await getRosterDetailInfo(selectedMatchup.value.away_team_id,selectedMatchup.value.home_team_id);
+        
         if(response.success){
             awayTeamInfo.value = response.data.awayTeamInfo
             homeTeamInfo.value = response.data.homeTeamInfo
+            selectedMatchup.value = response.data.gameInfo
+            await getRosterDetailInfo(selectedMatchup.value.away_team_id,selectedMatchup.value.home_team_id);
         }else{
             awayTeamInfo.value = [];
             homeTeamInfo.value = [];
+            selectedMatchup.value = null;
             throw new Error();
         }
 
