@@ -161,10 +161,30 @@
                 </v-col>
                 <v-col cols="12" md="7">
                     <v-card class="h-100">
-                        <v-card-title>경기 정보</v-card-title>
+                        <v-card-title>경기 중계</v-card-title>
                         <v-divider></v-divider>
                         <v-card-text>
                             <baseball-stadium></baseball-stadium>
+                            <div class="chip-container mt-2">
+                                <div class="d-flex" style="gap: 4px; overflow-x: auto; white-space: nowrap;">
+                                    <v-chip
+                                        v-for="number in 12"
+                                        :key="number"
+                                        class="d-flex justify-center align-center cursor-pointer"
+                                        size="small"
+                                        :variant="number === 1 ? 'tonal' : 'text'"
+                                    >
+                                        {{ number }}회
+                                    </v-chip>
+                                </div>
+
+                                <!-- 아래의 내용 영역 -->
+                                <v-card class="content-card mt-3" elevation="2">
+                                    <div class="content-wrapper">
+                                        여기에 내용을 채워 넣으세요.
+                                    </div>
+                                </v-card>
+                            </div>
                         </v-card-text>
                     </v-card>
                 </v-col>
@@ -815,5 +835,27 @@ onMounted(async ()=>{
 
 .selected-lineup{
     background: #ededed;
+}
+
+.chip-container {
+    max-width: 100%;
+    overflow-x: auto;
+    white-space: nowrap;
+    padding-bottom: 4px;
+}
+
+.content-card {
+    height: 300px;
+    border-radius: 12px;
+    border: 1px solid #e0e0e0;
+}
+
+.content-wrapper {
+    padding: 16px;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #616161;
 }
 </style>
