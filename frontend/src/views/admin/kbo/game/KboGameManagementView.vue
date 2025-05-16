@@ -166,7 +166,7 @@
                         </v-card-text>
                     </v-card>
                 </v-col>
-                <v-col cols="12" md="6">
+                <v-col cols="12" md="4">
                     <v-card class="h-100">
                         <v-card-title>경기 중계</v-card-title>
                         <v-divider></v-divider>
@@ -195,12 +195,134 @@
                         </v-card-text>
                     </v-card>
                 </v-col>
-                <v-col cols="12" md="6">
+                <v-col cols="12" md="8">
                     <v-card class="h-100">
                         <v-card-title>경기 정보 등록</v-card-title>
                         <v-divider></v-divider>
                         <v-card-text>
-                            <v-tabs v-model="activeTab">
+                            <v-row>
+                                <!-- 이닝 선택 -->
+                                <v-col cols="12" md="3">
+                                    <v-select
+                                        v-model="gamedayInfo.current_inning"
+                                        :items="innings"
+                                        label="이닝"
+                                        :rules="[v => !!v || '이닝을 선택해 주세요.']"
+                                        required
+                                    />
+                                </v-col>
+
+                                <!-- 이닝 구분 선택 -->
+                                <v-col cols="12" md="3">
+                                    <v-select
+                                        v-model="gamedayInfo.current_inning_half"
+                                        :items="inning_half"
+                                        label="이닝 구분"
+                                        :rules="[v => !!v || '이닝 구분을 선택해 주세요.']"
+                                        item-value="code"
+                                        item-title="name"
+                                        required
+                                    />
+                                </v-col>
+
+                                <!-- 아웃 카운트 선택 -->
+                                <v-col cols="12" md="3">
+                                    <v-select
+                                        v-model="gamedayInfo.current_out"
+                                        :items="outs"
+                                        label="아웃 카운트"
+                                        :rules="[v => (v!==null && v!==undefined) || '아웃 카운트를 선택해 주세요.']"
+                                        required
+                                    />
+                                </v-col>
+
+                                <!-- 아웃 카운트 선택 -->
+                                <v-col cols="12" md="3">
+                                    <v-number-input
+                                        v-model="gamedayInfo.current_pitch_count"
+                                        type="number"
+                                        :items="outs"
+                                        label="투구 수"
+                                        control-variant="stacked"
+                                        :min="0"
+                                        :rules="[v => (v!==null && v!==undefined) || '투구 수를 선택해 주세요.']"
+                                        required
+                                    />
+                                </v-col>
+                            </v-row>
+                            <v-divider class="mb-4"></v-divider>
+                            <v-row class="py-2">
+                                <v-col cols="12">
+                                    <div class="mb-3">
+                                        <span class="text-h6 font-semibold">타자 정보</span>
+                                    </div>
+                                    <div class="text-lg font-bold">{{ currentBatter.player_name }}</div>
+                                    <div class="text-sm text-secondary">{{ currentBatter.team_name }}</div>
+                                    <div class="text-sm mt-1">
+                                        타순: {{ currentBatter.batting_order }}번 | 포지션: {{ currentBatter.position }}
+                                    </div>
+
+                                    <!-- 기록 표시 -->
+                                    <v-chip-group column class="mt-2">
+                                        <v-chip>안타</v-chip>
+                                        <v-chip>2루타</v-chip>
+                                        <v-chip>3루타</v-chip>
+                                        <v-chip>홈런</v-chip>
+                                        <v-chip>볼넷</v-chip>
+                                        <v-chip>삼진</v-chip>
+                                    </v-chip-group>
+                                    <v-divider></v-divider>
+                                </v-col>
+                                
+                                <v-col cols="12">
+                                    <div class="mb-3">
+                                        <span class="text-h6 font-semibold">투수 정보</span>
+                                    </div>
+                                    <div class="text-lg font-bold">{{ currentPitcher.player_name }}</div>
+                                    <div class="text-sm text-secondary">{{ currentPitcher.team_name }}</div>
+                                    <div class="text-sm mt-1">
+                                        포지션: {{ currentPitcher.position }}
+                                    </div>
+
+                                    <!-- 기록 표시 -->
+                                    <v-chip-group multiple column class="mt-2">
+                                        <v-chip>스트라이크</v-chip>
+                                        <v-chip>볼</v-chip>
+                                    </v-chip-group>
+                                    <v-chip-group multiple column class="mt-2">
+                                        <v-chip>삼진</v-chip>
+                                        <v-chip>볼넷</v-chip>
+                                        <v-chip>피안타</v-chip>
+                                        <v-chip>피홈런</v-chip>
+                                        <v-chip>실점</v-chip>
+                                    </v-chip-group>
+                                    <v-divider></v-divider>
+                                </v-col>
+
+                                <v-col cols="12">
+                                    <div class="mb-3">
+                                        <span class="text-h6 font-semibold">주자 정보</span>
+                                    </div>
+                                    <div class="text-lg font-bold">{{ currentPitcher.player_name }}</div>
+                                    <div class="text-sm text-secondary">{{ currentPitcher.team_name }}</div>
+                                    <div class="text-sm mt-1">
+                                        포지션: {{ currentPitcher.position }}
+                                    </div>
+
+                                    <!-- 기록 표시 -->
+                                    <v-chip-group multiple column class="mt-2">
+                                        <v-chip>도루</v-chip>
+                                        <v-chip>+1 베이스</v-chip>
+                                        <v-chip>+2 베이스</v-chip>
+                                        <v-chip>+3 베이스</v-chip>
+                                        <v-chip>아웃</v-chip>
+                                        <v-chip>득점</v-chip>
+                                    </v-chip-group>
+                                    <v-divider></v-divider>
+                                </v-col>
+                                
+                            </v-row>             
+                            <!-- <v-tabs v-model="activeTab">
                                 <v-tab value="0" v-if="selectedMatchup.status === 'playball'">타자 기록 등록</v-tab>
                                 <v-tab value="1" v-if="selectedMatchup.status === 'playball'">투수 기록 등록</v-tab>
                             </v-tabs>
@@ -224,7 +346,7 @@
                                         </v-row>
                                     </v-container>
                                 </v-window-item>
-                            </v-window>
+                            </v-window> -->
                         </v-card-text>
                     </v-card>
                 </v-col>
@@ -252,7 +374,7 @@
                                             class="cursor-pointer"
                                         >mdi-delete</v-icon>
                                         <span class="w-100" @click="setPlayerInfo('away',index,hIdx)">
-                                            {{ away?.position?'(':'' }}{{ away?.position }}{{ away?.position?') ':'' }}{{ away?.player_name }}
+                                            {{ (away?.replaced_position??away?.position)?'(':'' }}{{ (away?.replaced_position??away?.position) }}{{ (away?.replaced_position??away?.position)?') ':'' }}{{ away?.replaced_player_name??away?.player_name }}
                                         </span>
                                     </div>
                                 </v-col>
@@ -525,10 +647,42 @@ const lineup = ref({
     position : null,
 });
 
+const gamedayInfo = ref({
+    current_inning : 1,
+    current_inning_half : 'top',
+    current_out : 0,
+    current_strike : 0,
+    current_ball : 0,
+    current_pitch_count : 0,
+    away : {
+        batter : [],
+        pitcher : [],
+    },
+    home : {
+        batter : [],
+        pitcher : [],
+    },
+});
+
+const currentBatter = computed(()=>{
+    const awayHome = gamedayInfo.value.current_inning_half === 'top'?'away':'home';
+    const battingOrderInfo = lineupList.value[(gamedayInfo.value[awayHome]?.batter?.length % 9) + 1]?.[awayHome];
+    const lastBatterInfo = battingOrderInfo?.[(battingOrderInfo?.length??1)-1]
+    return lastBatterInfo
+})
+
+const currentPitcher = computed(()=>{
+    const awayHome = gamedayInfo.value.current_inning_half === 'top'?'home':'away';
+    const pitcherOrderInfo = lineupList.value[0]?.[awayHome];
+    const lastPitcherInfo = pitcherOrderInfo?.[(pitcherOrderInfo?.length??1)-1]
+    return lastPitcherInfo
+})
+
 const teams = ref([]);
 const battingOrders = new Array(10).fill(null).map((val,idx) => ({ code :  (idx+1)%10 , name : (idx+1)%10 === 0 ? "투수" : (idx+1)%10 + "번 타자"}))
 const roles = ['starter', 'bench', 'substitute'];
 const innings = Array.from({ length: 12 }, (_, i) => i + 1); // 1~12회
+const inning_half = [{code:'top',name:'초'},{code:'bottom',name:'말'}];
 const outs = [0, 1, 2];
 
 watch(()=>selectedMatchup.value, (newVal) => {
