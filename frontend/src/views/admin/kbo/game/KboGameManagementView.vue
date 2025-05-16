@@ -22,92 +22,103 @@
 
     <!-- 경기 목록과 경기 정보 -->
     <v-row align="stretch">
-        <v-col cols="12" md="4">
+        <v-col cols="12">
             <v-card class="h-100">
-                <v-card-title>경기 목록</v-card-title>
+                <!-- 타이틀 영역 -->
+                <v-card-title class="d-flex justify-space-between align-center">
+                    경기 목록
+                    <v-icon @click="toggleExpand">{{ isExpanded ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
+                </v-card-title>
+
                 <v-divider></v-divider>
-                <v-list>
-                    <v-list-item 
-                        v-for="(matchup, index) in gameList" 
-                        :key="index" 
-                        @click="selectMatchup(index)"
-                        :class="{selected : selectedMatchup?.game_id === matchup.game_id}"
-                    >
-                        <div class="d-flex justify-space-between align-center mb-4 mt-2">
-                            <div>
-                                <v-list-item-title>
-                                    {{ matchup.away_team_name }} vs {{ matchup.home_team_name }}
-                                </v-list-item-title>
-                                <v-list-item-subtitle>
-                                    {{ matchup.game_date }} | {{ matchup.game_time }} | {{ STADIUMS.find(sdm => sdm.code === matchup.stadium)?.name??'' }}
-                                </v-list-item-subtitle>
-                            </div>
-                            <v-btn v-if="matchup.status === 'scheduled'" icon @click="deleteMatchup(matchup.game_id)">
-                                <v-icon>mdi-delete</v-icon>
-                            </v-btn>
-                        </div> 
-                        <v-divider></v-divider>                       
-                    </v-list-item>
-                </v-list>
-                
-                <!-- 경기 추가 폼 -->
-                <v-container>
-                    <v-row>
-                        <v-col cols="6" class="py-0">
-                            <v-select
-                                v-model="selectedAwayTeam"
-                                :items="teamList.filter(team=>team.id !== selectedHomeTeam && !gameList.find(game => game.away_team_id === team.id || game.home_team_id === team.id))"
-                                item-value="id"
-                                item-title="name"
-                                label="원정팀"
-                            />
-                        </v-col>
 
-                        <v-col cols="6" class="py-0">
-                            <v-select
-                                v-model="selectedHomeTeam"
-                                :items="teamList.filter(team=>team.id !== selectedAwayTeam && !gameList.find(game => game.away_team_id === team.id || game.home_team_id === team.id))"
-                                item-value="id"
-                                item-title="name"
-                                label="홈팀"
-                            />
-                        </v-col>
-
-                        <v-col cols="6" class="py-0">
-                            <v-select
-                                v-model="stadium"
-                                :items="STADIUMS"
-                                item-value="code"
-                                item-title="name"
-                                label="경기장"
-                            />
-                        </v-col>
-
-                        <v-col cols="6" class="py-0">
-                            <v-text-field
-                                v-model="gameTime"
-                                label="경기 시간"
-                                type="time"
-                                outlined
-                            />
-                        </v-col>
-
-                        <v-col cols="12">
-                            <v-btn
-                                :disabled="!canAddMatchup"
-                                @click="addMatchup"
-                                color="primary"
-                                block
+                <!-- 접었다 펼칠 수 있는 영역 -->
+                <v-expand-transition>
+                    <div v-if="isExpanded">
+                        <v-list>
+                            <v-list-item 
+                                v-for="(matchup, index) in gameList" 
+                                :key="index" 
+                                @click="selectMatchup(index)"
+                                :class="{selected : selectedMatchup?.game_id === matchup.game_id}"
                             >
-                                경기 추가
-                            </v-btn>
-                        </v-col>
-                    </v-row>
-                </v-container>
+                                <div class="d-flex justify-space-between align-center mb-4 mt-2">
+                                    <div>
+                                        <v-list-item-title>
+                                            {{ matchup.away_team_name }} vs {{ matchup.home_team_name }}
+                                        </v-list-item-title>
+                                        <v-list-item-subtitle>
+                                            {{ matchup.game_date }} | {{ matchup.game_time }} | {{ STADIUMS.find(sdm => sdm.code === matchup.stadium)?.name ?? '' }}
+                                        </v-list-item-subtitle>
+                                    </div>
+                                    <v-btn v-if="matchup.status === 'scheduled'" icon @click.stop="deleteMatchup(matchup.game_id)">
+                                        <v-icon>mdi-delete</v-icon>
+                                    </v-btn>
+                                </div>
+                                <v-divider></v-divider>                       
+                            </v-list-item>
+                        </v-list>
+
+                        <!-- 경기 추가 폼 -->
+                        <v-container>
+                            <v-row>
+                                <v-col cols="6" class="py-0">
+                                    <v-select
+                                        v-model="selectedAwayTeam"
+                                        :items="teamList.filter(team => team.id !== selectedHomeTeam && !gameList.find(game => game.away_team_id === team.id || game.home_team_id === team.id))"
+                                        item-value="id"
+                                        item-title="name"
+                                        label="원정팀"
+                                    />
+                                </v-col>
+
+                                <v-col cols="6" class="py-0">
+                                    <v-select
+                                        v-model="selectedHomeTeam"
+                                        :items="teamList.filter(team => team.id !== selectedAwayTeam && !gameList.find(game => game.away_team_id === team.id || game.home_team_id === team.id))"
+                                        item-value="id"
+                                        item-title="name"
+                                        label="홈팀"
+                                    />
+                                </v-col>
+
+                                <v-col cols="6" class="py-0">
+                                    <v-select
+                                        v-model="stadium"
+                                        :items="STADIUMS"
+                                        item-value="code"
+                                        item-title="name"
+                                        label="경기장"
+                                    />
+                                </v-col>
+
+                                <v-col cols="6" class="py-0">
+                                    <v-text-field
+                                        v-model="gameTime"
+                                        label="경기 시간"
+                                        type="time"
+                                        outlined
+                                    />
+                                </v-col>
+
+                                <v-col cols="12">
+                                    <v-btn
+                                        :disabled="!canAddMatchup"
+                                        @click="addMatchup"
+                                        color="primary"
+                                        block
+                                    >
+                                        경기 추가
+                                    </v-btn>
+                                </v-col>
+                            </v-row>
+                        </v-container>
+                    </div>
+                </v-expand-transition>
             </v-card>
         </v-col>
 
-        <v-col cols="12" md="8" v-if="selectedMatchup">
+        <v-col cols="12" v-if="selectedMatchup">
             <v-row align="stretch" class="h-100">
                 <v-col cols="12">
                     <v-card class="h-100">
@@ -159,7 +170,7 @@
                         </v-card-text>
                     </v-card>
                 </v-col>
-                <v-col cols="12" md="7">
+                <v-col cols="12" md="6">
                     <v-card class="h-100">
                         <v-card-title>경기 중계</v-card-title>
                         <v-divider></v-divider>
@@ -188,7 +199,40 @@
                         </v-card-text>
                     </v-card>
                 </v-col>
-                <v-col cols="12" md="5">
+                <v-col cols="12" md="6">
+                    <v-card class="h-100">
+                        <v-card-title>경기 정보 등록</v-card-title>
+                        <v-divider></v-divider>
+                        <v-card-text>
+                            <v-tabs v-model="activeTab">
+                                <v-tab value="0" v-if="selectedMatchup.status === 'playball'">타자 기록 등록</v-tab>
+                                <v-tab value="1" v-if="selectedMatchup.status === 'playball'">투수 기록 등록</v-tab>
+                            </v-tabs>
+
+                            <v-window v-model="activeTab">
+                                <v-window-item value="1" v-if="selectedMatchup.status === 'playball'">
+                                    <v-container>
+                                        <v-row>
+                                            <v-col cols="12">
+                                                <p>타자 기록 화면이 여기에 표시됩니다.</p>
+                                            </v-col>
+                                        </v-row>
+                                    </v-container>
+                                </v-window-item>
+                                <v-window-item value="2" v-if="selectedMatchup.status === 'playball'">
+                                    <v-container>
+                                        <v-row>
+                                            <v-col cols="12">
+                                                <p>투수 기록 화면이 여기에 표시됩니다.</p>
+                                            </v-col>
+                                        </v-row>
+                                    </v-container>
+                                </v-window-item>
+                            </v-window>
+                        </v-card-text>
+                    </v-card>
+                </v-col>
+                <v-col cols="12" md="4">
                     <v-card class="h-100">
                         <v-card-title>라인업</v-card-title>
                         <v-divider></v-divider>
@@ -234,199 +278,171 @@
                         </v-card-text>
                     </v-card>
                 </v-col>
-                <v-col cols="12">
+                <v-col cols="12" md="8">
                     <v-card class="h-100">
-                        <v-card-title>경기 정보 등록</v-card-title>
+                        <v-card-title>라인업 설정</v-card-title>
                         <v-divider></v-divider>
                         <v-card-text>
-                            <v-tabs v-model="activeTab">
-                                <v-tab value="0">라인업 설정</v-tab>
-                                <v-tab value="1" v-if="selectedMatchup.status === 'playball'">타자 기록 등록</v-tab>
-                                <v-tab value="2" v-if="selectedMatchup.status === 'playball'">투수 기록 등록</v-tab>
-                            </v-tabs>
-
-                            <v-window v-model="activeTab">
-                                <v-window-item value="0">
-                                    <v-container>
+                            <v-container>
+                                <v-row>
+                                    <v-col cols="12">
                                         <v-row>
                                             <v-col cols="12">
-                                                <v-row>
-                                                    <v-col cols="12">
-                                                        <span class="text-h6">선수 선택</span>
-                                                    </v-col>
-                                                    <!-- 팀 선택 -->
-                                                    <v-col cols="12" md="3">
-                                                        <v-select
-                                                            v-model="lineup.team_id"
-                                                            :items="teams"
-                                                            label="팀 선택"
-                                                            item-value="id"
-                                                            item-title="name"
-                                                            :rules="[v => !!v || '팀을 선택해 주세요.']"
-                                                            required
-                                                        />
-                                                    </v-col>
+                                                <span class="text-h6">선수 선택</span>
+                                            </v-col>
+                                            <!-- 팀 선택 -->
+                                            <v-col cols="12" md="3">
+                                                <v-select
+                                                    v-model="lineup.team_id"
+                                                    :items="teams"
+                                                    label="팀 선택"
+                                                    item-value="id"
+                                                    item-title="name"
+                                                    :rules="[v => !!v || '팀을 선택해 주세요.']"
+                                                    required
+                                                />
+                                            </v-col>
 
-                                                    <!-- 타순 선택 -->
-                                                    <v-col cols="12" md="3">
-                                                        <v-select
-                                                            v-model="lineup.batting_order"
-                                                            :items="battingOrders"
-                                                            item-title="name"
-                                                            item-value="code"
-                                                            label="타순"
-                                                            :rules="[v => (v!==null && v!==undefined) || '타순을 선택해 주세요.']"
-                                                            required
-                                                        />
-                                                    </v-col>
+                                            <!-- 타순 선택 -->
+                                            <v-col cols="12" md="3">
+                                                <v-select
+                                                    v-model="lineup.batting_order"
+                                                    :items="battingOrders"
+                                                    item-title="name"
+                                                    item-value="code"
+                                                    label="타순"
+                                                    :rules="[v => (v!==null && v!==undefined) || '타순을 선택해 주세요.']"
+                                                    required
+                                                />
+                                            </v-col>
 
-                                                    <!-- 선수 선택 -->
-                                                    <v-col cols="12" md="3">
-                                                        <v-select
-                                                            :disabled="isReplace"
-                                                            v-model="lineup.player_id"
-                                                            :items="!!!lineupTeam?[]:activeRoster.filter(ar => {
-                                                                if(lineupList[lineup.batting_order]?.[lineupTeam]?.length>0){
-                                                                    if(lineupList[lineup.batting_order]?.[lineupTeam]?.find(ll=>(ll.replaced_by??ll.player_id) === ar.player_id)) return true
-                                                                    else return false
-                                                                }else{
-                                                                    let hasPlayer = false;
-                                                                    for(let idx=0;idx<lineupList.length;idx++){
-                                                                        if(lineupList[idx]?.[lineupTeam]?.find(ll => (ll.replaced_by??ll.player_id) === ar.player_id)){
-                                                                            hasPlayer = true;
-                                                                            break;
-                                                                        }
-                                                                    }
-                                                                    
-                                                                    if(hasPlayer) return false
-                                                                    else return true
+                                            <!-- 선수 선택 -->
+                                            <v-col cols="12" md="3">
+                                                <v-select
+                                                    :disabled="isReplace"
+                                                    v-model="lineup.player_id"
+                                                    :items="!!!lineupTeam?[]:activeRoster.filter(ar => {
+                                                        if(lineupList[lineup.batting_order]?.[lineupTeam]?.length>0){
+                                                            if(lineupList[lineup.batting_order]?.[lineupTeam]?.find(ll=>(ll.replaced_by??ll.player_id) === ar.player_id)) return true
+                                                            else return false
+                                                        }else{
+                                                            let hasPlayer = false;
+                                                            for(let idx=0;idx<lineupList.length;idx++){
+                                                                if(lineupList[idx]?.[lineupTeam]?.find(ll => (ll.replaced_by??ll.player_id) === ar.player_id)){
+                                                                    hasPlayer = true;
+                                                                    break;
                                                                 }
-                                                            })?.toSorted((a,b)=>lineup.batting_order===0?b.player_type.localeCompare(a.player_type):a.player_type.localeCompare(b.player_type))"
-                                                            item-title="player_name"
-                                                            item-value="player_id"
-                                                            label="선수 선택"
-                                                            :rules="[v => !!v || '선수를 선택해 주세요.']"
-                                                            required
-                                                        />
-                                                    </v-col>
+                                                            }
+                                                            
+                                                            if(hasPlayer) return false
+                                                            else return true
+                                                        }
+                                                    })?.toSorted((a,b)=>lineup.batting_order===0?b.player_type.localeCompare(a.player_type):a.player_type.localeCompare(b.player_type))"
+                                                    item-title="player_name"
+                                                    item-value="player_id"
+                                                    label="선수 선택"
+                                                    :rules="[v => !!v || '선수를 선택해 주세요.']"
+                                                    required
+                                                />
+                                            </v-col>
 
-                                                    <v-col cols="12" md="3">
-                                                        <v-select 
-                                                            :disabled="isReplace"
-                                                            v-model="lineup.position"
-                                                            :items="POSITIONS.toSorted((a,b)=>lineup.batting_order===0?b.player_type.localeCompare(a.player_type):a.player_type.localeCompare(b.player_type))"
-                                                            item-title="name"
-                                                            item-value="code"
-                                                            label="포지션"
-                                                            :rules="[v => !!v || '포지션을 선택해 주세요.']"
-                                                            required
-                                                        />
-                                                    </v-col>
-                                                </v-row>
-                                                <v-divider class="mb-4"></v-divider>
-                                                <v-row v-if="isReplace && selectedMatchup.status !== 'scheduled' && lineupList.filter(ll => ll.away.length > 0 && ll.home.length >0).length === 10">
-                                                    <v-col cols="12">
-                                                        <span class="text-h6">교체 선수 선택</span>
-                                                    </v-col>
-                                                    <v-col cols="12" md="3">
-                                                        <v-select
-                                                            v-model="lineup.replaced_position"
-                                                            :items="POSITIONS.filter(pr=>{
-                                                                if(lineup.batting_order === 0){
-                                                                    return pr.player_type === 'P'
-                                                                }
-                                                                return true
-                                                            }).toSorted((a,b)=>lineup.batting_order===0?b.player_type.localeCompare(a.player_type):a.player_type.localeCompare(b.player_type))"
-                                                            item-title="name"
-                                                            item-value="code"
-                                                            label="교체 포지션"
-                                                            :rules="[v => !!v || '교체 포지션을 선택해 주세요.']"
-                                                            required
-                                                        />
-                                                    </v-col>
-
-                                                    <!-- 교체 선수 선택 -->
-                                                    <v-col cols="12" md="3">
-                                                        <v-select
-                                                            v-model="lineup.replaced_by"
-                                                            :items="activeRoster.filter(ar => {
-                                                                if(ar.player_id === lineup.player_id) return true
-                                                                let hasPlayer = false;
-                                                                for(let idx=0;idx<lineupList.length;idx++){
-                                                                    if(lineupList[idx]?.[lineupTeam]?.find(ll => (ll.replaced_by??ll.player_id) === ar.player_id)){
-                                                                        hasPlayer = true;
-                                                                        break;
-                                                                    }
-                                                                }
-                                                                
-                                                                if(hasPlayer) return false
-                                                                else return true
-                                                            })?.toSorted((a,b)=>lineup.batting_order===0?b.player_type.localeCompare(a.player_type):a.player_type.localeCompare(b.player_type))"
-                                                            item-title="player_name"
-                                                            item-value="player_id"
-                                                            label="교체 선수"
-                                                            :rules="[v => !!v || '교체 선수를 선택해 주세요.']"
-                                                            required
-                                                        />
-                                                    </v-col>
-
-                                                    <!-- 이닝 선택 -->
-                                                    <v-col cols="12" md="3">
-                                                        <v-select
-                                                            v-model="lineup.replaced_inning"
-                                                            :items="innings"
-                                                            label="이닝"
-                                                            :rules="[v => !!v || '이닝을 선택해 주세요.']"
-                                                            required
-                                                        />
-                                                    </v-col>
-
-                                                    <!-- 아웃 카운트 선택 -->
-                                                    <v-col cols="12" md="3">
-                                                        <v-select
-                                                            v-model="lineup.replaced_out"
-                                                            :items="outs"
-                                                            label="아웃 카운트"
-                                                            :rules="[v => (v!==null && v!==undefined) || '아웃 카운트를 선택해 주세요.']"
-                                                            required
-                                                        />
-                                                    </v-col>
-                                                </v-row>
-                                                <v-row>
-                                                    <!-- 저장 버튼 -->
-                                                    <v-col cols="12" class="d-flex justify-end">
-                                                        <v-btn :disabled="!lineupValid" color="primary" @click="saveRoster">저장</v-btn>
-                                                    </v-col>
-                                                </v-row>
+                                            <v-col cols="12" md="3">
+                                                <v-select 
+                                                    :disabled="isReplace"
+                                                    v-model="lineup.position"
+                                                    :items="POSITIONS.toSorted((a,b)=>lineup.batting_order===0?b.player_type.localeCompare(a.player_type):a.player_type.localeCompare(b.player_type))"
+                                                    item-title="name"
+                                                    item-value="code"
+                                                    label="포지션"
+                                                    :rules="[v => !!v || '포지션을 선택해 주세요.']"
+                                                    required
+                                                />
                                             </v-col>
                                         </v-row>
-                                    </v-container>
-                                </v-window-item>
-                                <v-window-item value="2" v-if="selectedMatchup.status === 'playball'">
-                                    <v-container>
-                                        <v-row>
+                                        <v-divider class="mb-4"></v-divider>
+                                        <v-row v-if="isReplace && selectedMatchup.status !== 'scheduled' && lineupList.filter(ll => ll.away.length > 0 && ll.home.length >0).length === 10">
                                             <v-col cols="12">
-                                                <p>타자 기록 화면이 여기에 표시됩니다.</p>
+                                                <span class="text-h6">교체 선수 선택</span>
+                                            </v-col>
+                                            <v-col cols="12" md="3">
+                                                <v-select
+                                                    v-model="lineup.replaced_position"
+                                                    :items="POSITIONS.filter(pr=>{
+                                                        if(lineup.batting_order === 0){
+                                                            return pr.player_type === 'P'
+                                                        }
+                                                        return true
+                                                    }).toSorted((a,b)=>lineup.batting_order===0?b.player_type.localeCompare(a.player_type):a.player_type.localeCompare(b.player_type))"
+                                                    item-title="name"
+                                                    item-value="code"
+                                                    label="교체 포지션"
+                                                    :rules="[v => !!v || '교체 포지션을 선택해 주세요.']"
+                                                    required
+                                                />
+                                            </v-col>
+
+                                            <!-- 교체 선수 선택 -->
+                                            <v-col cols="12" md="3">
+                                                <v-select
+                                                    v-model="lineup.replaced_by"
+                                                    :items="activeRoster.filter(ar => {
+                                                        if(ar.player_id === lineup.player_id) return true
+                                                        let hasPlayer = false;
+                                                        for(let idx=0;idx<lineupList.length;idx++){
+                                                            if(lineupList[idx]?.[lineupTeam]?.find(ll => (ll.replaced_by??ll.player_id) === ar.player_id)){
+                                                                hasPlayer = true;
+                                                                break;
+                                                            }
+                                                        }
+                                                        
+                                                        if(hasPlayer) return false
+                                                        else return true
+                                                    })?.toSorted((a,b)=>lineup.batting_order===0?b.player_type.localeCompare(a.player_type):a.player_type.localeCompare(b.player_type))"
+                                                    item-title="player_name"
+                                                    item-value="player_id"
+                                                    label="교체 선수"
+                                                    :rules="[v => !!v || '교체 선수를 선택해 주세요.']"
+                                                    required
+                                                />
+                                            </v-col>
+
+                                            <!-- 이닝 선택 -->
+                                            <v-col cols="12" md="3">
+                                                <v-select
+                                                    v-model="lineup.replaced_inning"
+                                                    :items="innings"
+                                                    label="이닝"
+                                                    :rules="[v => !!v || '이닝을 선택해 주세요.']"
+                                                    required
+                                                />
+                                            </v-col>
+
+                                            <!-- 아웃 카운트 선택 -->
+                                            <v-col cols="12" md="3">
+                                                <v-select
+                                                    v-model="lineup.replaced_out"
+                                                    :items="outs"
+                                                    label="아웃 카운트"
+                                                    :rules="[v => (v!==null && v!==undefined) || '아웃 카운트를 선택해 주세요.']"
+                                                    required
+                                                />
                                             </v-col>
                                         </v-row>
-                                    </v-container>
-                                </v-window-item>
-                                <v-window-item value="3" v-if="selectedMatchup.status === 'playball'">
-                                    <v-container>
                                         <v-row>
-                                            <v-col cols="12">
-                                                <p>투수 기록 화면이 여기에 표시됩니다.</p>
+                                            <!-- 저장 버튼 -->
+                                            <v-col cols="12" class="d-flex justify-end">
+                                                <v-btn :disabled="!lineupValid" color="primary" @click="saveRoster">저장</v-btn>
                                             </v-col>
                                         </v-row>
-                                    </v-container>
-                                </v-window-item>
-                            </v-window>
+                                    </v-col>
+                                </v-row>
+                            </v-container>
                         </v-card-text>
                     </v-card>
                 </v-col>
             </v-row>
         </v-col>
-        <v-col cols="12" md="8" v-else>
+        <v-col cols="12" v-else>
             <v-card class="h-100 d-flex justify-center align-center">
                 <v-card-title>선택된 경기가 없습니다.</v-card-title>
             </v-card>
@@ -449,6 +465,11 @@ const route = useRoute();
 const selectedDate = ref(route.query.date?new Date(route.query.date):new Date());
 const formattedDate = ref(route.query.date??formatDate(selectedDate.value));
 const calendarOpen = ref(false);
+const isExpanded = ref(true);
+
+const toggleExpand = () => {
+    isExpanded.value = !isExpanded.value;
+};
 const selectedMatchup = ref(null);
 const selectedLineup = ref([null,null])
 
@@ -605,6 +626,7 @@ const updateMatchups = async (newVal) => {
 };
 
 const selectMatchup = (index) => {
+    isExpanded.value = false
     getGameDetailInfo(gameList.value[index].game_id)
 };
 
