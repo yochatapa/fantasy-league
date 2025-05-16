@@ -33,7 +33,6 @@
                         @click="selectMatchup(index)"
                         :class="{selected : selectedMatchup?.game_id === matchup.game_id}"
                     >
-                        {{ selectedMatchup?.game_id === matchup.game_id }}
                         <div class="d-flex justify-space-between align-center mb-4 mt-2">
                             <div>
                                 <v-list-item-title>
