@@ -33,6 +33,7 @@
                         @click="selectMatchup(index)"
                         :class="{selected : selectedMatchup?.game_id === matchup.game_id}"
                     >
+                        {{ selectedMatchup?.game_id === matchup.game_id }}
                         <div class="d-flex justify-space-between align-center mb-4 mt-2">
                             <div>
                                 <v-list-item-title>
@@ -184,27 +185,26 @@
                                 class="d-flex align-center text-center"
                             >
                                 <v-divider></v-divider>
-                                <v-col>
-                                    <div v-for="(away, aIdx) in lineupList[((index + 1)%10)]?.away" class="d-flex justify-space-between">
+                                <v-col class="d-flex flex-column" :class="{'selected-lineup' : selectedLineup[0] === 'away' && selectedLineup[1] === index}">
+                                    <div v-for="(away, aIdx) in lineupList[((index + 1)%10)]?.away" class="d-flex justify-space-between cursor-pointer" @click="setPlayerInfo('away',index,aIdx)">
                                         <v-icon 
-                                            v-if="(aIdx === 0 && selectedMatchup.status === 'scheduled') || (aIdx > 0 && selectedMatchup.status === 'playball')" 
+                                            v-if="(aIdx === 0 && selectedMatchup.status === 'scheduled') || (aIdx > 0 && selectedMatchup.status === 'playball' && lineupList[((index + 1)%10)]?.away.length-1 === aIdx)" 
                                             color="error" 
-                                            class="cursor-pointer" 
-                                            @click="deleteRoster(away?.roster_id)"
+                                            class="cursor-pointer"
                                         >mdi-delete</v-icon>
-                                        <span class="w-100">
+                                        <span class="w-100" @click="setPlayerInfo('away',index,hIdx)">
                                             {{ away?.position?'(':'' }}{{ away?.position }}{{ away?.position?') ':'' }}{{ away?.player_name }}
                                         </span>
                                     </div>
                                 </v-col>
-                                <span class="py-3">{{ ((index + 1)%10)===0 ? "투수" : ((index + 1)%10) + "번" }}</span>
-                                <v-col class="d-flex flex-column">
-                                    <div v-for="(home, hIdx) in lineupList[((index + 1)%10)]?.home" class="d-flex justify-space-between">
+                                <span class="pa-3 ">{{ ((index + 1)%10)===0 ? "투수" : ((index + 1)%10) + "번" }}</span>
+                                <v-col class="d-flex flex-column" :class="{'selected-lineup' : selectedLineup[0] === 'home' && selectedLineup[1] === index}">
+                                    <div v-for="(home, hIdx) in lineupList[((index + 1)%10)]?.home" class="d-flex justify-space-between cursor-pointer" @click="setPlayerInfo('home',index,hIdx)">
                                         <span class="w-100">
                                             {{ (home?.replaced_position??home?.position)?'(':'' }}{{ (home?.replaced_position??home?.position) }}{{ (home?.replaced_position??home?.position)?') ':'' }}{{ home?.replaced_player_name??home?.player_name }}
                                         </span>
                                         <v-icon 
-                                            v-if="(hIdx === 0 && selectedMatchup.status === 'scheduled') || (hIdx > 0 && selectedMatchup.status === 'playball')" 
+                                            v-if="(hIdx === 0 && selectedMatchup.status === 'scheduled') || (hIdx > 0 && selectedMatchup.status === 'playball' && lineupList[((index + 1)%10)]?.home.length-1 === hIdx)" 
                                             color="error" 
                                             class="cursor-pointer"
                                             @click="deleteRoster(home?.roster_id)"
@@ -431,6 +431,7 @@ const selectedDate = ref(route.query.date?new Date(route.query.date):new Date())
 const formattedDate = ref(route.query.date??formatDate(selectedDate.value));
 const calendarOpen = ref(false);
 const selectedMatchup = ref(null);
+const selectedLineup = ref([null,null])
 
 const teamList = ref([]);
 const gameList = ref([]);
@@ -696,6 +697,8 @@ const clearLineup = () => {
         replaced_position : null,
         position : null,
     }
+
+    selectedLineup.value = [null,null];
 }
 
 const getGameDetailInfo = async (game_id) => {
@@ -781,6 +784,25 @@ const deleteRoster = async(roster_id) => {
     }
 }
 
+const setPlayerInfo = (teamFlag, orderIndex, replaceIndex) => {
+    const playerInfo = lineupList.value[((orderIndex + 1)%10)]?.[teamFlag]?.[replaceIndex];
+    
+    if(!playerInfo) return;
+
+    lineup.value = {
+        team_id: playerInfo.team_id,
+        player_id: null,
+        replaced_by: null,
+        batting_order: playerInfo.batting_order,
+        replaced_inning: null,
+        replaced_out: null,
+        replaced_position : null,
+        position : null,
+    }
+
+    selectedLineup.value = [teamFlag,orderIndex]
+}
+
 onMounted(async ()=>{
     await updateMatchups(selectedDate.value);
 })
@@ -790,5 +812,9 @@ onMounted(async ()=>{
 :deep(.selected .v-list-item__overlay){
     background-color: currentColor;
     opacity: var(--v-selected-opacity);
+}
+
+.selected-lineup{
+    background: #ededed;
 }
 </style>
