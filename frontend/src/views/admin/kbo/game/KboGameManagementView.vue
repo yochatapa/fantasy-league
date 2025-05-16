@@ -606,6 +606,7 @@ watch(()=>homeTeamInfo.value, (newVal)=>{
 })
 
 const updateMatchups = async (newVal) => {
+    isExpanded.value = true
     router.replace(`/admin/game/management?date=${formatDate(newVal)}`)
     try {
         Promise.all([
