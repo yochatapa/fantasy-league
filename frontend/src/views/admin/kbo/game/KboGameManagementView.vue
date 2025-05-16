@@ -130,20 +130,16 @@
                                     <p class="text-h6"><strong>{{ GAME_STATUS[selectedMatchup.status] }}</strong> </p>
                                 </div>
                                 <div class="game-header d-flex justify-space-between align-center">
-                                    <div class="d-flex align-center">
+                                    <div class="d-flex justify-center align-center w-100">
                                         <img :src="selectedMatchup.away_team_path" alt="Away Team Logo" class="team-logo" />
                                         <span class="text-h6 font-weight-bold">{{ selectedMatchup.away_team_name }}</span>    
-                                    </div>
-                                    <div class="d-flex align-center">
                                         <span class="team-score"></span>
                                     </div>
                                     <div class="d-flex justify-center flex-column align-center">
                                         <span class="vs">VS</span>
                                     </div>
-                                    <div class="d-flex align-center">
+                                    <div class="d-flex justify-center align-center w-100">
                                         <span class="team-score"></span>
-                                    </div>
-                                    <div class="d-flex align-center">
                                         <span class="text-h6 font-weight-bold">{{ selectedMatchup.home_team_name }}</span>
                                         <img :src="selectedMatchup.home_team_path" alt="Home Team Logo" class="team-logo" />
                                     </div>
