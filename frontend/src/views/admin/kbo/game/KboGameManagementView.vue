@@ -307,10 +307,10 @@
                                     <div class="mb-3">
                                         <span class="text-h6 font-semibold">타자 정보</span>
                                     </div>
-                                    <div class="text-lg font-bold">{{ currentBatter.player_name }}</div>
-                                    <div class="text-sm text-secondary">{{ currentBatter.team_name }}</div>
+                                    <div class="text-lg font-bold">{{ currentBatter?.player_name }}</div>
+                                    <div class="text-sm text-secondary">{{ currentBatter?.team_name }}</div>
                                     <div class="text-sm mt-1">
-                                        타순: {{ currentBatter.batting_order }}번 | 포지션: {{ currentBatter.position }}
+                                        타순: {{ currentBatter?.batting_order }}번 | 포지션: {{ currentBatter?.position }}
                                     </div>
 
                                     <!-- 기록 표시 -->
@@ -353,19 +353,41 @@
                                     <div class="mb-3">
                                         <span class="text-h6 font-semibold">주자 정보</span>
                                     </div>
-                                    <div v-for="(runner, index) in gameCurrentInfo.runner">
-                                        <div v-if="runner">
-                                            {{ index }}루 주자 : {{ runner.player_name }}
-                                            <!-- 기록 표시 -->
-                                            <v-chip-group multiple column class="mt-2" >
-                                                <v-chip>도루</v-chip>
-                                                <v-chip>1베이스 진루</v-chip>
-                                                <v-chip>2베이스 진루</v-chip>
-                                                <v-chip>3베이스 진루</v-chip>
-                                                <v-chip>견제사</v-chip>
-                                                <v-chip>아웃</v-chip>
-                                            </v-chip-group>
-                                        </div>
+                                    <div v-if="gameCurrentInfo.runner_1b">
+                                        1루 주자 : {{ gameCurrentInfo.runner_1b.player_name }}
+                                        <!-- 기록 표시 -->
+                                        <v-chip-group multiple column class="mt-2" >
+                                            <v-chip>도루</v-chip>
+                                            <v-chip>1베이스 진루</v-chip>
+                                            <v-chip>2베이스 진루</v-chip>
+                                            <v-chip>3베이스 진루</v-chip>
+                                            <v-chip>견제사</v-chip>
+                                            <v-chip>아웃</v-chip>
+                                        </v-chip-group>
+                                    </div>
+                                    <div v-if="gameCurrentInfo.runner_2b">
+                                        2루 주자 : {{ gameCurrentInfo.runner_2b.player_name }}
+                                        <!-- 기록 표시 -->
+                                        <v-chip-group multiple column class="mt-2" >
+                                            <v-chip>도루</v-chip>
+                                            <v-chip>1베이스 진루</v-chip>
+                                            <v-chip>2베이스 진루</v-chip>
+                                            <v-chip>3베이스 진루</v-chip>
+                                            <v-chip>견제사</v-chip>
+                                            <v-chip>아웃</v-chip>
+                                        </v-chip-group>
+                                    </div>
+                                    <div v-if="gameCurrentInfo.runner_3b">
+                                        3루 주자 : {{ gameCurrentInfo.runner_3b.player_name }}
+                                        <!-- 기록 표시 -->
+                                        <v-chip-group multiple column class="mt-2" >
+                                            <v-chip>도루</v-chip>
+                                            <v-chip>1베이스 진루</v-chip>
+                                            <v-chip>2베이스 진루</v-chip>
+                                            <v-chip>3베이스 진루</v-chip>
+                                            <v-chip>견제사</v-chip>
+                                            <v-chip>아웃</v-chip>
+                                        </v-chip-group>
                                     </div>
                                 </v-col>
                                 <v-divider></v-divider>
@@ -721,11 +743,9 @@ const gameCurrentInfo = ref({
     home_batting_number : 0,
     away_score : 0,
     home_score : 0,
-    runner : {
-        1 : null,
-        2 : null,
-        3 : null,
-    },
+    runner_1b : null,
+    runner_2b : null,
+    runner_3b : null,
 });
 
 const isAway = computed(()=>gameCurrentInfo.value.inning_half === 'top');
@@ -963,23 +983,35 @@ const getGameDetailInfo = async (game_id) => {
     try {
         lineupList.value = new Array(10).fill(null).map(() => ({ away: [], home: [] }));
         clearLineup();
-        const response = await commonFetch(`/api/admin/game/${game_id}`)
         
-        if(response.success){
-            awayTeamInfo.value = response.data.awayTeamInfo
-            homeTeamInfo.value = response.data.homeTeamInfo
-            selectedMatchup.value = response.data.gameInfo
-            await getRosterDetailInfo(selectedMatchup.value.away_team_id,selectedMatchup.value.home_team_id);
-        }else{
-            awayTeamInfo.value = [];
-            homeTeamInfo.value = [];
-            selectedMatchup.value = null;
-            throw new Error();
-        }
+        Promise.all([
+            commonFetch(`/api/admin/game/${game_id}`),
+            commonFetch(`/api/admin/game/current-info/${game_id}`),
+        ]).then(async ([gameMasterRes, gameCurrentRes]) => {
+            if(gameMasterRes.success){
+                awayTeamInfo.value = gameMasterRes.data.awayTeamInfo
+                homeTeamInfo.value = gameMasterRes.data.homeTeamInfo
+                selectedMatchup.value = gameMasterRes.data.gameInfo
+                await getRosterDetailInfo(selectedMatchup.value.away_team_id,selectedMatchup.value.home_team_id);
+            }else{
+                awayTeamInfo.value = [];
+                homeTeamInfo.value = [];
+                selectedMatchup.value = null;
+                throw new Error();
+            }
+
+            if(gameCurrentRes.success){
+                console.log(gameCurrentRes.data.gamedayInfo)
+                gamedayInfo.value = gameCurrentRes.data.gamedayInfo;
+                if(gameCurrentRes.data.lastGameInfo) gameCurrentInfo.value = gameCurrentRes.data.lastGameInfo
+            }else{
+                throw new Error();
+            }
+        })
 
         return true
     } catch (error) {
-        
+        alert("게임 정보 조회 중 문제가 발생하였습니다.\n다시 한 번 시도해주세요.");
     }
 }
 
@@ -988,6 +1020,7 @@ const getRosterDetailInfo = async (awayTeamId, homeTeamId) => {
         Promise.all([
             commonFetch(`/api/admin/roster/${awayTeamId}?date=${formattedDate.value}`)
             , commonFetch(`/api/admin/roster/${homeTeamId}?date=${formattedDate.value}`)
+            
         ]).then(([awayRes, homeRes])=>{
             if(awayRes.success){
                 awayTeamRosterInfo.value = awayRes.data.rosterInfo
@@ -1000,7 +1033,7 @@ const getRosterDetailInfo = async (awayTeamId, homeTeamId) => {
 
         return true
     } catch (error) {
-        
+        alert("게임 로스터 조회 중 문제가 발생하였습니다.\n다시 한 번 시도해주세요.");
     }
 }
 
@@ -1061,20 +1094,51 @@ const setPlayerInfo = (teamFlag, orderIndex, replaceIndex) => {
     selectedLineup.value = [teamFlag,orderIndex]
 }
 
-const setCurrentGamedayInfo = (type) => {
+const setCurrentGamedayInfo = async (type) => {
+    const pushData = {...gameCurrentInfo.value, batter: {...currentBatter.value}, pitcher : {...currentPitcher.value}, type:type};
     if(!!!gamedayInfo.value[gameCurrentInfo.value.inning]) gamedayInfo.value[gameCurrentInfo.value.inning] = {}
     if(!!!gamedayInfo.value[gameCurrentInfo.value.inning][gameCurrentInfo.value.inning_half]) gamedayInfo.value[gameCurrentInfo.value.inning][gameCurrentInfo.value.inning_half] = {}
-    if(!!!gamedayInfo.value[gameCurrentInfo.value.inning][gameCurrentInfo.value.inning_half][isAway.value?gameCurrentInfo.value.away_batting_number:gameCurrentInfo.value.home_batting_number]){
-        gamedayInfo.value[gameCurrentInfo.value.inning][gameCurrentInfo.value.inning_half][isAway.value?gameCurrentInfo.value.away_batting_number:gameCurrentInfo.value.home_batting_number] = [
-            { batter : {...currentBatter.value}, pitcher : {...currentPitcher.value}, type:'startInfo' },
-        ];
+    if(!!!gamedayInfo.value[gameCurrentInfo.value.inning][gameCurrentInfo.value.inning_half][isAway.value?gameCurrentInfo.value.away_batting_number:gameCurrentInfo.value.home_batting_number] && type !== "lastInfo"){
+        try {
+            const response = await commonFetch(`/api/admin/game/current-info`,{
+                method : 'POST'
+                , body : {
+                    ...pushData
+                    , game_id : selectedMatchup.value.game_id
+                    , type:'startInfo'
+                }
+            })
+
+            if(response.success){
+                gamedayInfo.value[gameCurrentInfo.value.inning][gameCurrentInfo.value.inning_half][isAway.value?gameCurrentInfo.value.away_batting_number:gameCurrentInfo.value.home_batting_number] = [
+                    { batter : {...currentBatter.value}, pitcher : {...currentPitcher.value}, type:'startInfo' },
+                ];
+            }
+        } catch (error) {
+            alert("게임 정보 저장 중 오류가 발생했습니다.\n다시 시도해주세요.","error")
+        }
     }
-    
-    
-    gamedayInfo.value[gameCurrentInfo.value.inning][gameCurrentInfo.value.inning_half][isAway.value?gameCurrentInfo.value.away_batting_number:gameCurrentInfo.value.home_batting_number].push({...gameCurrentInfo.value, batter: {...currentBatter.value}, pitcher : {...currentPitcher.value}, type:type})
+
+    try {
+        const response = await commonFetch(`/api/admin/game/current-info`,{
+            method : 'POST'
+            , body : {
+                ...pushData
+                , game_id : selectedMatchup.value.game_id
+            }
+        })
+
+        if(response.success && type !== "lastInfo"){
+            gamedayInfo.value[gameCurrentInfo.value.inning][gameCurrentInfo.value.inning_half][isAway.value?gameCurrentInfo.value.away_batting_number:gameCurrentInfo.value.home_batting_number].push(pushData)
+        }
+    } catch (error) {
+        alert("게임 정보 저장 중 오류가 발생했습니다.\n다시 시도해주세요.","error")
+    }
+
+    console.log(gamedayInfo.value)
 }
 
-const setStrike = () => {
+const setStrike = async () => {
     const current_strike = gameCurrentInfo.value.strike;
     if(isAway.value){
         gameCurrentInfo.value.home_pitch_count++;
@@ -1084,10 +1148,14 @@ const setStrike = () => {
         gameCurrentInfo.value.away_pitch_count++;
         gameCurrentInfo.value.away_current_pitch_count++;
     }
-    setCurrentGamedayInfo('strike');
-    if(current_strike<2) gameCurrentInfo.value.strike++;
+    
+    if(current_strike<2){
+        gameCurrentInfo.value.strike++;
+        await setCurrentGamedayInfo('strike');
+    }
     else{
-        setCurrentGamedayInfo('out');
+        await setCurrentGamedayInfo('strike');
+        await setCurrentGamedayInfo('out');
         gameCurrentInfo.value.strike = 0;
         gameCurrentInfo.value.ball = 0;
         if(isAway.value) gameCurrentInfo.value.home_current_pitch_count = 0;
@@ -1102,7 +1170,9 @@ const setStrike = () => {
         else{
             gameCurrentInfo.value.out = 0;
             const current_inning_half = gameCurrentInfo.value.inning_half;
-            gameCurrentInfo.value.runner = [];
+            gameCurrentInfo.value.runner_1b = null;
+            gameCurrentInfo.value.runner_2b = null;
+            gameCurrentInfo.value.runner_3b = null;
             if(current_inning_half === "top") gameCurrentInfo.value.inning_half = "bottom"
             else {
                 gameCurrentInfo.value.inning++;
@@ -1110,9 +1180,10 @@ const setStrike = () => {
             }
         }
     }
+    await setCurrentGamedayInfo('lastInfo');
 }
 
-const setBall = () => {
+const setBall = async () => {
     const current_ball = gameCurrentInfo.value.ball;
     if(isAway.value){
         gameCurrentInfo.value.home_pitch_count++;
@@ -1122,51 +1193,24 @@ const setBall = () => {
         gameCurrentInfo.value.away_pitch_count++;
         gameCurrentInfo.value.away_current_pitch_count++;
     }
-    setCurrentGamedayInfo('ball');
-    if(current_ball<3) gameCurrentInfo.value.ball++;
+    
+    if(current_ball<3){
+        gameCurrentInfo.value.ball++;
+        await setCurrentGamedayInfo('ball');
+    }
     else{
         gameCurrentInfo.value.strike = 0;
         gameCurrentInfo.value.ball = 0;
-        setCurrentGamedayInfo('baseonballs');
+        await setCurrentGamedayInfo('ball');
 
-        if(isAway.value) gameCurrentInfo.value.home_current_pitch_count = 0;
-        else gameCurrentInfo.value.away_current_pitch_count = 0;
-
-        const current_inning_half = gameCurrentInfo.value.inning_half;
-        // 주자 처리 필요
-        
-        const runner1B = gameCurrentInfo.value.runner[1];
-        const runner2B = gameCurrentInfo.value.runner[2];
-        const runner3B = gameCurrentInfo.value.runner[3];
-
-        //3루 처리
-        if(runner1B && runner2B && runner3B){
-            if(current_inning_half === "top") gameCurrentInfo.value.away_score++;
-            else gameCurrentInfo.value.home_score++;
-
-            gameCurrentInfo.value.runner[3] = null;
-        }
-
-        //2루처리
-        if(runner1B && runner2B){
-            gameCurrentInfo.value.runner[3] = runner2B;
-            gameCurrentInfo.value.runner[2] = null;
-        }
-
-        //1루처리
-        if(runner1B && runner1B){
-            gameCurrentInfo.value.runner[2] = runner1B;
-            gameCurrentInfo.value.runner[1] = null;
-        }
-
-        gameCurrentInfo.value.runner[1] = currentBatter.value;
+        await setBaseOnBalls();
         if(isAway.value) gameCurrentInfo.value.away_batting_number++;
         else gameCurrentInfo.value.home_batting_number++;
     }
-    
+    await setCurrentGamedayInfo('lastInfo');
 }
 
-const setFoul = () => {
+const setFoul = async () => {
     const current_strike = gameCurrentInfo.value.strike;
     if(isAway.value){
         gameCurrentInfo.value.home_pitch_count++;
@@ -1179,7 +1223,43 @@ const setFoul = () => {
 
     if(current_strike<2) gameCurrentInfo.value.strike++;
 
-    setCurrentGamedayInfo('foul');
+    await setCurrentGamedayInfo('foul');
+    await setCurrentGamedayInfo('lastInfo');
+}
+
+const setBaseOnBalls = async ()=>{
+    if(isAway.value) gameCurrentInfo.value.home_current_pitch_count = 0;
+    else gameCurrentInfo.value.away_current_pitch_count = 0;
+
+    const current_inning_half = gameCurrentInfo.value.inning_half;
+    // 주자 처리 필요
+    
+    const runner1B = gameCurrentInfo.value.runner_1b;
+    const runner2B = gameCurrentInfo.value.runner_2b;
+    const runner3B = gameCurrentInfo.value.runner_3b;
+
+    //3루 처리
+    if(runner1B && runner2B && runner3B){
+        if(current_inning_half === "top") gameCurrentInfo.value.away_score++;
+        else gameCurrentInfo.value.home_score++;
+
+        gameCurrentInfo.value.runner_3b = null;
+    }
+
+    //2루처리
+    if(runner1B && runner2B){
+        gameCurrentInfo.value.runner_3b = runner2B;
+        gameCurrentInfo.value.runner_2b = null;
+    }
+
+    //1루처리
+    if(runner1B && runner1B){
+        gameCurrentInfo.value.runner_2b = runner1B;
+        gameCurrentInfo.value.runner_1b = null;
+    }
+
+    gameCurrentInfo.value.runner_1b = currentBatter.value;
+    await setCurrentGamedayInfo('baseonballs');
 }
 
 onMounted(async ()=>{
