@@ -283,35 +283,32 @@
                                     </div>
                                 </v-col>
                                 <v-divider vertical></v-divider>
-                                <v-col cols="12" md="8">
-                                    <v-row class="h-100">
-                                        <v-col cols="12" md="6" class="h-100">
-                                            <div class="mb-3">
-                                                <span class="text-subtitle-1 font-weight-bold">타자</span>
-                                            </div>
-                                            <div>{{ currentBatter?.player_name }}</div>
-                                            <div class="mt-1 text-secondary">{{ currentBatter?.team_name }}</div>
-                                            <div class="mt-1">
-                                                타순: {{ currentBatter?.batting_order }}번
-                                            </div>
-                                            <div class="mt-1">
-                                                포지션: {{ currentBatter?.position }}
-                                            </div>
-                                        </v-col>
-                                        <v-col cols="12" md="6" class="h-100">
-                                            <div class="mb-3">
-                                                <span class="text-subtitle-1 font-weight-bold">투수</span>
-                                            </div>
-                                            <div>{{ currentPitcher.replaced_player_name??currentPitcher.player_name }}</div>
-                                            <div class="text-secondary">{{ currentPitcher.team_name }}</div>
-                                            <div class="mt-1">
-                                                포지션: {{ currentPitcher.replaced_position??currentPitcher.position }}
-                                            </div>
-                                            <div class="mt-1">
-                                                투구수: {{ isAway?gameCurrentInfo.home_pitch_count:gameCurrentInfo.away_pitch_count }}
-                                            </div>
-                                        </v-col>
-                                    </v-row>
+                                <v-col cols="6" md="4">
+                                    <div class="mb-3">
+                                        <span class="text-subtitle-1 font-weight-bold">타자</span>
+                                    </div>
+                                    <div>{{ currentBatter?.player_name }}</div>
+                                    <div class="mt-1 text-secondary">{{ currentBatter?.team_name }}</div>
+                                    <div class="mt-1">
+                                        타순: {{ currentBatter?.batting_order }}번
+                                    </div>
+                                    <div class="mt-1">
+                                        포지션: {{ currentBatter?.position }}
+                                    </div>
+                                </v-col>
+                                <v-divider vertical></v-divider>
+                                <v-col cols="6" md="4">
+                                    <div class="mb-3">
+                                        <span class="text-subtitle-1 font-weight-bold">투수</span>
+                                    </div>
+                                    <div>{{ currentPitcher.replaced_player_name??currentPitcher.player_name }}</div>
+                                    <div class="text-secondary">{{ currentPitcher.team_name }}</div>
+                                    <div class="mt-1">
+                                        포지션: {{ currentPitcher.replaced_position??currentPitcher.position }}
+                                    </div>
+                                    <div class="mt-1">
+                                        투구수: {{ isAway?gameCurrentInfo.home_pitch_count:gameCurrentInfo.away_pitch_count }}
+                                    </div>
                                 </v-col>
                             </v-row>                                
                             <v-divider class="mt-4 mb-4"></v-divider>
