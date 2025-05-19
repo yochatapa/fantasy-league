@@ -734,7 +734,7 @@ const organizeGameInfo = (gameInfo) => {
         }
 
         // 🏷️ 이닝 하프 생성
-        if (!organizedInfo[inning][inning_half] && info.type!=='lastInfo') {
+        if (!organizedInfo[inning]?.[inning_half] && info.type!=='lastInfo') {
             organizedInfo[inning][inning_half] = {};
         }
 
@@ -742,17 +742,16 @@ const organizeGameInfo = (gameInfo) => {
         const battingNumber = inning_half === 'top' ? away_batting_number : home_batting_number;
 
         // 🏷️ 타순 배열이 없다면 생성
-        if (!organizedInfo[inning][inning_half][battingNumber] && info.type!=='lastInfo') {
+        if (!organizedInfo[inning]?.[inning_half]?.[battingNumber] && info.type!=='lastInfo') {
             organizedInfo[inning][inning_half][battingNumber] = [];
         }
 
         // 🏷️ 데이터 삽입
-        if(info.type!=='lastInfo') organizedInfo[inning][inning_half][battingNumber].push(info);
+        if(info.type!=='lastInfo') organizedInfo[inning]?.[inning_half]?.[battingNumber].push(info);
 
         // 🏷️ ID 순서대로 정렬
-        organizedInfo[inning][inning_half][battingNumber]?.sort((a, b) => a.id - b.id);
+        organizedInfo[inning]?.[inning_half]?.[battingNumber]?.sort((a, b) => a.id - b.id);
     });
 
     return organizedInfo;
 };
-

@@ -97,7 +97,6 @@
                                         v-model="gameTime"
                                         label="경기 시간"
                                         type="time"
-                                        outlined
                                     />
                                 </v-col>
 
@@ -180,7 +179,8 @@
                                         :key="number"
                                         class="d-flex justify-center align-center cursor-pointer"
                                         size="small"
-                                        :variant="number === 1 ? 'tonal' : 'text'"
+                                        :variant="number === currentInning ? 'tonal' : 'text'"
+                                        @click="setCurrentInning(number)"
                                     >
                                         {{ number }}회
                                     </v-chip>
@@ -228,44 +228,94 @@
                         <v-divider></v-divider>
                         <v-card-text>
                             <v-row>
-                                <v-col cols="12">
-                                    <span class="text-h6 font-semibold">턴 정보</span>
-                                </v-col>
-                                <!-- 이닝 선택 -->
                                 <v-col cols="12" md="4">
-                                    <v-select
-                                        v-model="gameCurrentInfo.inning"
-                                        :items="innings"
-                                        label="이닝"
-                                        :rules="[v => !!v || '이닝을 선택해 주세요.']"
-                                        required
-                                    />
+                                    <div class="mb-3">
+                                        <span class="text-subtitle-1 font-weight-bold">경기 진행 상황</span>
+                                    </div>
+                                    <div class="d-flex flex-column align-start">
+                                        <div class="mb-3 d-flex">
+                                            <div>
+                                                <span class="text-subtitle-1 font-weight-bold">
+                                                    {{ gameCurrentInfo.inning }}회 {{ gameCurrentInfo.inning_half==="top"?'🔺':'🔻' }}
+                                                </span>
+                                                <div>
+                                                    <span style="width: 20px;display: inline-flex;">S : </span><span v-for="number in 2"><span v-if="number<=gameCurrentInfo.strike">🟡</span><span v-else>⚫</span></span>
+                                                </div>
+                                                <div>
+                                                    <span style="width: 20px;display: inline-flex">B : </span><span v-for="number in 3"><span v-if="number<=gameCurrentInfo.ball">🟢</span><span v-else>⚫</span></span>
+                                                </div>
+                                                <div>
+                                                    <span style="width: 20px;display: inline-flex">O : </span><span v-for="number in 2"><span v-if="number<=gameCurrentInfo.out">🔴</span><span v-else>⚫</span></span>
+                                                </div>
+                                            </div>
+                                            <div class="ml-4 mt-2">
+                                                <div class="d-flex justify-center">
+                                                    <div class="d-flex justify-flex-start align-center flex-column" style="width: 40px;height:40px;">
+                                                        <div>
+                                                            {{ gameCurrentInfo.runner_2b?.player_id?'🟨':'⬛' }}
+                                                        </div>
+                                                        <div v-if="gameCurrentInfo.runner_2b?.player_id">{{ gameCurrentInfo.runner_2b?.replaced_player_name??gameCurrentInfo.runner_2b?.player_name }}</div>
+                                                    </div>
+                                                </div>
+                                                <div class="d-flex justify-center mt-3">
+                                                    <div class="mr-3 d-flex justify-flex-start align-center flex-column" style="width: 40px;height:40px;">
+                                                        <div>
+                                                            {{ gameCurrentInfo.runner_3b?.player_id?'🟨':'⬛' }}
+                                                        </div>
+                                                        <div v-if="gameCurrentInfo.runner_3b?.player_id">{{ gameCurrentInfo.runner_3b?.replaced_player_name??gameCurrentInfo.runner_3b?.player_name }}</div>
+                                                    </div>
+                                                    <div class="ml-3 d-flex justify-flex-start align-center flex-column" style="width: 40px;height:40px;">
+                                                        <div>
+                                                            {{ gameCurrentInfo.runner_1b?.player_id?'🟨':'⬛' }}
+                                                        </div>
+                                                        <div v-if="gameCurrentInfo.runner_1b?.player_id">{{ gameCurrentInfo.runner_1b?.replaced_player_name??gameCurrentInfo.runner_1b?.player_name }}</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <v-chip-group>
+                                                <v-chip class="text-orange cursor-pointer" @click="setStrike">스트라이크</v-chip>
+                                                <v-chip class="text-green cursor-pointer" @click="setBall">볼</v-chip>
+                                                <v-chip class="text-brown cursor-pointer" @click="setFoul">파울</v-chip>
+                                            </v-chip-group>
+                                        </div>
+                                    </div>
                                 </v-col>
-
-                                <!-- 이닝 구분 선택 -->
-                                <v-col cols="12" md="4">
-                                    <v-select
-                                        v-model="gameCurrentInfo.inning_half"
-                                        :items="inning_half"
-                                        label="이닝 구분"
-                                        :rules="[v => !!v || '이닝 구분을 선택해 주세요.']"
-                                        item-value="code"
-                                        item-title="name"
-                                        required
-                                    />
+                                <v-divider vertical></v-divider>
+                                <v-col cols="12" md="8">
+                                    <v-row class="h-100">
+                                        <v-col cols="12" md="6" class="h-100">
+                                            <div class="mb-3">
+                                                <span class="text-subtitle-1 font-weight-bold">타자</span>
+                                            </div>
+                                            <div>{{ currentBatter?.player_name }}</div>
+                                            <div class="mt-1 text-secondary">{{ currentBatter?.team_name }}</div>
+                                            <div class="mt-1">
+                                                타순: {{ currentBatter?.batting_order }}번
+                                            </div>
+                                            <div class="mt-1">
+                                                포지션: {{ currentBatter?.position }}
+                                            </div>
+                                        </v-col>
+                                        <v-col cols="12" md="6" class="h-100">
+                                            <div class="mb-3">
+                                                <span class="text-subtitle-1 font-weight-bold">투수</span>
+                                            </div>
+                                            <div>{{ currentPitcher.replaced_player_name??currentPitcher.player_name }}</div>
+                                            <div class="text-secondary">{{ currentPitcher.team_name }}</div>
+                                            <div class="mt-1">
+                                                포지션: {{ currentPitcher.replaced_position??currentPitcher.position }}
+                                            </div>
+                                            <div class="mt-1">
+                                                투구수: {{ isAway?gameCurrentInfo.home_pitch_count:gameCurrentInfo.away_pitch_count }}
+                                            </div>
+                                        </v-col>
+                                    </v-row>
                                 </v-col>
-
-                                <!-- 아웃 카운트 선택 -->
-                                <v-col cols="12" md="4">
-                                    <v-select
-                                        v-model="gameCurrentInfo.out"
-                                        :items="outs"
-                                        label="아웃 카운트"
-                                        :rules="[v => (v!==null && v!==undefined) || '아웃 카운트를 선택해 주세요.']"
-                                        required
-                                    />
-                                </v-col>
-
+                            </v-row>                                
+                            <v-divider class="mt-4 mb-4"></v-divider>
+                            <v-row>
                                 <v-col cols="12">
                                     <v-chip-group column class="mb-4">
                                         <v-chip>안타</v-chip>
@@ -280,41 +330,6 @@
                                         <v-chip>트리플 플레이</v-chip>
                                         <v-chip>희생플라이</v-chip>
                                         <v-chip>희생번트</v-chip>
-                                    </v-chip-group>
-                                </v-col>
-                                <v-divider></v-divider>
-                            </v-row>
-                            <v-row>
-                                <v-col cols="12">
-                                    <div class="mb-3">
-                                        <span class="text-h6 font-semibold">투구 정보</span>
-                                    </div>
-                                    <div class="mb-3">
-                                        <div class="text-lg font-bold">볼 : {{ gameCurrentInfo.ball }}</div>
-                                        <div class="text-lg font-bold">스트라이크 : {{ gameCurrentInfo.strike }}</div>
-                                        <div class="text-lg font-bold">투구수 : {{ gameCurrentInfo.pitch_count }}구</div>
-                                    </div>
-                                    <v-chip-group column class="mt-2" >
-                                        <v-chip @click="setStrike">스트라이크</v-chip>
-                                        <v-chip @click="setBall">볼</v-chip>
-                                        <v-chip @click="setFoul">파울</v-chip>
-                                    </v-chip-group>
-                                </v-col>
-                                <v-divider></v-divider>
-                            </v-row>
-                            <v-row class="py-2">
-                                <v-col cols="12" md="6">
-                                    <div class="mb-3">
-                                        <span class="text-h6 font-semibold">타자 정보</span>
-                                    </div>
-                                    <div class="text-lg font-bold">{{ currentBatter?.player_name }}</div>
-                                    <div class="text-sm text-secondary">{{ currentBatter?.team_name }}</div>
-                                    <div class="text-sm mt-1">
-                                        타순: {{ currentBatter?.batting_order }}번 | 포지션: {{ currentBatter?.position }}
-                                    </div>
-
-                                    <!-- 기록 표시 -->
-                                    <v-chip-group column class="mt-2">
                                         <div class="d-flex" style="gap:8px">
                                             <v-select
                                                 density="compact"
@@ -323,85 +338,101 @@
                                                 타점
                                             </v-chip>
                                         </div>
-                                    </v-chip-group>
-                                </v-col>
-                                
-                                <v-col cols="12" md="6">
-                                    <div class="mb-3">
-                                        <span class="text-h6 font-semibold">투수 정보</span>
-                                    </div>
-                                    <div class="text-lg font-bold">{{ currentPitcher.replaced_player_name??currentPitcher.player_name }}</div>
-                                    <div class="text-sm text-secondary">{{ currentPitcher.team_name }}</div>
-                                    <div class="text-sm mt-1">
-                                        포지션: {{ currentPitcher.replaced_position??currentPitcher.position }}
-                                    </div>
-
-                                    <!-- 기록 표시 -->
-                                    <v-chip-group multiple column class="mt-2">
                                         <v-chip>폭투</v-chip>
                                         <v-chip>패스트볼</v-chip>
                                         <v-chip>인터페어런스</v-chip>
                                         <v-chip>보크</v-chip>
+                                        <div class="d-flex" style="gap:8px">
+                                            <v-select
+                                                density="compact"
+                                            ></v-select>
+                                            <v-chip class="d-flex align-center justift-center">
+                                                실책
+                                            </v-chip>
+                                        </div>
                                     </v-chip-group>
                                 </v-col>
-
-                                <v-divider></v-divider>
-                                
                             </v-row>
+                            <v-divider class="mb-6"></v-divider>
                             <v-row>
                                 <v-col cols="12">
                                     <div class="mb-3">
-                                        <span class="text-h6 font-semibold">주자 정보</span>
+                                        <span class="text-subtitle-1 font-weight-bold">주자</span>
                                     </div>
-                                    <div v-if="gameCurrentInfo.runner_1b">
+                                    <div v-if="gameCurrentInfo.runner_1b?.player_id">
                                         1루 주자 : {{ gameCurrentInfo.runner_1b.player_name }}
                                         <!-- 기록 표시 -->
                                         <v-chip-group multiple column class="mt-2" >
                                             <v-chip>도루</v-chip>
-                                            <v-chip>1베이스 진루</v-chip>
-                                            <v-chip>2베이스 진루</v-chip>
-                                            <v-chip>3베이스 진루</v-chip>
+                                            <div class="d-flex" style="gap:8px">
+                                                <v-select
+                                                    density="compact"
+                                                    :items="[
+                                                        { code:1, name:'1베이스' },
+                                                        { code:2, name:'2베이스' },
+                                                        { code:3, name:'3베이스' },
+                                                    ]"
+                                                    item-title="name"
+                                                    item-value="code"
+                                                ></v-select>
+                                                <v-chip class="d-flex align-center justift-center">
+                                                    진루
+                                                </v-chip>
+                                            </div>
                                             <v-chip>견제사</v-chip>
                                             <v-chip>아웃</v-chip>
                                         </v-chip-group>
                                     </div>
-                                    <div v-if="gameCurrentInfo.runner_2b">
+                                    <div v-if="gameCurrentInfo.runner_2b?.player_id">
                                         2루 주자 : {{ gameCurrentInfo.runner_2b.player_name }}
                                         <!-- 기록 표시 -->
                                         <v-chip-group multiple column class="mt-2" >
                                             <v-chip>도루</v-chip>
-                                            <v-chip>1베이스 진루</v-chip>
-                                            <v-chip>2베이스 진루</v-chip>
-                                            <v-chip>3베이스 진루</v-chip>
+                                            <div class="d-flex" style="gap:8px">
+                                                <v-select
+                                                    density="compact"
+                                                    :items="[
+                                                        { code:1, name:'1베이스' },
+                                                        { code:2, name:'2베이스' },
+                                                        { code:3, name:'3베이스' },
+                                                    ]"
+                                                    item-title="name"
+                                                    item-value="code"
+                                                ></v-select>
+                                                <v-chip class="d-flex align-center justift-center">
+                                                    진루
+                                                </v-chip>
+                                            </div>
                                             <v-chip>견제사</v-chip>
                                             <v-chip>아웃</v-chip>
                                         </v-chip-group>
                                     </div>
-                                    <div v-if="gameCurrentInfo.runner_3b">
+                                    <div v-if="gameCurrentInfo.runner_3b?.player_id">
                                         3루 주자 : {{ gameCurrentInfo.runner_3b.player_name }}
                                         <!-- 기록 표시 -->
                                         <v-chip-group multiple column class="mt-2" >
                                             <v-chip>도루</v-chip>
-                                            <v-chip>1베이스 진루</v-chip>
-                                            <v-chip>2베이스 진루</v-chip>
-                                            <v-chip>3베이스 진루</v-chip>
+                                            <div class="d-flex" style="gap:8px">
+                                                <v-select
+                                                    density="compact"
+                                                    :items="[
+                                                        { code:1, name:'1베이스' },
+                                                        { code:2, name:'2베이스' },
+                                                        { code:3, name:'3베이스' },
+                                                    ]"
+                                                    item-title="name"
+                                                    item-value="code"
+                                                ></v-select>
+                                                <v-chip class="d-flex align-center justift-center">
+                                                    진루
+                                                </v-chip>
+                                            </div>
                                             <v-chip>견제사</v-chip>
                                             <v-chip>아웃</v-chip>
                                         </v-chip-group>
                                     </div>
                                 </v-col>
-                                <v-divider></v-divider>
-                            </v-row>           
-                            <v-row>
-                                <div class="d-flex" style="gap:8px">
-                                    <v-select
-                                        density="compact"
-                                    ></v-select>
-                                    <v-chip class="d-flex align-center justift-center">
-                                        실책
-                                    </v-chip>
-                                </div>
-                            </v-row>  
+                            </v-row>
                             <!-- <v-tabs v-model="activeTab">
                                 <v-tab value="0" v-if="selectedMatchup.status === 'playball'">타자 기록 등록</v-tab>
                                 <v-tab value="1" v-if="selectedMatchup.status === 'playball'">투수 기록 등록</v-tab>
@@ -697,6 +728,8 @@ const canAddMatchup = computed(() => {
     );
 });
 
+const currentInning = ref(1);
+
 const lineupTeam = ref(null);
 const isReplace = ref(false);
 const lineupValid = computed(() => {
@@ -754,14 +787,32 @@ const currentBatter = computed(()=>{
     const awayHome = isAway.value?'away':'home';
     const battingOrderInfo = lineupList.value[(gameCurrentInfo.value[awayHome + '_batting_number'] % 9) + 1]?.[awayHome];
     const lastBatterInfo = battingOrderInfo?.[(battingOrderInfo?.length??1)-1]
-    return lastBatterInfo
+    return lastBatterInfo??{
+        team_id: null,
+        player_id: null,
+        replaced_by: null,
+        batting_order: null,
+        replaced_inning: null,
+        replaced_out: null,
+        replaced_position : null,
+        position : null,
+    }
 })
 
 const currentPitcher = computed(()=>{
     const awayHome = isAway.value?'home':'away';
     const pitcherOrderInfo = lineupList.value[0]?.[awayHome];
     const lastPitcherInfo = pitcherOrderInfo?.[(pitcherOrderInfo?.length??1)-1]
-    return lastPitcherInfo
+    return lastPitcherInfo??{
+        team_id: null,
+        player_id: null,
+        replaced_by: null,
+        batting_order: null,
+        replaced_inning: null,
+        replaced_out: null,
+        replaced_position : null,
+        position : null,
+    }
 })
 
 const teams = ref([]);
@@ -1003,7 +1054,10 @@ const getGameDetailInfo = async (game_id) => {
             if(gameCurrentRes.success){
                 console.log(gameCurrentRes.data.gamedayInfo)
                 gamedayInfo.value = gameCurrentRes.data.gamedayInfo;
-                if(gameCurrentRes.data.lastGameInfo) gameCurrentInfo.value = gameCurrentRes.data.lastGameInfo
+                if(gameCurrentRes.data.lastGameInfo){
+                    gameCurrentInfo.value = gameCurrentRes.data.lastGameInfo
+                    currentInning.value = gameCurrentRes.data.lastGameInfo.inning
+                }
             }else{
                 throw new Error();
             }
@@ -1075,6 +1129,11 @@ const deleteRoster = async(roster_id) => {
     }
 }
 
+const setCurrentInning = (inning) => {
+    currentInning.value = inning;
+    gameCurrentInfo.value.inning = inning;
+}
+
 const setPlayerInfo = (teamFlag, orderIndex, replaceIndex) => {
     const playerInfo = lineupList.value[((orderIndex + 1)%10)]?.[teamFlag]?.[replaceIndex];
     
@@ -1134,8 +1193,14 @@ const setCurrentGamedayInfo = async (type) => {
     } catch (error) {
         alert("게임 정보 저장 중 오류가 발생했습니다.\n다시 시도해주세요.","error")
     }
+}
 
-    console.log(gamedayInfo.value)
+const setBatterGameStats = async (stats) => {
+
+}
+
+const setPitcherGameStats = async (stats) => {
+
 }
 
 const setStrike = async () => {
@@ -1156,6 +1221,8 @@ const setStrike = async () => {
     else{
         await setCurrentGamedayInfo('strike');
         await setCurrentGamedayInfo('out');
+        await setBatterGameStats([['strikeouts',1]]);
+        await setPitcherGameStats([['strikeouts',1]]);
         gameCurrentInfo.value.strike = 0;
         gameCurrentInfo.value.ball = 0;
         if(isAway.value) gameCurrentInfo.value.home_current_pitch_count = 0;
