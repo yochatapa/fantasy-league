@@ -8,6 +8,7 @@ import { saveUploadedFile, deleteFile } from '../../utils/fileUploader.js';
 import { v4 as uuidv4 } from 'uuid';
 import { rootCertificates } from 'tls';
 import convertFileToBase64 from '../../utils/convertFileToBase64.js'; // apiResponse에서 임포트
+import { stat } from 'fs';
 
 const finalUploadsBaseDir = path.join(process.cwd(), 'uploads');
 
@@ -755,3 +756,125 @@ const organizeGameInfo = (gameInfo) => {
 
     return organizedInfo;
 };
+
+export const createBatterGameStats = async (req, res) => {
+    const { 
+        game_id, player_id, team_id, opponent_team_id, batting_order,
+        inning, inning_half, out, stats
+    } = req.body;
+
+    const accessToken = req.headers['authorization']?.split(' ')[1];
+
+    if (!accessToken) {
+        return sendBadRequest(res, '토큰이 제공되지 않았습니다.');
+    }
+
+    let user;
+    try {
+        user = jwt.verify(accessToken, process.env.JWT_SECRET);
+    } catch (err) {
+        return sendBadRequest(res, '유효하지 않은 토큰입니다.');
+    }
+
+    if(!game_id || !player_id || !team_id || !opponent_team_id || (batting_order===null || batting_order===undefined)
+        || (inning===null || inning===undefined) || !inning_half || (out===null || out===undefined) || !stats){
+        return sendBadRequest(res, '필수 입력값을 모두 입력해주세요.');
+    }
+
+    const queryParams = [];
+    const whereClauses = [];
+
+    for(let [stat, number] of Object.entries(stats)){
+        queryParams.push(stat);
+        whereClauses.push(number)
+    }
+
+    try {
+        await withTransaction(async (client) => {
+            const batterStatsQuery = `
+                INSERT INTO batter_game_stats
+                (
+                    game_id, player_id, team_id, opponent_team_id, batting_order,
+                    inning, inning_half, out, created_at, ${queryParams.join(",")}
+                )
+                VALUES 
+                (
+                    $1, $2, $3, $4, $5,
+                    $6, $7, $8, CURRENT_TIMESTAMP, ${whereClauses.join(",")}
+                )
+            `;
+
+            client.query(batterStatsQuery,[
+                game_id, player_id, team_id, opponent_team_id, batting_order,
+                inning, inning_half, out,
+            ])
+        })
+        
+        return sendSuccess(res, {
+            message: "타자 스탯 정보가 성공적으로 저장되었습니다."
+        });
+    } catch (error) {
+        return sendServerError(res, error, "타자 스탯 저장 중 오류가 발생했습니다. 다시 시도해주세요.");
+    }
+}
+
+export const createPitcherGameStats = async (req, res) => {
+    const { 
+        game_id, player_id, team_id, opponent_team_id, batting_order,
+        inning, inning_half, out, stats
+    } = req.body;
+
+    const accessToken = req.headers['authorization']?.split(' ')[1];
+
+    if (!accessToken) {
+        return sendBadRequest(res, '토큰이 제공되지 않았습니다.');
+    }
+
+    let user;
+    try {
+        user = jwt.verify(accessToken, process.env.JWT_SECRET);
+    } catch (err) {
+        return sendBadRequest(res, '유효하지 않은 토큰입니다.');
+    }
+
+    if(!game_id || !player_id || !team_id || !opponent_team_id || (batting_order===null || batting_order===undefined)
+        || (inning===null || inning===undefined) || !inning_half || (out===null || out===undefined) || !stats){
+        return sendBadRequest(res, '필수 입력값을 모두 입력해주세요.');
+    }
+
+    const queryParams = [];
+    const whereClauses = [];
+
+    for(let [stat, number] of Object.entries(stats)){
+        queryParams.push(stat);
+        whereClauses.push(number)
+    }
+
+    try {
+        await withTransaction(async (client) => {
+            const batterStatsQuery = `
+                INSERT INTO pitcher_game_stats
+                (
+                    game_id, player_id, team_id, opponent_team_id, batting_order,
+                    inning, inning_half, out, created_at, ${queryParams.join(",")}
+                )
+                VALUES 
+                (
+                    $1, $2, $3, $4, $5,
+                    $6, $7, $8, CURRENT_TIMESTAMP, ${whereClauses.join(",")}
+                )
+            `;
+
+            client.query(batterStatsQuery,[
+                game_id, player_id, team_id, opponent_team_id, batting_order,
+                inning, inning_half, out,
+            ])
+        })
+        
+        return sendSuccess(res, {
+            message: "투수 스탯이 성공적으로 저장되었습니다."
+        });
+    } catch (error) {
+        return sendServerError(res, error, "투수 스탯 저장 중 오류가 발생했습니다. 다시 시도해주세요.");
+    }
+}
