@@ -1,6 +1,6 @@
 // store/alertStore.js 또는 .ts
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 
 export const useAlertStore = defineStore('alert', () => {
     const snackbar = ref(false);
@@ -60,6 +60,10 @@ export const useAlertStore = defineStore('alert', () => {
         if (confirmResolve) confirmResolve(false);
     }
 
+    const promptValid = computed(() => {
+        return promptRules.value.every(rule => rule(promptValue.value) === true);
+    });
+
     function promptSubmit() {
         promptDialog.value = false;
         if (confirmResolve) confirmResolve(promptValue.value);
@@ -86,6 +90,7 @@ export const useAlertStore = defineStore('alert', () => {
         promptOptions,
         promptItemValue,
         promptItemTitle,
+        promptValid,
         promptSubmit,
         promptCancel,
         Alert,

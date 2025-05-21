@@ -80,40 +80,48 @@ const isAdminRoute = computed(() => route.path.startsWith('/admin'))
             </v-dialog>
 
             <!-- Prompt Dialog -->
-            <v-dialog v-model="alert.promptDialog" width="500">
+            <v-dialog v-model="alert.promptDialog" width="400">
                 <v-card>
                     <v-card-title class="text-h6">입력</v-card-title>
-                    <v-card-text>
-                        <div class="mb-2">{{ alert.promptMessage }}</div>
-
-                        <v-form @submit.prevent="alert.promptSubmit()">
-                            <v-text-field
-                                v-if="alert.promptType !== 'select'"
-                                v-model="alert.promptValue"
-                                :type="alert.promptType"
-                                :rules="alert.promptRules"
-                                hide-details="auto"
-                                autofocus
-                            />
-                            <v-select
-                                v-else
-                                v-model="alert.promptValue"
-                                :items="alert.promptOptions"
-                                :item-value="alert.promptItemValue"
-                                :item-title="alert.promptItemTitle"
-                                :rules="alert.promptRules"
-                                hide-details="auto"
-                            />
-                        </v-form>
-                    </v-card-text>
-                    <v-card-actions>
-                        <v-spacer />
-                        <v-btn text @click="alert.promptCancel()">취소</v-btn>
-                        <v-btn color="primary" text @click="alert.promptSubmit()">확인</v-btn>
-                    </v-card-actions>
+                    <v-form ref="promptForm">
+                        <v-card-text>
+                            <div class="mb-2" v-html="alert.promptMessage" />
+                            <div v-if="alert.promptType === 'select'">
+                                <v-select
+                                    v-model="alert.promptValue"
+                                    :items="alert.promptOptions"
+                                    :item-value="alert.promptItemValue"
+                                    :item-title="alert.promptItemTitle"
+                                    :rules="alert.promptRules"
+                                    label="선택해주세요"
+                                    dense
+                                />
+                            </div>
+                            <div v-else>
+                                <v-text-field
+                                    v-model="alert.promptValue"
+                                    :type="alert.promptType"
+                                    :rules="alert.promptRules"
+                                    label="입력해주세요"
+                                    dense
+                                />
+                            </div>
+                        </v-card-text>
+                        <v-card-actions>
+                            <v-spacer />
+                            <v-btn text @click="alert.promptCancel()">취소</v-btn>
+                            <v-btn
+                                color="primary"
+                                text
+                                @click="alert.promptSubmit()"
+                                :disabled="!alert.promptValid"
+                            >
+                                확인
+                            </v-btn>
+                        </v-card-actions>
+                    </v-form>
                 </v-card>
             </v-dialog>
-
         </template>
     </v-app>
 </template>
