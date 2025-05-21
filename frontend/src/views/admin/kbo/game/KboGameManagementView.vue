@@ -20,6 +20,8 @@
         </v-col>
     </v-row>
 
+    {{ gameCurrentInfo.runner_1b }}
+
     <!-- 경기 목록과 경기 정보 -->
     <v-row align="stretch">
         <v-col cols="12">
@@ -217,6 +219,12 @@
                                                     </div>
                                                     <div v-else-if="ballInfo.type.startsWith('runner')">
                                                         {{ ballInfo.type.split(':')[1] }}루 -> {{ ballInfo.type.split(':')[2]==='4'?"홈":ballInfo.type.split(':')[2]+'루' }} 진루 ({{ ballInfo?.['runner_'+ballInfo.type.split(':')[1]+'b']?.replaced_player_name??ballInfo?.['runner_'+ballInfo.type.split(':')[1]+'b']?.player_name }})
+                                                    </div>
+                                                    <div v-else-if="['score'].includes(ballInfo.type)">
+                                                        득점
+                                                    </div>
+                                                    <div v-else-if="['rbi'].includes(ballInfo.type)">
+                                                        {{ ballInfo?.batter?.replaced_player_name??ballInfo?.batter?.player_name }} 타점
                                                     </div>
                                                 </div>
                                             </div>
@@ -1403,22 +1411,38 @@ const setBaseOnBalls = async ()=>{
         gameCurrentInfo.value.runner_1b = null;
     }
 
-    gameCurrentInfo.value.runner_1b = currentBatter.value;
+    gameCurrentInfo.value.runner_1b = { ...currentBatter.value, pitcher : { ... currentPitcher.value } };
     await setCurrentGamedayInfo('baseonballs');
     await setCurrentGamedayInfo('lastInfo');
 }
 
-const setScore = async () => {
-    if(gameCurrentInfo.value.current_inning_half === "top") gameCurrentInfo.value.away_score++;
+const setScore = async (runnerInfo) => {
+    await setCurrentGamedayInfo('score');
+    
+    if(gameCurrentInfo.value.inning_half === "top") gameCurrentInfo.value.away_score++;
     else gameCurrentInfo.value.home_score++;
 
     if(await confirm(`${currentBatter.value.replaced_player_name??currentBatter.value.player_name}의 타점 등록을 하시겠습니까?`)){
-        // 타점 등록하기
-    }
+        await setCurrentGamedayInfo('rbi');
 
-    // if(await confirm(`${currentBatter.value.replaced_player_name??currentBatter.value.player_name}의 타점 등록을 하시겠습니까?`)){
-    //     // 실점 등록하기
-    // }
+        await setBatterGameStats({
+            runs_batted_in : 1,
+        });
+    }
+    
+    if(runnerInfo && runnerInfo?.pitcher?.player_id){
+        if(await confirm(`${runnerInfo?.pitcher?.replaced_player_name??runnerInfo?.pitcher?.player_name}의 자책점 등록을 하시겠습니까?`)){
+            // 실점 등록하기
+            await setPitcherGameStats({
+                earned_runs : 1,
+                runs_allowed : 1,
+            });
+        }else{
+            await setPitcherGameStats({
+                runs_allowed : 1,
+            });
+        }
+    }
 }
 
 const setHit = async()=>{
@@ -1449,7 +1473,7 @@ const setHit = async()=>{
 
     gameCurrentInfo.value.strike = 0;
     gameCurrentInfo.value.ball = 0;
-    gameCurrentInfo.value.runner_1b = currentBatter.value;
+    gameCurrentInfo.value.runner_1b = { ...currentBatter.value, pitcher : { ... currentPitcher.value } };
     
     if(isAway.value) gameCurrentInfo.value.home_current_pitch_count = 0;
     else gameCurrentInfo.value.away_current_pitch_count = 0;
@@ -1491,10 +1515,12 @@ const setRunnerAdvanceFromFirst = async () => {
         if(gameCurrentInfo.value.runner_3b?.player_id){
             return alert("3루 주자가 있습니다.\n3루 주자를 이동시킨 후 진루를 기록해주세요.","error")
         }
+
+        const runner1B = { ...gameCurrentInfo.value.runner_1b }
         await setCurrentGamedayInfo('runner:1:4');
         gameCurrentInfo.value.runner_1b = null;
         
-        await setScore();
+        await setScore(runner1B);
     }
  
     await setCurrentGamedayInfo('lastInfo');
@@ -1516,21 +1542,22 @@ const setRunnerAdvanceFromSecond = async () => {
         if(gameCurrentInfo.value.runner_3b?.player_id){
             return alert("3루 주자가 있습니다.\n3루 주자를 이동시킨 후 진루를 기록해주세요.","error")
         }
-
+        const runner2B = { ...gameCurrentInfo.value.runner_2b}
         await setCurrentGamedayInfo('runner:2:4');
         gameCurrentInfo.value.runner_2b = null;
         
-        await setScore();
+        await setScore(runner2B);
     }
  
     await setCurrentGamedayInfo('lastInfo');
 }
 
 const setRunnerAdvanceFromThird = async () => {
+    const runner3B = { ...gameCurrentInfo.value.runner_3b }
     await setCurrentGamedayInfo('runner:3:4');
     gameCurrentInfo.value.runner_3b = null;
     
-    await setScore();
+    await setScore(runner3B);
  
     await setCurrentGamedayInfo('lastInfo');
 }
