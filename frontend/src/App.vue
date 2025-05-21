@@ -78,6 +78,42 @@ const isAdminRoute = computed(() => route.path.startsWith('/admin'))
                     </v-card-actions>
                 </v-card>
             </v-dialog>
+
+            <!-- Prompt Dialog -->
+            <v-dialog v-model="alert.promptDialog" width="500">
+                <v-card>
+                    <v-card-title class="text-h6">입력</v-card-title>
+                    <v-card-text>
+                        <div class="mb-2">{{ alert.promptMessage }}</div>
+
+                        <v-form @submit.prevent="alert.promptSubmit()">
+                            <v-text-field
+                                v-if="alert.promptType !== 'select'"
+                                v-model="alert.promptValue"
+                                :type="alert.promptType"
+                                :rules="alert.promptRules"
+                                hide-details="auto"
+                                autofocus
+                            />
+                            <v-select
+                                v-else
+                                v-model="alert.promptValue"
+                                :items="alert.promptOptions"
+                                :item-value="alert.promptItemValue"
+                                :item-title="alert.promptItemTitle"
+                                :rules="alert.promptRules"
+                                hide-details="auto"
+                            />
+                        </v-form>
+                    </v-card-text>
+                    <v-card-actions>
+                        <v-spacer />
+                        <v-btn text @click="alert.promptCancel()">취소</v-btn>
+                        <v-btn color="primary" text @click="alert.promptSubmit()">확인</v-btn>
+                    </v-card-actions>
+                </v-card>
+            </v-dialog>
+
         </template>
     </v-app>
 </template>

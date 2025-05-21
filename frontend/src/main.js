@@ -85,4 +85,8 @@ window.confirm = async (message) => {
     return await alertStore.Confirm(message);
 };
 
+window.prompt = async (message, defaultValue = '', options = {}) => {
+    return await alertStore.Prompt(message, defaultValue, options);
+};
+
 app.mount('#app');

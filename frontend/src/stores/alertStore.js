@@ -1,3 +1,4 @@
+// store/alertStore.js 또는 .ts
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 
@@ -10,6 +11,15 @@ export const useAlertStore = defineStore('alert', () => {
     const dialogMessage = ref('');
     let confirmResolve = null;
 
+    const promptDialog = ref(false);
+    const promptMessage = ref('');
+    const promptValue = ref('');
+    const promptType = ref('text'); // 'text', 'number', 'select'
+    const promptRules = ref([]);
+    const promptOptions = ref([]); // select 옵션용
+    const promptItemValue = ref(''); // select에서 사용할 value key
+    const promptItemTitle = ref(''); // select에서 사용할 title key
+
     function Alert(message, color = 'primary') {
         snackbarMessage.value = message;
         snackbarColor.value = color;
@@ -17,8 +27,23 @@ export const useAlertStore = defineStore('alert', () => {
     }
 
     function Confirm(message) {
-        dialogMessage.value = message.replaceAll("\n","<br>");
+        dialogMessage.value = message.replaceAll('\n', '<br>');
         dialog.value = true;
+
+        return new Promise((resolve) => {
+            confirmResolve = resolve;
+        });
+    }    
+
+    function Prompt(message, defaultValue = '', options = {}) {
+        promptMessage.value = message;
+        promptValue.value = defaultValue;
+        promptType.value = options.type || 'text';
+        promptRules.value = options.rules || [];
+        promptOptions.value = options.options || [];
+        promptItemValue.value = options.itemValue || 'value';
+        promptItemTitle.value = options.itemTitle || 'title';
+        promptDialog.value = true;
 
         return new Promise((resolve) => {
             confirmResolve = resolve;
@@ -35,15 +60,36 @@ export const useAlertStore = defineStore('alert', () => {
         if (confirmResolve) confirmResolve(false);
     }
 
+    function promptSubmit() {
+        promptDialog.value = false;
+        if (confirmResolve) confirmResolve(promptValue.value);
+    }
+
+    function promptCancel() {
+        promptDialog.value = false;
+        if (confirmResolve) confirmResolve(null);
+    }
+
     return {
         snackbar,
         snackbarMessage,
         snackbarColor,
         dialog,
         dialogMessage,
+        confirmYes,
+        confirmNo,
+        promptDialog,
+        promptMessage,
+        promptValue,
+        promptType,
+        promptRules,
+        promptOptions,
+        promptItemValue,
+        promptItemTitle,
+        promptSubmit,
+        promptCancel,
         Alert,
         Confirm,
-        confirmYes,
-        confirmNo
+        Prompt
     };
 });
