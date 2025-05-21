@@ -496,7 +496,7 @@ export const createKboCurrentInfo = async(req,res) => {
                     ball, out, away_pitch_count, home_pitch_count, away_current_pitch_count, 
                     home_current_pitch_count, away_batting_number, home_batting_number, away_score, home_score, 
                     runner_1b, runner_2b, runner_3b, batter_roster_id, pitcher_roster_id,
-                    created_at
+                    runner_1b_pitcher, runner_2b_pitcher, runner_3b_pitcher, created_at
                 )
                 VALUES 
                 (
@@ -504,7 +504,7 @@ export const createKboCurrentInfo = async(req,res) => {
                     $6, $7, $8, $9, $10,
                     $11, $12, $13, $14, $15,
                     $16, $17, $18, $19, $20,
-                    CURRENT_TIMESTAMP
+                    $21, $22, $23, CURRENT_TIMESTAMP
                 )
             `;
 
@@ -512,7 +512,8 @@ export const createKboCurrentInfo = async(req,res) => {
                 game_id, type, inning, inning_half, strike, 
                 ball, out, away_pitch_count, home_pitch_count, away_current_pitch_count, 
                 home_current_pitch_count, away_batting_number, home_batting_number, away_score, home_score, 
-                runner_1b?.roster_id, runner_2b?.roster_id, runner_3b?.roster_id, batter?.roster_id, pitcher?.roster_id
+                runner_1b?.roster_id, runner_2b?.roster_id, runner_3b?.roster_id, batter?.roster_id, pitcher?.roster_id,
+                runner_1b?.pitcher?.roster_id, runner_2b?.pitcher?.roster_id, runner_3b?.pitcher?.roster_id
             ])
         })
         
@@ -572,7 +573,26 @@ export const getKboCurrentInfo = async (req, res) => {
                             WHEN kgm.home_team_id = kgr1b.team_id THEN 'home'
                             ELSE 'away'
                         END,
-                    'updated_at', kgr1b.updated_at
+                    'updated_at', kgr1b.updated_at,
+                    'pitcher', jsonb_build_object(
+                        'batting_order', kgr1bp.batting_order,
+                        'created_at', kgr1bp.created_at,
+                        'game_id', kgcs.game_id,
+                        'player_id', kgr1bp.player_id,
+                        'player_name', pm1p.name,
+                        'position', kgr1bp.position,
+                        'replaced_by', kgr1bp.replaced_by,
+                        'replaced_player_name', pm1pr.name,
+                        'replaced_inning', kgr1bp.replaced_inning,
+                        'replaced_out', kgr1bp.replaced_out,
+                        'replaced_position', kgr1bp.replaced_position,
+                        'role', kgr1bp.role,
+                        'roster_id', kgr1bp.id,
+                        'team_id', kgr1bp.team_id,
+                        'team_name', tm1p.name,
+                        'team_type', CASE WHEN kgm.home_team_id = kgr1bp.team_id THEN 'home' ELSE 'away' END,
+                        'updated_at', kgr1bp.updated_at
+                    )
                 ) AS runner_1b,
                 -- 🏃 Runner 2B
                 jsonb_build_object(
@@ -596,7 +616,26 @@ export const getKboCurrentInfo = async (req, res) => {
                             WHEN kgm.home_team_id = kgr2b.team_id THEN 'home'
                             ELSE 'away'
                         END,
-                    'updated_at', kgr2b.updated_at
+                    'updated_at', kgr2b.updated_at,
+                    'pitcher', jsonb_build_object(
+                        'batting_order', kgr2bp.batting_order,
+                        'created_at', kgr2bp.created_at,
+                        'game_id', kgcs.game_id,
+                        'player_id', kgr2bp.player_id,
+                        'player_name', pm2p.name,
+                        'position', kgr2bp.position,
+                        'replaced_by', kgr2bp.replaced_by,
+                        'replaced_player_name', pm2pr.name,
+                        'replaced_inning', kgr2bp.replaced_inning,
+                        'replaced_out', kgr2bp.replaced_out,
+                        'replaced_position', kgr2bp.replaced_position,
+                        'role', kgr2bp.role,
+                        'roster_id', kgr2bp.id,
+                        'team_id', kgr2bp.team_id,
+                        'team_name', tm2p.name,
+                        'team_type', CASE WHEN kgm.home_team_id = kgr2bp.team_id THEN 'home' ELSE 'away' END,
+                        'updated_at', kgr2bp.updated_at
+                    )
                 ) AS runner_2b,
                 -- 🏃 Runner 3B
                 jsonb_build_object(
@@ -620,7 +659,26 @@ export const getKboCurrentInfo = async (req, res) => {
                             WHEN kgm.home_team_id = kgr3b.team_id THEN 'home'
                             ELSE 'away'
                         END,
-                    'updated_at', kgr3b.updated_at
+                    'updated_at', kgr3b.updated_at,
+                    'pitcher', jsonb_build_object(
+                        'batting_order', kgr3bp.batting_order,
+                        'created_at', kgr3bp.created_at,
+                        'game_id', kgcs.game_id,
+                        'player_id', kgr3bp.player_id,
+                        'player_name', pm3p.name,
+                        'position', kgr3bp.position,
+                        'replaced_by', kgr3bp.replaced_by,
+                        'replaced_player_name', pm3pr.name,
+                        'replaced_inning', kgr3bp.replaced_inning,
+                        'replaced_out', kgr3bp.replaced_out,
+                        'replaced_position', kgr3bp.replaced_position,
+                        'role', kgr3bp.role,
+                        'roster_id', kgr3bp.id,
+                        'team_id', kgr3bp.team_id,
+                        'team_name', tm3p.name,
+                        'team_type', CASE WHEN kgm.home_team_id = kgr3bp.team_id THEN 'home' ELSE 'away' END,
+                        'updated_at', kgr3bp.updated_at
+                    )
                 ) AS runner_3b,
                 -- ⚾ Batter
                 jsonb_build_object(
@@ -673,14 +731,26 @@ export const getKboCurrentInfo = async (req, res) => {
             FROM kbo_game_current_stats kgcs
                 LEFT JOIN kbo_game_master kgm ON kgm.id = kgcs.game_id
                 LEFT JOIN kbo_game_roster kgr1b ON kgr1b.id = kgcs.runner_1b
+                LEFT JOIN kbo_game_roster kgr1bp ON kgr1bp.id = kgcs.runner_1b_pitcher
+                LEFT JOIN kbo_player_master pm1p ON pm1p.id = kgr1bp.player_id
+                LEFT JOIN kbo_player_master pm1pr ON pm1pr.id = kgr1bp.replaced_by
+                LEFT JOIN kbo_team_master tm1p ON tm1p.id = kgr1bp.team_id
                 LEFT JOIN kbo_player_master pm1 ON pm1.id = kgr1b.player_id
                 LEFT JOIN kbo_player_master pm2 ON pm2.id = kgr1b.replaced_by
                 LEFT JOIN kbo_team_master tm1 ON tm1.id = kgr1b.team_id
                 LEFT JOIN kbo_game_roster kgr2b ON kgr2b.id = kgcs.runner_2b
+                LEFT JOIN kbo_game_roster kgr2bp ON kgr2bp.id = kgcs.runner_2b_pitcher
+                LEFT JOIN kbo_player_master pm2p ON pm2p.id = kgr2bp.player_id
+                LEFT JOIN kbo_player_master pm2pr ON pm2pr.id = kgr2bp.replaced_by
+                LEFT JOIN kbo_team_master tm2p ON tm2p.id = kgr2bp.team_id
                 LEFT JOIN kbo_player_master pm3 ON pm3.id = kgr2b.player_id
                 LEFT JOIN kbo_player_master pm4 ON pm4.id = kgr2b.replaced_by
                 LEFT JOIN kbo_team_master tm2 ON tm2.id = kgr2b.team_id
                 LEFT JOIN kbo_game_roster kgr3b ON kgr3b.id = kgcs.runner_3b
+                LEFT JOIN kbo_game_roster kgr3bp ON kgr3bp.id = kgcs.runner_3b_pitcher
+                LEFT JOIN kbo_player_master pm3p ON pm3p.id = kgr3bp.player_id
+                LEFT JOIN kbo_player_master pm3pr ON pm3pr.id = kgr3bp.replaced_by
+                LEFT JOIN kbo_team_master tm3p ON tm3p.id = kgr3bp.team_id
                 LEFT JOIN kbo_player_master pm5 ON pm5.id = kgr3b.player_id
                 LEFT JOIN kbo_player_master pm6 ON pm6.id = kgr3b.replaced_by
                 LEFT JOIN kbo_team_master tm3 ON tm3.id = kgr3b.team_id
