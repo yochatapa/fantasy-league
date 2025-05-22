@@ -1296,13 +1296,11 @@ const setStrike = async () => {
         gameCurrentInfo.value.away_pitch_count++;
         gameCurrentInfo.value.away_current_pitch_count++;
     }
-    
+    await setCurrentGamedayInfo('strike');
     if(current_strike<2){
         gameCurrentInfo.value.strike++;
-        await setCurrentGamedayInfo('strike');
     }
     else{
-        await setCurrentGamedayInfo('strike');
         await setCurrentGamedayInfo('out');
         await setBatterGameStats({
             at_bats : 1,
@@ -1349,15 +1347,13 @@ const setBall = async () => {
         gameCurrentInfo.value.away_pitch_count++;
         gameCurrentInfo.value.away_current_pitch_count++;
     }
-    
+    await setCurrentGamedayInfo('ball');
     if(current_ball<3){
         gameCurrentInfo.value.ball++;
-        await setCurrentGamedayInfo('ball');
     }
     else{
         gameCurrentInfo.value.strike = 0;
         gameCurrentInfo.value.ball = 0;
-        await setCurrentGamedayInfo('ball');
         await setBaseOnBalls();
         await setBatterGameStats({
             plate_appearances : 1,
@@ -1382,10 +1378,9 @@ const setFoul = async () => {
         gameCurrentInfo.value.away_pitch_count++;
         gameCurrentInfo.value.away_current_pitch_count++;
     }
-
+    await setCurrentGamedayInfo('foul');
     if(current_strike<2) gameCurrentInfo.value.strike++;
 
-    await setCurrentGamedayInfo('foul');
     await setCurrentGamedayInfo('lastInfo');
 }
 
