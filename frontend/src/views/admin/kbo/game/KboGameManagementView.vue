@@ -1489,7 +1489,7 @@ const setHit = async()=>{
                     options,
                     itemValue: 'id',
                     itemTitle: 'name',
-                    rules: [(v) => !!v || '이동할 베이스를 선택해주세요'],
+                    rules: [(v) => (v!==undefined && v!==null && v!=='') || '이동할 베이스를 선택해주세요'],
                 }
             );
 
@@ -1570,15 +1570,82 @@ const setHit = async()=>{
 }
 
 const setDouble = async () => {
-    if(gameCurrentInfo.value.runner_1b?.player_id){
-        return alert("1루 주자가 있습니다.\n1루 주자를 이동시킨 후 안타를 기록해주세요.","error")
+    if(gameCurrentInfo.value.runner_3b?.player_id){
+        if(gameCurrentInfo.value.runner_2b?.player_id || gameCurrentInfo.value.runner_1b?.player_id) 
+            await setRunnerAdvanceFromThird()
+        else{
+            const baseResult = await confirm("3루 주자를 홈베이스로 이동시키시겠습니까?");
+            if(baseResult) await setRunnerAdvanceFromThird()
+        }
+    }
+
+    if (gameCurrentInfo.value.runner_2b?.player_id) {
+        if(gameCurrentInfo.value.runner_3b?.player_id){
+            return alert("3루 주자를 이동시킨 후 2루타를 기록해주세요.","error");
+        }
+
+        if (gameCurrentInfo.value.runner_1b?.player_id) {
+            await setRunnerAdvanceFromSecond(2)
+        }else{
+            const options = [
+                { id: 1, name: '3루' },
+                { id: 2, name: '홈' },
+            ];
+
+            const baseResult = await prompt(
+                '2루 주자가 이동할 베이스를 선택해주세요.',
+                '',
+                {
+                    type: 'select',
+                    options,
+                    itemValue: 'id',
+                    itemTitle: 'name',
+                    rules: [(v) => !!v || '이동할 베이스를 선택해주세요'],
+                }
+            );
+
+            if (baseResult) await setRunnerAdvanceFromSecond(baseResult);
+        }
+    }
+
+    if (gameCurrentInfo.value.runner_1b?.player_id) {
+        if(gameCurrentInfo.value.runner_3b?.player_id){
+            return alert("3루 주자를 이동시킨 후 2루타를 기록해주세요.","error");
+        }
+
+        if(gameCurrentInfo.value.runner_2b?.player_id){
+            return alert("2루 주자를 이동시킨 후 2루타를 기록해주세요.","error");
+        }
+
+        const options = [
+            { id: 2, name: '3루' },
+            { id: 3, name: '홈' },
+        ];
+
+        const baseResult = await prompt(
+            '1루 주자가 이동할 베이스를 선택해주세요.',
+            '',
+            {
+                type: 'select',
+                options,
+                itemValue: 'id',
+                itemTitle: 'name',
+                rules: [(v) => !!v || '이동할 베이스를 선택해주세요'],
+            }
+        );
+
+        if (baseResult) {
+            await setRunnerAdvanceFromFirst(baseResult);
+        }
     }
 
     if(gameCurrentInfo.value.runner_2b?.player_id){
-        return alert("2루 주자가 있습니다.\n2루 주자를 이동시킨 후 안타를 기록해주세요.","error")
+        return alert("2루 주자를 이동시킨 후 2루타를 기록해주세요.","error");
     }
-    
-    if(!await confirm("2루타 기록 시 주자 및 타점 입력이 제한되며,\n다음 타석으로 진행됩니다.\n계속하시겠습니까?")) return;
+
+    if(gameCurrentInfo.value.runner_1b?.player_id){
+        return alert("1루 주자를 이동시킨 후 2루타를 기록해주세요.","error");
+    }
 
     if(isAway.value){
         gameCurrentInfo.value.home_pitch_count++;
