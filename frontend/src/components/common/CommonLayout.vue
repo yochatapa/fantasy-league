@@ -10,7 +10,7 @@
                         class="menu-item"
                         :class="{ active: selectedMainIndex === index }"
                     >
-                        {{ menu.name }} {{ console.log(route)??'' }}
+                        {{ menu.name }}
                     </router-link>
 
                     <div
