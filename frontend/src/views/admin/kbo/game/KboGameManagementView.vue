@@ -190,9 +190,9 @@
                                 <v-card class="content-card mt-3" elevation="2">
                                     <div class="content-wrapper" ref="contentCard">
                                         <!-- {{  console.log(JSON.stringify(gamedayInfo))??'' }} -->
-                                        <div v-for="(inningInfo, topBottom) in gamedayInfo[gameCurrentInfo.inning]" class="w-100">
+                                        <div v-for="(inningInfo, topBottom) in gamedayInfo[currentInning]" class="w-100">
                                             <div>
-                                                <span>{{gameCurrentInfo.inning}}회 {{ topBottom==='top'?"초":"말" }}</span>
+                                                <span>{{currentInning}}회 {{ topBottom==='top'?"초":"말" }}</span>
                                             </div>
                                             <div v-for="(outInfo, outcount) in inningInfo">
                                                 <div>
@@ -207,22 +207,28 @@
                                                     <div v-if="['strike','ball','foul'].includes(ballInfo.type)">
                                                         {{ ballInfo[topBottom==='top'?'home_current_pitch_count':'away_current_pitch_count'] }}구 : {{ ballInfo.type==='strike'?'스트라이크':(ballInfo.type==='ball'?'볼':(ballInfo.type==='foul'?'파울':'')) }}
                                                     </div>
-                                                    <div v-else-if="['out'].includes(ballInfo.type)">
-                                                        아웃
+                                                    <div v-else-if="['strikeout'].includes(ballInfo.type)" class="text-error">
+                                                        스트라이크 아웃
+                                                    </div>
+                                                    <div v-else-if="['flyout'].includes(ballInfo.type)" class="text-error">
+                                                        뜬공 아웃
+                                                    </div>
+                                                    <div v-else-if="['groundout'].includes(ballInfo.type)" class="text-error">
+                                                        땅볼 아웃
                                                     </div>
                                                     <div v-else-if="['baseonballs'].includes(ballInfo.type)">
                                                         볼넷
                                                     </div>
-                                                    <div v-else-if="['hit'].includes(ballInfo.type)">
+                                                    <div v-else-if="['hit'].includes(ballInfo.type)" class="text-primary">
                                                         안타 ({{ outInfo[0]?.batter?.replaced_player_name??outInfo[0]?.batter?.player_name }})
                                                     </div>
-                                                    <div v-else-if="['double'].includes(ballInfo.type)">
+                                                    <div v-else-if="['double'].includes(ballInfo.type)" class="text-primary">
                                                         2루타 ({{ outInfo[0]?.batter?.replaced_player_name??outInfo[0]?.batter?.player_name }})
                                                     </div>
-                                                    <div v-else-if="['triple'].includes(ballInfo.type)">
+                                                    <div v-else-if="['triple'].includes(ballInfo.type)" class="text-primary">
                                                         3루타 ({{ outInfo[0]?.batter?.replaced_player_name??outInfo[0]?.batter?.player_name }})
                                                     </div>
-                                                    <div v-else-if="['homerun'].includes(ballInfo.type)">
+                                                    <div v-else-if="['homerun'].includes(ballInfo.type)" class="text-primary">
                                                         홈런 ({{ outInfo[0]?.batter?.replaced_player_name??outInfo[0]?.batter?.player_name }})
                                                     </div>
                                                     <div v-else-if="ballInfo.type.startsWith('runner')">
@@ -344,8 +350,8 @@
                                         <v-chip class="text-primary" @click="setDouble">2루타</v-chip>
                                         <v-chip class="text-primary" @click="setTriple">3루타</v-chip>
                                         <v-chip class="text-primary" @click="setHomerun">홈런</v-chip>
-                                        <v-chip class="text-error" @click="">플라이 아웃</v-chip>
-                                        <v-chip class="text-error" @click="">땅볼 아웃</v-chip>
+                                        <v-chip class="text-error" @click="setFlyout">플라이 아웃</v-chip>
+                                        <v-chip class="text-error" @click="setGroundout">땅볼 아웃</v-chip>
                                         <v-chip class="text-error" @click="">더블 플레이</v-chip>
                                         <v-chip class="text-error" @click="">트리플 플레이</v-chip>
                                     </v-chip-group>
@@ -1180,7 +1186,6 @@ const deleteRoster = async(roster_id) => {
 
 const setCurrentInning = (inning) => {
     currentInning.value = inning;
-    gameCurrentInfo.value.inning = inning;
 }
 
 const setPlayerInfo = (teamFlag, orderIndex, replaceIndex) => {
@@ -1286,6 +1291,32 @@ const setPitcherGameStats = async (stats) => {
     }
 }
 
+const setOut = () => {
+    gameCurrentInfo.value.strike = 0;
+    gameCurrentInfo.value.ball = 0;
+    if(isAway.value) gameCurrentInfo.value.home_current_pitch_count = 0;
+    else gameCurrentInfo.value.away_current_pitch_count = 0;
+
+    if(isAway.value) gameCurrentInfo.value.away_batting_number++;
+    else gameCurrentInfo.value.home_batting_number++;
+    
+    const current_out = gameCurrentInfo.value.out;
+    
+    if(current_out<2) gameCurrentInfo.value.out++;
+    else{
+        gameCurrentInfo.value.out = 0;
+        const current_inning_half = gameCurrentInfo.value.inning_half;
+        gameCurrentInfo.value.runner_1b = null;
+        gameCurrentInfo.value.runner_2b = null;
+        gameCurrentInfo.value.runner_3b = null;
+        if(current_inning_half === "top") gameCurrentInfo.value.inning_half = "bottom"
+        else {
+            gameCurrentInfo.value.inning++;
+            gameCurrentInfo.value.inning_half = "top"
+        }
+    }
+}
+
 const setStrike = async () => {
     const current_strike = gameCurrentInfo.value.strike;
     if(isAway.value){
@@ -1301,7 +1332,7 @@ const setStrike = async () => {
         gameCurrentInfo.value.strike++;
     }
     else{
-        await setCurrentGamedayInfo('out');
+        await setCurrentGamedayInfo('strikeout');
         await setBatterGameStats({
             at_bats : 1,
             plate_appearances : 1,
@@ -1310,29 +1341,8 @@ const setStrike = async () => {
         await setPitcherGameStats({
             strikeouts : 1,
         });
-        gameCurrentInfo.value.strike = 0;
-        gameCurrentInfo.value.ball = 0;
-        if(isAway.value) gameCurrentInfo.value.home_current_pitch_count = 0;
-        else gameCurrentInfo.value.away_current_pitch_count = 0;
-
-        if(isAway.value) gameCurrentInfo.value.away_batting_number++;
-        else gameCurrentInfo.value.home_batting_number++;
         
-        const current_out = gameCurrentInfo.value.out;
-        
-        if(current_out<2) gameCurrentInfo.value.out++;
-        else{
-            gameCurrentInfo.value.out = 0;
-            const current_inning_half = gameCurrentInfo.value.inning_half;
-            gameCurrentInfo.value.runner_1b = null;
-            gameCurrentInfo.value.runner_2b = null;
-            gameCurrentInfo.value.runner_3b = null;
-            if(current_inning_half === "top") gameCurrentInfo.value.inning_half = "bottom"
-            else {
-                gameCurrentInfo.value.inning++;
-                gameCurrentInfo.value.inning_half = "top"
-            }
-        }
+        setOut();
     }
     await setCurrentGamedayInfo('lastInfo');
 }
@@ -1859,6 +1869,60 @@ const setRunnerAdvanceFromThird = async () => {
 
     gameCurrentInfo.value.runner_3b = null;
  
+    await setCurrentGamedayInfo('lastInfo');
+}
+
+const setFlyout = async () => {
+    if(!await confirm("플라이 아웃 기록 시 주자 및 타점 입력이 제한되며,\n다음 타석으로 진행됩니다.\n계속하시겠습니까?")) return;
+
+    if(isAway.value){
+        gameCurrentInfo.value.home_pitch_count++;
+        gameCurrentInfo.value.home_current_pitch_count++;
+    }
+    else{
+        gameCurrentInfo.value.away_pitch_count++;
+        gameCurrentInfo.value.away_current_pitch_count++;
+    }
+
+    await setCurrentGamedayInfo('flyout');
+    await setBatterGameStats({
+        at_bats : 1,
+        plate_appearances : 1,
+        flyouts : 1,
+    });
+    await setPitcherGameStats({
+        flyouts : 1,
+    });
+    
+    setOut();
+
+    await setCurrentGamedayInfo('lastInfo');
+}
+
+const setGroundout = async () => {
+    if(!await confirm("땅볼 아웃 기록 시 주자 및 타점 입력이 제한되며,\n다음 타석으로 진행됩니다.\n계속하시겠습니까?")) return;
+
+    if(isAway.value){
+        gameCurrentInfo.value.home_pitch_count++;
+        gameCurrentInfo.value.home_current_pitch_count++;
+    }
+    else{
+        gameCurrentInfo.value.away_pitch_count++;
+        gameCurrentInfo.value.away_current_pitch_count++;
+    }
+
+    await setCurrentGamedayInfo('groundout');
+    await setBatterGameStats({
+        at_bats : 1,
+        plate_appearances : 1,
+        groundouts : 1,
+    });
+    await setPitcherGameStats({
+        groundouts : 1,
+    });
+    
+    setOut();
+
     await setCurrentGamedayInfo('lastInfo');
 }
 
