@@ -6,11 +6,11 @@
                 <template v-for="(menu, index) in menus" :key="index">
                     <router-link
                         v-if="menu.subMenu.length === 0"
-                        :to="menu.path"
+                        :to="isActive(menu.path)?route.fullPath:menu.path"
                         class="menu-item"
                         :class="{ active: selectedMainIndex === index }"
                     >
-                        {{ menu.name }}
+                        {{ menu.name }} {{ console.log(route)??'' }}
                     </router-link>
 
                     <div
@@ -27,7 +27,7 @@
                             <router-link
                                 v-for="(subItem, subIndex) in menu.subMenu.filter((sub)=>sub.visible!==false)"
                                 :key="subIndex"
-                                :to="subItem.path"
+                                :to="isActive(subItem.path)?route.fullPath:subItem.path"
                                 class="dropdown-item"
                                 :class="{ active: selectedMainIndex === index && selectedSubIndex === subIndex }"
                             >
@@ -52,7 +52,7 @@
                     <v-list>
                         <v-list-item
                             v-if="menus.length === 1 && menus[0].subMenu.length === 0"
-                            :to="menus[0].path"
+                            :to="isActive(menus[0].path)?route.fullPath:menus[0].path"
                             :title="menus[0].name"
                             @click="drawer = false"
                             :class="{ active: isActive(menu.path) }"
@@ -61,7 +61,7 @@
                             <v-list-item
                                 v-if="menu.subMenu.length === 0"
                                 :title="menu.name"
-                                :to="menu.path"
+                                :to="isActive(menu.path)?route.fullPath:menu.path"
                                 @click="drawer = false"
                                 :class="{ active: isActive(menu.path) }"
                                 active-class=""
@@ -80,7 +80,7 @@
                                 <v-list-item
                                     v-for="(subItem, subIndex) in menu.subMenu.filter(sub => sub.visible !== false)"
                                     :key="`mobile-sub-menu-${index}-${subIndex}`"
-                                    :to="subItem.path"
+                                    :to="isActive(subItem.path)?route.fullPath:subItem.path"
                                     class="sub-menu-item"
                                     :class="{ active: selectedMainIndex === index && selectedSubIndex === subIndex }"
                                     :title="subItem.name"
@@ -133,7 +133,7 @@ const menus = props.menus;
 const isExpandedList = ref(Array(menus.filter(menu=>menu.subMenu).length).fill(false))
 
 const isActive = (path) => {
-    const cleanRoutePath = route?.path.split('?')[0];
+    const cleanRoutePath = route?.fullPath.split('?')[0];
     const cleanPath = path?.split('?')[0];
     return cleanRoutePath === cleanPath;
 };
