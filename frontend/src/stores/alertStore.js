@@ -19,6 +19,7 @@ export const useAlertStore = defineStore('alert', () => {
     const promptOptions = ref([]); // select 옵션용
     const promptItemValue = ref(''); // select에서 사용할 value key
     const promptItemTitle = ref(''); // select에서 사용할 title key
+    const promptMultiple = ref(false);
 
     function Alert(message, color = 'primary') {
         snackbarMessage.value = message;
@@ -37,12 +38,13 @@ export const useAlertStore = defineStore('alert', () => {
 
     function Prompt(message, defaultValue = '', options = {}) {
         promptMessage.value = message;
-        promptValue.value = defaultValue;
+        promptValue.value = defaultValue  || null;
         promptType.value = options.type || 'text';
         promptRules.value = options.rules || [];
         promptOptions.value = options.options || [];
         promptItemValue.value = options.itemValue || 'value';
         promptItemTitle.value = options.itemTitle || 'title';
+        promptMultiple.value = options.multiple || false;
         promptDialog.value = true;
 
         return new Promise((resolve) => {
@@ -91,6 +93,7 @@ export const useAlertStore = defineStore('alert', () => {
         promptItemValue,
         promptItemTitle,
         promptValid,
+        promptMultiple,
         promptSubmit,
         promptCancel,
         Alert,

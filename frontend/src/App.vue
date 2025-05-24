@@ -95,6 +95,7 @@ const isAdminRoute = computed(() => route.path.startsWith('/admin'))
                                     :rules="alert.promptRules"
                                     label="선택해주세요"
                                     dense
+                                    :multiple="alert.promptMultiple"
                                 />
                             </div>
                             <div v-else>
