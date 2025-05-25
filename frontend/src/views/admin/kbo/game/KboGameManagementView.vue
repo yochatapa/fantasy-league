@@ -224,6 +224,9 @@
                                                     <div v-else-if="['doubleplay'].includes(ballInfo.type)" class="text-error">
                                                         병살타
                                                     </div>
+                                                    <div v-else-if="['tripleplay'].includes(ballInfo.type)" class="text-error">
+                                                        삼중살
+                                                    </div>
                                                     <div v-else-if="ballInfo.type.startsWith('out')">
                                                         {{ ballInfo.type.split(':')[1] === '0'
                                                             ? '타자 주자 아웃'
@@ -250,7 +253,7 @@
                                                     <div v-else-if="ballInfo.type.startsWith('runner')">
                                                         {{ ballInfo.type.split(':')[1] }}루 -> {{ ballInfo.type.split(':')[2]==='4'?"홈":ballInfo.type.split(':')[2]+'루' }} 진루 ({{ ballInfo?.['runner_'+ballInfo.type.split(':')[1]+'b']?.replaced_player_name??ballInfo?.['runner_'+ballInfo.type.split(':')[1]+'b']?.player_name }})
                                                     </div>
-                                                    <div v-else-if="ballInfo.type.startsWith('score')">
+                                                    <div v-else-if="ballInfo.type.startsWith('score')" class="text-primary">
                                                         {{ ballInfo.type.split(':')[1] === "4" ? (outInfo[0]?.batter?.replaced_player_name??outInfo[0]?.batter?.player_name) : (ballInfo['runner_'+ballInfo.type.split(':')[1]+'b']?.replaced_player_name??ballInfo['runner_'+ballInfo.type.split(':')[1]+'b']?.player_name) }} 득점
                                                     </div>
                                                     <div v-else-if="['rbi'].includes(ballInfo.type)">
@@ -1981,7 +1984,7 @@ const setLinedrive = async () => {
 }
 
 const setDoublePlay = async() => {
-    if(gameCurrentInfo.value.out > 1) return alert("2아웃 이후에는 더블플레이가 불가능합니다.", "error")
+    if(gameCurrentInfo.value.out > 1) return alert("2아웃 이후에는 더블 플레이가 불가능합니다.", "error")
 
     const options = [
         { id: 0, name: '타자' },
@@ -1992,7 +1995,7 @@ const setDoublePlay = async() => {
 
     let outResult;
     
-    if(options.length === 1) return alert("주자가 없는 경우에 더블플레이가 불가능합니다.", "error");
+    if(options.length === 1) return alert("주자가 없는 경우에 더블 플레이가 불가능합니다.", "error");
     else if(options.length === 2){
         outResult = [options[0].id, options[1].id];
     }
@@ -2120,7 +2123,55 @@ const setDoublePlay = async() => {
 }
 
 const setTriplePlay = async() => {
+    if(gameCurrentInfo.value.out > 0) return alert("아웃 카운트가 있는 경우에에 트리플 플레이가 불가능합니다.", "error");
+
+    const options = [
+        { id: 0, name: '타자' },
+        ...(gameCurrentInfo.value.runner_1b?.player_id ? [{ id: 1, name: '1루' }] : []),
+        ...(gameCurrentInfo.value.runner_2b?.player_id ? [{ id: 2, name: '2루' }] : []),
+        ...(gameCurrentInfo.value.runner_3b?.player_id ? [{ id: 3, name: '3루' }] : []),
+    ];
     
+    let outResult;
+
+    if(options.length < 3) return alert("주자가 2명 미만일 경우에 트리플 플레이가 불가능합니다.", "error");
+    else if(options.length === 3){
+        outResult = [options[0].id,options[1].id,options[2].id]
+    }else{
+        outResult = await prompt(
+            '아웃 될 주자를 선택해주세요.',
+            '',
+            {
+                type: 'select',
+                options,
+                itemValue: 'id',
+                itemTitle: 'name',
+                rules: [(v) => (v!==null && v!==undefined && v.length === 3) || '아웃 될 주자를 3명 선택해주세요'],
+                multiple : true
+            }
+        );
+
+        if(!outResult) return alert("아웃 될 주자가 선택되지 않았습니다.","error")
+    }    
+
+    outResult = outResult.toSorted((a,b)=>b-a);
+
+    await setCurrentGamedayInfo('tripleplay');
+    await setBatterGameStats({
+        at_bats : 1,
+        plate_appearances : 1,
+        triple_play : 1,
+    });
+    await setPitcherGameStats({
+        triple_play : 1,
+    });
+
+    for(let outNum of outResult){
+        await setCurrentGamedayInfo('out:'+outNum);
+        setOut(false);
+    }
+
+    await setCurrentGamedayInfo('lastInfo');
 }
 
 onMounted(async ()=>{
