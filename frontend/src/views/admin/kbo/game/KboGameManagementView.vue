@@ -259,6 +259,12 @@
                                                     <div v-else-if="['rbi'].includes(ballInfo.type)">
                                                         {{ ballInfo?.batter?.replaced_player_name??ballInfo?.batter?.player_name }} 타점
                                                     </div>
+                                                    <div v-else-if="ballInfo.type.startsWith('stolenBase')">
+                                                        {{ ballInfo.type.split(':')[1] === "4"?"홈":ballInfo.type.split(':')[1]+"루"}} 도루 ({{ ballInfo['runner_'+(Number(ballInfo.type.split(':')[1])-1)+'b']?.replaced_player_name??ballInfo['runner_'+(Number(ballInfo.type.split(':')[1])-1)+'b']?.player_name }})
+                                                    </div>
+                                                    <div v-else-if="ballInfo.type.startsWith('caughtStealing')" class="text-error">
+                                                        {{ ballInfo.type.split(':')[1] === "4"?"홈":ballInfo.type.split(':')[1]+"루"}} 도루 실패 ({{ ballInfo['runner_'+(Number(ballInfo.type.split(':')[1])-1)+'b']?.replaced_player_name??ballInfo['runner_'+(Number(ballInfo.type.split(':')[1])-1)+'b']?.player_name }})
+                                                    </div>
                                                 </div>
                                             </div>
                                             <br>
@@ -378,7 +384,7 @@
                                 </v-col>
                                 <v-col cols="4">
                                     <div class="mb-3">
-                                        <span class="text-subtitle-1 font-weight-bold">진루 및 희생</span>
+                                        <span class="text-subtitle-1 font-weight-bold">희생타</span>
                                     </div>
                                     <v-chip-group>
                                         <v-chip>희생플라이</v-chip>
@@ -436,7 +442,8 @@
                                         1루 주자 : {{ gameCurrentInfo.runner_1b.replaced_player_name??gameCurrentInfo.runner_1b.player_name }}
                                         <!-- 기록 표시 -->
                                         <v-chip-group multiple column class="mt-2" >
-                                            <v-chip>도루</v-chip>
+                                            <v-chip @click="setStolenBaseToSecond">도루</v-chip>
+                                            <v-chip @click="setCaughtStealingSecondBase">도루실패</v-chip>
                                             <div class="d-flex" style="gap:8px">
                                                 <v-select
                                                     density="compact"
@@ -449,7 +456,7 @@
                                                     item-title="name"
                                                     item-value="code"
                                                 ></v-select>
-                                                <v-chip class="d-flex align-center justift-center" @click="setRunnerAdvanceFromFirst">
+                                                <v-chip class="d-flex align-center justift-center" @click="setRunnerAdvanceFromFirst(runner_1b)">
                                                     진루
                                                 </v-chip>
                                             </div>
@@ -461,7 +468,8 @@
                                         2루 주자 : {{ gameCurrentInfo.runner_2b.replaced_player_name??gameCurrentInfo.runner_2b.player_name }}
                                         <!-- 기록 표시 -->
                                         <v-chip-group multiple column class="mt-2" >
-                                            <v-chip>도루</v-chip>
+                                            <v-chip @click="setStolenBaseToThird">도루</v-chip>
+                                            <v-chip @click="setCaughtStealingThirdBase">도루실패</v-chip>
                                             <div class="d-flex" style="gap:8px">
                                                 <v-select
                                                     density="compact"
@@ -473,7 +481,7 @@
                                                     item-title="name"
                                                     item-value="code"
                                                 ></v-select>
-                                                <v-chip class="d-flex align-center justift-center" @click="setRunnerAdvanceFromSecond">
+                                                <v-chip class="d-flex align-center justift-center" @click="setRunnerAdvanceFromSecond(runner_2b)">
                                                     진루
                                                 </v-chip>
                                             </div>
@@ -485,7 +493,8 @@
                                         3루 주자 : {{ gameCurrentInfo.runner_3b.replaced_player_name??gameCurrentInfo.runner_3b.player_name }}
                                         <!-- 기록 표시 -->
                                         <v-chip-group multiple column class="mt-2" >
-                                            <v-chip>도루</v-chip>
+                                            <v-chip @click="setStolenBaseToHome">도루</v-chip>
+                                            <v-chip @click="setCaughtStealingHomeBase">도루실패</v-chip>
                                             <v-chip @click="setRunnerAdvanceFromThird">
                                                 1베이스 진루
                                             </v-chip>
@@ -1270,14 +1279,14 @@ const setCurrentGamedayInfo = async (type) => {
     }
 }
 
-const setBatterGameStats = async (stats) => {
+const setBatterGameStats = async (stats, player_id) => {
     try {
         const response = await commonFetch(`/api/admin/game/batter/stats`,{
             method : 'POST'
             , body : {
                 stats
                 , game_id : selectedMatchup.value.game_id
-                , player_id : currentBatter.value.player_id
+                , player_id : player_id??currentBatter.value.player_id
                 , team_id : currentBatter.value.team_id
                 , opponent_team_id : currentPitcher.value.team_id
                 , batting_order : currentBatter.value.batting_order
@@ -1466,6 +1475,10 @@ const setScore = async (scoreBase, rbiConfirmYn = true) => {
     
     if(gameCurrentInfo.value.inning_half === "top") gameCurrentInfo.value.away_score++;
     else gameCurrentInfo.value.home_score++;
+
+    await setBatterGameStats({
+        runs : 1,
+    }, runnerInfo.player_id);
 
     if(rbiConfirmYn){
         if(await confirm(`${runnerInfo.replaced_player_name??runnerInfo.player_name}의 득점을 ${currentBatter.value.replaced_player_name??currentBatter.value.player_name}의 타점으로 등록하시겠습니까?`)){
@@ -1825,8 +1838,8 @@ const setHomerun = async () => {
 }
 
 const setRunnerAdvanceFromFirst = async (runValue) => {
-    if(!runValue) runValue = runner_1b.value;
-
+    if(runValue === null || runValue === undefined) runValue = runner_1b.value;
+    
     if(runValue === null || runValue === undefined){
         return alert("주자의 진루 거리를 선택해주세요");
     }
@@ -1867,7 +1880,7 @@ const setRunnerAdvanceFromFirst = async (runValue) => {
 }
 
 const setRunnerAdvanceFromSecond = async (runValue) => {
-    if(!runValue) runValue = runner_2b.value
+    if(runValue === null || runValue === undefined) runValue = runner_2b.value
     
     if(runValue === null || runValue === undefined){
         return alert("주자의 진루 거리를 선택해주세요");
@@ -1993,6 +2006,8 @@ const setDoublePlay = async() => {
         ...(gameCurrentInfo.value.runner_3b?.player_id ? [{ id: 3, name: '3루' }] : []),
     ];
 
+    const curIsAway = isAway.value;
+
     let outResult;
     
     if(options.length === 1) return alert("주자가 없는 경우에 더블 플레이가 불가능합니다.", "error");
@@ -2107,7 +2122,7 @@ const setDoublePlay = async() => {
         setOut(false);
     }
 
-    if(isAway.value){
+    if(curIsAway){
         gameCurrentInfo.value.home_pitch_count++;
         gameCurrentInfo.value.home_current_pitch_count++;
     }
@@ -2116,7 +2131,7 @@ const setDoublePlay = async() => {
         gameCurrentInfo.value.away_current_pitch_count++;
     }
 
-    if(isAway.value) gameCurrentInfo.value.away_batting_number++;
+    if(curIsAway) gameCurrentInfo.value.away_batting_number++;
     else gameCurrentInfo.value.home_batting_number++;
 
     await setCurrentGamedayInfo('lastInfo');
@@ -2131,6 +2146,8 @@ const setTriplePlay = async() => {
         ...(gameCurrentInfo.value.runner_2b?.player_id ? [{ id: 2, name: '2루' }] : []),
         ...(gameCurrentInfo.value.runner_3b?.player_id ? [{ id: 3, name: '3루' }] : []),
     ];
+
+    const curIsAway = isAway.value;
     
     let outResult;
 
@@ -2170,6 +2187,97 @@ const setTriplePlay = async() => {
         await setCurrentGamedayInfo('out:'+outNum);
         setOut(false);
     }
+
+    if(curIsAway){
+        gameCurrentInfo.value.home_pitch_count++;
+        gameCurrentInfo.value.home_current_pitch_count++;
+    }
+    else{
+        gameCurrentInfo.value.away_pitch_count++;
+        gameCurrentInfo.value.away_current_pitch_count++;
+    }
+
+    if(curIsAway) gameCurrentInfo.value.away_batting_number++;
+    else gameCurrentInfo.value.home_batting_number++;
+
+    await setCurrentGamedayInfo('lastInfo');
+}
+
+
+const setStolenBaseToSecond = async () => {
+    if(gameCurrentInfo.value.runner_2b?.player_id) return alert("2루 주자가 있는 경우에는 2루 도루 시도를 할 수 없습니다.", "error");
+
+    await setCurrentGamedayInfo('stolenBase:2');
+    await setBatterGameStats({
+        stolen_bases : 1,
+    },gameCurrentInfo.value.runner_1b.player_id);
+
+    gameCurrentInfo.value.runner_2b = { ...gameCurrentInfo.value.runner_1b };
+    gameCurrentInfo.value.runner_1b = null;
+
+    await setCurrentGamedayInfo('lastInfo');
+}
+
+const setStolenBaseToThird = async () => {
+    if(gameCurrentInfo.value.runner_3b?.player_id) return alert("3루 주자가 있는 경우에는 3루 도루 시도를 할 수 없습니다.", "error");
+
+    await setCurrentGamedayInfo('stolenBase:3');
+    await setBatterGameStats({
+        stolen_bases : 1,
+    },gameCurrentInfo.value.runner_2b.player_id);
+
+    gameCurrentInfo.value.runner_3b = { ...gameCurrentInfo.value.runner_2b };
+    gameCurrentInfo.value.runner_2b = null;
+
+    await setCurrentGamedayInfo('lastInfo');
+}
+
+const setStolenBaseToHome = async () => {
+    await setCurrentGamedayInfo('stolenBase:4');
+    await setBatterGameStats({
+        stolen_bases : 1,
+    },gameCurrentInfo.value.runner_3b.player_id);
+
+    await setScore(3,false);
+
+    gameCurrentInfo.value.runner_3b = null;
+
+    await setCurrentGamedayInfo('lastInfo');
+}
+
+const setCaughtStealingSecondBase = async () => {
+    if(gameCurrentInfo.value.runner_2b?.player_id) return alert("2루 주자가 있는 경우에는 2루 도루 시도를 할 수 없습니다.", "error");
+
+    await setCurrentGamedayInfo('caughtStealing:2');
+    await setBatterGameStats({
+        caught_stealings : 1,
+    },gameCurrentInfo.value.runner_1b.player_id);
+
+    gameCurrentInfo.value.runner_1b = null;
+
+    await setCurrentGamedayInfo('lastInfo');
+}
+
+const setCaughtStealingThirdBase = async () => {
+    if(gameCurrentInfo.value.runner_3b?.player_id) return alert("3루 주자가 있는 경우에는 3루 도루 시도도를 할 수 없습니다.", "error");
+
+    await setCurrentGamedayInfo('caughtStealing:3');
+    await setBatterGameStats({
+        caught_stealings : 1,
+    },gameCurrentInfo.value.runner_2b.player_id);
+
+    gameCurrentInfo.value.runner_2b = null;
+
+    await setCurrentGamedayInfo('lastInfo');
+}
+
+const setCaughtStealingHomeBase = async () => {
+    await setCurrentGamedayInfo('caughtStealing:4');
+    await setBatterGameStats({
+        caught_stealings : 1,
+    },gameCurrentInfo.value.runner_3b.player_id);
+
+    gameCurrentInfo.value.runner_3b = null;
 
     await setCurrentGamedayInfo('lastInfo');
 }
