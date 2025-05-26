@@ -1347,7 +1347,7 @@ const setOut = async (battingNumberYn=true, confirmYn=true) => {
     else gameCurrentInfo.value.away_current_pitch_count = 0;
 
     if(confirmYn){
-        if(!await confirm(`※ 현재 타석을 종료하시겠습니까?\n\n주자 및 타점 입력이 제한되며,\n다음 타석으로 진행됩니다.`)){
+        if(!await confirm(`※ ${currentBatter.value.replaced_player_name??currentBatter.value.player_name}의 타석을 종료하시겠습니까?\n\n주자 및 타점 입력이 제한되며,\n다음 타석으로 진행됩니다.`)){
             isAvailableStat.value = false;
             return;
         }
@@ -1377,7 +1377,7 @@ const setOut = async (battingNumberYn=true, confirmYn=true) => {
 }
 
 const setForceNonOut = async () => {
-    if(!await confirm("※ 선수 아웃처리가 안되었을 때 사용해주세요.\n\n타석이 종료됩니다.")) return;
+    if(!await confirm("타석이 종료됩니다.")) return;
     
     if(isAway.value) gameCurrentInfo.value.away_batting_number++;
     else gameCurrentInfo.value.home_batting_number++;
@@ -1656,7 +1656,7 @@ const setHit = async()=>{
     if(isAway.value) gameCurrentInfo.value.home_current_pitch_count = 0;
     else gameCurrentInfo.value.away_current_pitch_count = 0;
 
-    if(!await confirm(`※ 현재 타석을 종료하시겠습니까?\n\n주자 및 타점 입력이 제한되며,\n다음 타석으로 진행됩니다.`)){
+    if(!await confirm(`※ ${currentBatter.value.replaced_player_name??currentBatter.value.player_name}의 타석을 종료하시겠습니까?\n\n주자 및 타점 입력이 제한되며,\n다음 타석으로 진행됩니다.`)){
         isAvailableStat.value = false;
         await setCurrentGamedayInfo('lastInfo');
         return;
@@ -1775,7 +1775,7 @@ const setDouble = async () => {
     if(isAway.value) gameCurrentInfo.value.home_current_pitch_count = 0;
     else gameCurrentInfo.value.away_current_pitch_count = 0;
 
-    if(!await confirm(`※ 현재 타석을 종료하시겠습니까?\n\n주자 및 타점 입력이 제한되며,\n다음 타석으로 진행됩니다.`)){
+    if(!await confirm(`※ ${currentBatter.value.replaced_player_name??currentBatter.value.player_name}의 타석을 종료하시겠습니까?\n\n주자 및 타점 입력이 제한되며,\n다음 타석으로 진행됩니다.`)){
         isAvailableStat.value = false;
         await setCurrentGamedayInfo('lastInfo');
         return;
@@ -1829,7 +1829,7 @@ const setTriple = async () => {
     if(isAway.value) gameCurrentInfo.value.home_current_pitch_count = 0;
     else gameCurrentInfo.value.away_current_pitch_count = 0;
 
-    if(!await confirm(`※ 현재 타석을 종료하시겠습니까?\n\n주자 및 타점 입력이 제한되며,\n다음 타석으로 진행됩니다.`)){
+    if(!await confirm(`※ ${currentBatter.value.replaced_player_name??currentBatter.value.player_name}의 타석을 종료하시겠습니까?\n\n주자 및 타점 입력이 제한되며,\n다음 타석으로 진행됩니다.`)){
         isAvailableStat.value = false;
         await setCurrentGamedayInfo('lastInfo');
         return;
