@@ -211,7 +211,8 @@
                                                         스트라이크 아웃
                                                     </div>
                                                     <div v-else-if="['flyout'].includes(ballInfo.type)" class="text-error">
-                                                        뜬공 아웃</div>
+                                                        플라이 아웃
+                                                    </div>
                                                     <div v-else-if="['groundout'].includes(ballInfo.type)" class="text-error">
                                                         땅볼 아웃
                                                     </div>
@@ -264,6 +265,15 @@
                                                     </div>
                                                     <div v-else-if="ballInfo.type.startsWith('caughtStealing')" class="text-error">
                                                         {{ ballInfo.type.split(':')[1] === "4"?"홈":ballInfo.type.split(':')[1]+"루"}} 도루 실패 ({{ ballInfo['runner_'+(Number(ballInfo.type.split(':')[1])-1)+'b']?.replaced_player_name??ballInfo['runner_'+(Number(ballInfo.type.split(':')[1])-1)+'b']?.player_name }})
+                                                    </div>
+                                                    <div v-else-if="ballInfo.type.startsWith('pickoff')" class="text-error">
+                                                        {{ ballInfo.type.split(':')[1] === "4"?"홈":ballInfo.type.split(':')[1]+"루"}} 주자 견제사 ({{ ballInfo['runner_'+ballInfo.type.split(':')[1]+'b']?.replaced_player_name??ballInfo['runner_'+ballInfo.type.split(':')[1]+'b']?.player_name }})
+                                                    </div>
+                                                    <div v-else-if="ballInfo.type.startsWith('sacrificeFly')" class="text-secondary">
+                                                        희생플라이 ({{ outInfo[0]?.batter?.replaced_player_name??outInfo[0]?.batter?.player_name }})
+                                                    </div>
+                                                    <div v-else-if="ballInfo.type.startsWith('sacrificeBunt')" class="text-secondary">
+                                                        희생번트 ({{ outInfo[0]?.batter?.replaced_player_name??outInfo[0]?.batter?.player_name }})
                                                     </div>
                                                 </div>
                                             </div>
@@ -326,11 +336,17 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        <div>
-                                            <v-chip-group>
+                                        <div v-if="isAvailableStat">
+                                            <v-chip-group column>
                                                 <v-chip class="text-orange cursor-pointer" @click="setStrike">스트라이크</v-chip>
                                                 <v-chip class="text-green cursor-pointer" @click="setBall">볼</v-chip>
                                                 <v-chip class="text-brown cursor-pointer" @click="setFoul">파울</v-chip>
+                                            </v-chip-group>
+                                        </div>
+                                        <div v-if="!isAvailableStat">
+                                            <v-chip-group column>
+                                                <v-chip class="text-primary cursor-pointer" @click="setForceNonOut">타석 종료 (아웃X)</v-chip>
+                                                <v-chip class="text-error cursor-pointer" @click="setForceOut">타석 종료 (아웃O)</v-chip>
                                             </v-chip-group>
                                         </div>
                                     </div>
@@ -347,7 +363,7 @@
                                     </div>
                                     <div class="mt-1">
                                         포지션: {{ currentBatter?.position }}
-                                    </div>
+                                    </div>                                    
                                 </v-col>
                                 <v-divider vertical></v-divider>
                                 <v-col cols="6" md="4">
@@ -366,7 +382,7 @@
                             </v-row>                                
                             <v-divider class="mt-4 mb-4"></v-divider>
                             <v-row>
-                                <v-col cols="12">
+                                <v-col cols="12" v-if="isAvailableStat">
                                     <div class="mb-3">
                                         <span class="text-subtitle-1 font-weight-bold">타격 결과</span>
                                     </div>
@@ -382,13 +398,13 @@
                                         <v-chip class="text-error" @click="setTriplePlay">트리플 플레이</v-chip>
                                     </v-chip-group>
                                 </v-col>
-                                <v-col cols="4">
+                                <v-col cols="4" v-if="isAvailableStat">
                                     <div class="mb-3">
                                         <span class="text-subtitle-1 font-weight-bold">희생타</span>
                                     </div>
                                     <v-chip-group>
-                                        <v-chip>희생플라이</v-chip>
-                                        <v-chip>희생번트</v-chip>
+                                        <v-chip class="text-secondary" @click="setSacrificeFly">희생플라이</v-chip>
+                                        <v-chip class="text-secondary" @click="setSacrificeBunt">희생번트</v-chip>
                                     </v-chip-group>
                                 </v-col>
                                 <v-col cols="4">
@@ -406,7 +422,7 @@
                                         </div>
                                     </v-chip-group>
                                 </v-col>
-                                <v-col cols="4">
+                                <v-col cols="4" v-if="isAvailableStat">
                                     <div class="mb-3">
                                         <span class="text-subtitle-1 font-weight-bold">사구</span>
                                     </div>
@@ -460,7 +476,7 @@
                                                     진루
                                                 </v-chip>
                                             </div>
-                                            <v-chip>견제사</v-chip>
+                                            <v-chip @click="setPickoffFromFirst">견제사</v-chip>
                                             <v-chip>아웃</v-chip>
                                         </v-chip-group>
                                     </div>
@@ -485,7 +501,7 @@
                                                     진루
                                                 </v-chip>
                                             </div>
-                                            <v-chip>견제사</v-chip>
+                                            <v-chip @click="setPickoffFromSecond">견제사</v-chip>
                                             <v-chip>아웃</v-chip>
                                         </v-chip-group>
                                     </div>
@@ -498,7 +514,7 @@
                                             <v-chip @click="setRunnerAdvanceFromThird">
                                                 1베이스 진루
                                             </v-chip>
-                                            <v-chip>견제사</v-chip>
+                                            <v-chip @click="setPickoffFromThird">견제사</v-chip>
                                             <v-chip>아웃</v-chip>
                                         </v-chip-group>
                                     </div>
@@ -758,6 +774,7 @@ import { formatDate } from '@/utils/common/dateUtils.js';
 import { encryptData, decryptData } from '@/utils/common/crypto.js';
 import BaseballStadium from '@/components/kbo/BaseballStadium.vue';
 import { useRouter, useRoute } from 'vue-router';
+import { fa } from 'vuetify/locale';
 
 const router = useRouter();
 const route = useRoute();
@@ -859,6 +876,8 @@ const gameCurrentInfo = ref({
 });
 
 const isAway = computed(()=>gameCurrentInfo.value.inning_half === 'top');
+
+const isAvailableStat = ref(true);
 
 const currentBatter = computed(()=>{
     const awayHome = isAway.value?'away':'home';
@@ -1321,11 +1340,18 @@ const setPitcherGameStats = async (stats) => {
     }
 }
 
-const setOut = (battingNumberYn=true) => {
+const setOut = async (battingNumberYn=true, confirmYn=true) => {
     gameCurrentInfo.value.strike = 0;
     gameCurrentInfo.value.ball = 0;
     if(isAway.value) gameCurrentInfo.value.home_current_pitch_count = 0;
     else gameCurrentInfo.value.away_current_pitch_count = 0;
+
+    if(confirmYn){
+        if(!await confirm(`※ 현재 타석을 종료하시겠습니까?\n\n주자 및 타점 입력이 제한되며,\n다음 타석으로 진행됩니다.`)){
+            isAvailableStat.value = false;
+            return;
+        }
+    }
 
     if(battingNumberYn){
         if(isAway.value) gameCurrentInfo.value.away_batting_number++;
@@ -1348,6 +1374,27 @@ const setOut = (battingNumberYn=true) => {
             gameCurrentInfo.value.inning_half = "top"
         }
     }
+}
+
+const setForceNonOut = async () => {
+    if(!await confirm("※ 선수 아웃처리가 안되었을 때 사용해주세요.\n\n타석이 종료됩니다.")) return;
+    
+    if(isAway.value) gameCurrentInfo.value.away_batting_number++;
+    else gameCurrentInfo.value.home_batting_number++;
+
+    isAvailableStat.value = true;
+
+    await setCurrentGamedayInfo('lastInfo');
+}
+
+const setForceOut = async () => {
+    if(!await confirm("※ 선수 아웃처리가 안되었을 때 사용해주세요.\n\n타석이 종료되고 아웃카운트가 올라갑니다.")) return;
+    
+    await setOut(true,false)
+
+    isAvailableStat.value = true;
+
+    await setCurrentGamedayInfo('lastInfo');
 }
 
 const setStrike = async () => {
@@ -1377,7 +1424,7 @@ const setStrike = async () => {
             strikeouts : 1,
         });
         
-        setOut();
+        await setOut();
     }
     await setCurrentGamedayInfo('lastInfo');
 }
@@ -1506,16 +1553,14 @@ const setScore = async (scoreBase, rbiConfirmYn = true) => {
 }
 
 const setHit = async()=>{
-    let thirdBaseResult,secondBaseResult, firstBaseResult;
-
     if(gameCurrentInfo.value.runner_3b?.player_id){
         if(gameCurrentInfo.value.runner_3b?.player_id
             && gameCurrentInfo.value.runner_2b?.player_id
             && gameCurrentInfo.value.runner_1b?.player_id
         ) await setRunnerAdvanceFromThird()
         else{
-            thirdBaseResult = await confirm("3루 주자를 홈베이스로 이동시키시겠습니까?");
-            if(thirdBaseResult) await setRunnerAdvanceFromThird()
+            const baseResult = await confirm("3루 주자를 홈베이스로 이동시키시겠습니까?");
+            if(baseResult) await setRunnerAdvanceFromThird()
         }
     }
 
@@ -1610,6 +1655,12 @@ const setHit = async()=>{
     
     if(isAway.value) gameCurrentInfo.value.home_current_pitch_count = 0;
     else gameCurrentInfo.value.away_current_pitch_count = 0;
+
+    if(!await confirm(`※ 현재 타석을 종료하시겠습니까?\n\n주자 및 타점 입력이 제한되며,\n다음 타석으로 진행됩니다.`)){
+        isAvailableStat.value = false;
+        await setCurrentGamedayInfo('lastInfo');
+        return;
+    }
 
     if(isAway.value) gameCurrentInfo.value.away_batting_number++;
     else gameCurrentInfo.value.home_batting_number++;
@@ -1724,6 +1775,12 @@ const setDouble = async () => {
     if(isAway.value) gameCurrentInfo.value.home_current_pitch_count = 0;
     else gameCurrentInfo.value.away_current_pitch_count = 0;
 
+    if(!await confirm(`※ 현재 타석을 종료하시겠습니까?\n\n주자 및 타점 입력이 제한되며,\n다음 타석으로 진행됩니다.`)){
+        isAvailableStat.value = false;
+        await setCurrentGamedayInfo('lastInfo');
+        return;
+    }
+
     if(isAway.value) gameCurrentInfo.value.away_batting_number++;
     else gameCurrentInfo.value.home_batting_number++;
 
@@ -1771,6 +1828,12 @@ const setTriple = async () => {
     
     if(isAway.value) gameCurrentInfo.value.home_current_pitch_count = 0;
     else gameCurrentInfo.value.away_current_pitch_count = 0;
+
+    if(!await confirm(`※ 현재 타석을 종료하시겠습니까?\n\n주자 및 타점 입력이 제한되며,\n다음 타석으로 진행됩니다.`)){
+        isAvailableStat.value = false;
+        await setCurrentGamedayInfo('lastInfo');
+        return;
+    }
 
     if(isAway.value) gameCurrentInfo.value.away_batting_number++;
     else gameCurrentInfo.value.home_batting_number++;
@@ -1916,7 +1979,7 @@ const setRunnerAdvanceFromThird = async () => {
 }
 
 const setFlyout = async () => {
-    if(!await confirm("플라이 아웃 기록 시 주자 및 타점 입력이 제한되며,\n다음 타석으로 진행됩니다.\n계속하시겠습니까?")) return;
+    // if(!await confirm("플라이 아웃 기록 시 주자 및 타점 입력이 제한되며,\n다음 타석으로 진행됩니다.\n계속하시겠습니까?")) return;
 
     if(isAway.value){
         gameCurrentInfo.value.home_pitch_count++;
@@ -1937,13 +2000,13 @@ const setFlyout = async () => {
         flyouts : 1,
     });
     
-    setOut();
+    await setOut();
 
     await setCurrentGamedayInfo('lastInfo');
 }
 
 const setGroundout = async () => {
-    if(!await confirm("땅볼 아웃 기록 시 주자 및 타점 입력이 제한되며,\n다음 타석으로 진행됩니다.\n계속하시겠습니까?")) return;
+    // if(!await confirm("땅볼 아웃 기록 시 주자 및 타점 입력이 제한되며,\n다음 타석으로 진행됩니다.\n계속하시겠습니까?")) return;
 
     await setCurrentGamedayInfo('groundout');
     await setBatterGameStats({
@@ -1964,13 +2027,13 @@ const setGroundout = async () => {
         gameCurrentInfo.value.away_current_pitch_count++;
     }
     
-    setOut();
+    await setOut();
 
     await setCurrentGamedayInfo('lastInfo');
 }
 
 const setLinedrive = async () => {
-    if(!await confirm("직선타 기록 시 주자 및 타점 입력이 제한되며,\n다음 타석으로 진행됩니다.\n계속하시겠습니까?")) return;
+    // if(!await confirm("직선타 기록 시 주자 및 타점 입력이 제한되며,\n다음 타석으로 진행됩니다.\n계속하시겠습니까?")) return;
 
     await setCurrentGamedayInfo('linedrive');
     await setBatterGameStats({
@@ -1991,13 +2054,14 @@ const setLinedrive = async () => {
         gameCurrentInfo.value.away_current_pitch_count++;
     }
     
-    setOut();
+    await setOut();
 
     await setCurrentGamedayInfo('lastInfo');
 }
 
 const setDoublePlay = async() => {
-    if(gameCurrentInfo.value.out > 1) return alert("2아웃 이후에는 더블 플레이가 불가능합니다.", "error")
+    const curOut = gameCurrentInfo.value.out
+    if(curOut > 1) return alert("2아웃 이후에는 더블 플레이가 불가능합니다.", "error")
 
     const options = [
         { id: 0, name: '타자' },
@@ -2045,7 +2109,7 @@ const setDoublePlay = async() => {
         if(outResult[0] === 3 || outResult[1] === 3){
             await setCurrentGamedayInfo('out:3');
             gameCurrentInfo.value.runner_3b = null;
-            setOut(false);
+            await setOut(false, (curOut!==gameCurrentInfo.value.out?true:false));
         }else{
             const thirdBaseResult = await confirm("3루 주자를 홈베이스로 이동시키시겠습니까?");
             if(thirdBaseResult) await setRunnerAdvanceFromThird()
@@ -2056,7 +2120,7 @@ const setDoublePlay = async() => {
         if(outResult[0] === 2 || outResult[1] === 2){
             await setCurrentGamedayInfo('out:2');
             gameCurrentInfo.value.runner_2b = null;
-            setOut(false);
+            await setOut(false, (curOut!==gameCurrentInfo.value.out?true:false));
         }else{
             if (!gameCurrentInfo.value.runner_3b?.player_id) {
                 // 3루 비어있고, 1루 있음 → 3루, 홈만 선택 가능
@@ -2088,7 +2152,7 @@ const setDoublePlay = async() => {
         if(outResult[0] === 1 || outResult[1] === 1){
             await setCurrentGamedayInfo('out:1');
             gameCurrentInfo.value.runner_1b = null;
-            setOut(false);
+            await setOut(false, (curOut!==gameCurrentInfo.value.out?true:false));
         }else{
             const options = [
                 { id: 0, name: '1루' },
@@ -2119,7 +2183,7 @@ const setDoublePlay = async() => {
         gameCurrentInfo.value.runner_1b = { ...currentBatter.value, pitcher : { ... currentPitcher.value } };
     }else{
         await setCurrentGamedayInfo('out:0');
-        setOut(false);
+        await setOut(false, (curOut!==gameCurrentInfo.value.out?true:false));
     }
 
     if(curIsAway){
@@ -2138,6 +2202,7 @@ const setDoublePlay = async() => {
 }
 
 const setTriplePlay = async() => {
+    const curOut = gameCurrentInfo.value.out;
     if(gameCurrentInfo.value.out > 0) return alert("아웃 카운트가 있는 경우에에 트리플 플레이가 불가능합니다.", "error");
 
     const options = [
@@ -2185,7 +2250,7 @@ const setTriplePlay = async() => {
 
     for(let outNum of outResult){
         await setCurrentGamedayInfo('out:'+outNum);
-        setOut(false);
+        await setOut(false, (gameCurrentInfo.value.out===2?true:false));
     }
 
     if(curIsAway){
@@ -2255,11 +2320,13 @@ const setCaughtStealingSecondBase = async () => {
 
     gameCurrentInfo.value.runner_1b = null;
 
+    await setOut(false, false);
+
     await setCurrentGamedayInfo('lastInfo');
 }
 
 const setCaughtStealingThirdBase = async () => {
-    if(gameCurrentInfo.value.runner_3b?.player_id) return alert("3루 주자가 있는 경우에는 3루 도루 시도도를 할 수 없습니다.", "error");
+    if(gameCurrentInfo.value.runner_3b?.player_id) return alert("3루 주자가 있는 경우에는 3루 도루 시도를 할 수 없습니다.", "error");
 
     await setCurrentGamedayInfo('caughtStealing:3');
     await setBatterGameStats({
@@ -2267,6 +2334,8 @@ const setCaughtStealingThirdBase = async () => {
     },gameCurrentInfo.value.runner_2b.player_id);
 
     gameCurrentInfo.value.runner_2b = null;
+
+    await setOut(false, false);
 
     await setCurrentGamedayInfo('lastInfo');
 }
@@ -2278,6 +2347,167 @@ const setCaughtStealingHomeBase = async () => {
     },gameCurrentInfo.value.runner_3b.player_id);
 
     gameCurrentInfo.value.runner_3b = null;
+
+    await setOut(false, false);
+
+    await setCurrentGamedayInfo('lastInfo');
+}
+
+const setPickoffFromFirst = async () => {
+    await setCurrentGamedayInfo('pickoff:1');
+    await setBatterGameStats({
+        pickoffs : 1,
+    },gameCurrentInfo.value.runner_1b.player_id);
+
+    await setPitcherGameStats({
+        pickoffs : 1,
+    });
+
+    gameCurrentInfo.value.runner_1b = null;
+
+    await setOut(false, false);
+
+    await setCurrentGamedayInfo('lastInfo');
+}
+
+const setPickoffFromSecond = async () => {
+    await setCurrentGamedayInfo('pickoff:2');
+    await setBatterGameStats({
+        pickoffs : 1,
+    },gameCurrentInfo.value.runner_2b.player_id);
+
+    await setPitcherGameStats({
+        pickoffs : 1,
+    });
+
+    gameCurrentInfo.value.runner_2b = null;
+
+    await setOut(false, false);
+
+    await setCurrentGamedayInfo('lastInfo');
+}
+
+const setPickoffFromThird = async () => {
+    await setCurrentGamedayInfo('pickoff:3');
+    await setBatterGameStats({
+        pickoffs : 1,
+    },gameCurrentInfo.value.runner_3b.player_id);
+
+    await setPitcherGameStats({
+        pickoffs : 1,
+    });
+
+    gameCurrentInfo.value.runner_3b = null;
+
+    await setOut(false, false);
+
+    await setCurrentGamedayInfo('lastInfo');
+}
+
+const setSacrificeFly = async () => {
+    if(!gameCurrentInfo.value.runner_3b?.player_id) return alert("3루 주자가 없는 경우에는 희생 플라이를 할 수 없습니다.", "error");
+    
+    if(gameCurrentInfo.value.out === 2) return alert("2아웃 상황에서는 희생 플라이를 할 수 없습니다.", "error");
+
+    await setCurrentGamedayInfo('sacrificeFly');
+    await setCurrentGamedayInfo('rbi');
+    await setBatterGameStats({
+        sacrifice_flies : 1,
+        runs_batted_in : 1
+    });
+
+    await setScore(3,false);
+
+    gameCurrentInfo.value.runner_3b = null;
+
+    await setCurrentGamedayInfo('lastInfo');
+}
+
+const setSacrificeBunt = async () => {
+    if(gameCurrentInfo.value.out === 2) return alert("2아웃 상황에서는 희생 번트를 할 수 없습니다.", "error");
+
+    if(!gameCurrentInfo.value.runner_1b?.player_id
+        && !gameCurrentInfo.value.runner_2b?.player_id
+        && !gameCurrentInfo.value.runner_3b?.player_id
+    ) return alert("주자가 없으면 희생 번트를 할 수 없습니다.", "error");
+
+    if(gameCurrentInfo.value.runner_3b?.player_id){
+        await setRunnerAdvanceFromThird()
+    }
+
+    if (gameCurrentInfo.value.runner_2b?.player_id) {
+        if (!gameCurrentInfo.value.runner_3b?.player_id) {
+            // 3루 비어있고, 1루 있음 → 3루, 홈만 선택 가능
+            // 3루 비어있고, 1루 없음 → 2루, 3루, 홈 선택 가능
+            const options = [
+                { id: 1, name: '3루' },
+                { id: 2, name: '홈' },
+            ];
+
+            const baseResult = await prompt(
+                '2루 주자가 이동할 베이스를 선택해주세요.',
+                '',
+                {
+                    type: 'select',
+                    options,
+                    itemValue: 'id',
+                    itemTitle: 'name',
+                    rules: [(v) => (v!==undefined && v!==null && v!=='') || '이동할 베이스를 선택해주세요'],
+                }
+            );
+
+            if (baseResult) await setRunnerAdvanceFromSecond(baseResult);
+        }
+    }
+
+    if (gameCurrentInfo.value.runner_1b?.player_id) {
+        if(gameCurrentInfo.value.runner_2b?.player_id){
+            return alert("2루 주자를 이동시킨 후 희생번트를 기록해주세요.","error");
+        }
+        if (gameCurrentInfo.value.runner_3b?.player_id) {
+            // 3루에 주자가 있으면 1루 주자는 2루까지만 이동 가능
+            await setRunnerAdvanceFromFirst(1);
+        } else {
+            // 3루에 주자가 없으면 선택 가능: 2루, 3루, 홈
+            const options = [
+                { id: 1, name: '2루' },
+                { id: 2, name: '3루' },
+                { id: 3, name: '홈' },
+            ];
+
+            const baseResult = await prompt(
+                '1루 주자가 이동할 베이스를 선택해주세요.',
+                '',
+                {
+                    type: 'select',
+                    options,
+                    itemValue: 'id',
+                    itemTitle: 'name',
+                    rules: [(v) => !!v || '이동할 베이스를 선택해주세요'],
+                }
+            );
+
+            if (baseResult) {
+                await setRunnerAdvanceFromFirst(baseResult);
+            }
+        }
+    }
+
+    await setCurrentGamedayInfo('sacrificeBunt');
+    await setBatterGameStats({
+        sacrifice_bunts : 1,
+    });
+
+    if(isAway.value){
+        gameCurrentInfo.value.home_pitch_count++;
+        gameCurrentInfo.value.home_current_pitch_count++;
+    }
+    else{
+        gameCurrentInfo.value.away_pitch_count++;
+        gameCurrentInfo.value.away_current_pitch_count++;
+    }
+
+    await setOut()
 
     await setCurrentGamedayInfo('lastInfo');
 }
