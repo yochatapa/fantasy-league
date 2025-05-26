@@ -222,6 +222,12 @@
                                                     <div v-else-if="['baseonballs'].includes(ballInfo.type)" class="text-green">
                                                         볼넷
                                                     </div>
+                                                    <div v-else-if="['hitByPitch'].includes(ballInfo.type)" class="text-green">
+                                                        사구
+                                                    </div>
+                                                    <div v-else-if="['intentionalBaseOnBalls'].includes(ballInfo.type)" class="text-green">
+                                                        고의사구
+                                                    </div>
                                                     <div v-else-if="['doubleplay'].includes(ballInfo.type)" class="text-error">
                                                         병살타
                                                     </div>
@@ -427,8 +433,8 @@
                                         <span class="text-subtitle-1 font-weight-bold">사구</span>
                                     </div>
                                     <v-chip-group>
-                                        <v-chip>사구</v-chip>
-                                        <v-chip>고의사구</v-chip>                                        
+                                        <v-chip class="text-green" @click="setHitByPitch">사구</v-chip>
+                                        <v-chip class="text-green" @click="setIntentionalBaseOnBalls">고의사구</v-chip>
                                     </v-chip-group>
                                 </v-col>
                                 <v-col>
@@ -458,8 +464,9 @@
                                         1루 주자 : {{ gameCurrentInfo.runner_1b.replaced_player_name??gameCurrentInfo.runner_1b.player_name }}
                                         <!-- 기록 표시 -->
                                         <v-chip-group multiple column class="mt-2" >
-                                            <v-chip @click="setStolenBaseToSecond">도루</v-chip>
-                                            <v-chip @click="setCaughtStealingSecondBase">도루실패</v-chip>
+                                            <v-chip class="text-indigo" @click="setStolenBaseToSecond">도루</v-chip>
+                                            <v-chip class="text-pink"  @click="setCaughtStealingSecondBase">도루실패</v-chip>
+                                            <v-chip class="text-pink"  @click="setPickoffFromFirst">견제사</v-chip>
                                             <div class="d-flex" style="gap:8px">
                                                 <v-select
                                                     density="compact"
@@ -472,11 +479,11 @@
                                                     item-title="name"
                                                     item-value="code"
                                                 ></v-select>
-                                                <v-chip class="d-flex align-center justift-center" @click="setRunnerAdvanceFromFirst(runner_1b)">
+                                                <v-chip class="d-flex align-center justift-center text-indigo" @click="setRunnerAdvanceFromFirst(runner_1b)">
                                                     진루
                                                 </v-chip>
                                             </div>
-                                            <v-chip @click="setPickoffFromFirst">견제사</v-chip>
+                                            
                                             <v-chip>아웃</v-chip>
                                         </v-chip-group>
                                     </div>
@@ -484,8 +491,9 @@
                                         2루 주자 : {{ gameCurrentInfo.runner_2b.replaced_player_name??gameCurrentInfo.runner_2b.player_name }}
                                         <!-- 기록 표시 -->
                                         <v-chip-group multiple column class="mt-2" >
-                                            <v-chip @click="setStolenBaseToThird">도루</v-chip>
-                                            <v-chip @click="setCaughtStealingThirdBase">도루실패</v-chip>
+                                            <v-chip class="text-indigo" @click="setStolenBaseToThird">도루</v-chip>
+                                            <v-chip class="text-pink"   @click="setCaughtStealingThirdBase">도루실패</v-chip>
+                                            <v-chip class="text-pink"   @click="setPickoffFromSecond">견제사</v-chip>
                                             <div class="d-flex" style="gap:8px">
                                                 <v-select
                                                     density="compact"
@@ -497,11 +505,11 @@
                                                     item-title="name"
                                                     item-value="code"
                                                 ></v-select>
-                                                <v-chip class="d-flex align-center justift-center" @click="setRunnerAdvanceFromSecond(runner_2b)">
+                                                <v-chip class="d-flex align-center justift-center text-indigo" @click="setRunnerAdvanceFromSecond(runner_2b)">
                                                     진루
                                                 </v-chip>
                                             </div>
-                                            <v-chip @click="setPickoffFromSecond">견제사</v-chip>
+                                            
                                             <v-chip>아웃</v-chip>
                                         </v-chip-group>
                                     </div>
@@ -509,12 +517,12 @@
                                         3루 주자 : {{ gameCurrentInfo.runner_3b.replaced_player_name??gameCurrentInfo.runner_3b.player_name }}
                                         <!-- 기록 표시 -->
                                         <v-chip-group multiple column class="mt-2" >
-                                            <v-chip @click="setStolenBaseToHome">도루</v-chip>
-                                            <v-chip @click="setCaughtStealingHomeBase">도루실패</v-chip>
-                                            <v-chip @click="setRunnerAdvanceFromThird">
+                                            <v-chip class="text-indigo" @click="setStolenBaseToHome">도루</v-chip>
+                                            <v-chip class="text-pink"   @click="setCaughtStealingHomeBase">도루실패</v-chip>
+                                            <v-chip class="text-pink"   @click="setPickoffFromThird">견제사</v-chip>
+                                            <v-chip class="text-indigo" @click="setRunnerAdvanceFromThird">
                                                 1베이스 진루
                                             </v-chip>
-                                            <v-chip @click="setPickoffFromThird">견제사</v-chip>
                                             <v-chip>아웃</v-chip>
                                         </v-chip-group>
                                     </div>
@@ -1481,6 +1489,8 @@ const setFoul = async () => {
 }
 
 const setBaseOnBalls = async ()=>{
+    await setCurrentGamedayInfo('baseonballs');
+    
     if(isAway.value) gameCurrentInfo.value.home_current_pitch_count = 0;
     else gameCurrentInfo.value.away_current_pitch_count = 0;
 
@@ -1492,8 +1502,7 @@ const setBaseOnBalls = async ()=>{
     
     //3루 처리
     if(runner1B?.player_id && runner2B?.player_id && runner3B?.player_id){
-        if(current_inning_half === "top") gameCurrentInfo.value.away_score++;
-        else gameCurrentInfo.value.home_score++;
+        await setScore(3, false)
 
         gameCurrentInfo.value.runner_3b = null;
     }
@@ -1511,7 +1520,7 @@ const setBaseOnBalls = async ()=>{
     }
 
     gameCurrentInfo.value.runner_1b = { ...currentBatter.value, pitcher : { ... currentPitcher.value } };
-    await setCurrentGamedayInfo('baseonballs');
+    
     await setCurrentGamedayInfo('lastInfo');
 }
 
@@ -2509,6 +2518,111 @@ const setSacrificeBunt = async () => {
 
     await setOut()
 
+    await setCurrentGamedayInfo('lastInfo');
+}
+
+const setHitByPitch = async () => {
+    await setCurrentGamedayInfo('hitByPitch');
+    
+    await setBatterGameStats({
+        plate_appearances : 1,
+        hit_by_pitch : 1,
+    });
+    await setPitcherGameStats({
+        hit_by_pitch_allowed : 1,
+    });
+
+    gameCurrentInfo.value.strike = 0;
+    gameCurrentInfo.value.ball = 0;
+
+    if(isAway.value) gameCurrentInfo.value.home_current_pitch_count = 0;
+    else gameCurrentInfo.value.away_current_pitch_count = 0;
+    
+    const runner1B = gameCurrentInfo.value.runner_1b;
+    const runner2B = gameCurrentInfo.value.runner_2b;
+    const runner3B = gameCurrentInfo.value.runner_3b;
+    
+    //3루 처리
+    if(runner1B?.player_id && runner2B?.player_id && runner3B?.player_id){
+        await setScore(3, false)
+
+        gameCurrentInfo.value.runner_3b = null;
+    }
+
+    //2루처리
+    if(runner1B?.player_id && runner2B?.player_id){
+        gameCurrentInfo.value.runner_3b = runner2B;
+        gameCurrentInfo.value.runner_2b = null;
+    }
+
+    //1루처리
+    if(runner1B?.player_id){
+        gameCurrentInfo.value.runner_2b = runner1B;
+        gameCurrentInfo.value.runner_1b = null;
+    }
+
+    gameCurrentInfo.value.runner_1b = { ...currentBatter.value, pitcher : { ... currentPitcher.value } };
+
+    if(isAway.value){
+        gameCurrentInfo.value.home_pitch_count++;
+        gameCurrentInfo.value.home_current_pitch_count++;
+    }
+    else{
+        gameCurrentInfo.value.away_pitch_count++;
+        gameCurrentInfo.value.away_current_pitch_count++;
+    }
+
+    if(isAway.value) gameCurrentInfo.value.away_batting_number++;
+    else gameCurrentInfo.value.home_batting_number++;
+    
+    await setCurrentGamedayInfo('lastInfo');
+}
+
+const setIntentionalBaseOnBalls = async () => {
+    await setCurrentGamedayInfo('intentionalBaseOnBalls');
+    
+    await setBatterGameStats({
+        plate_appearances : 1,
+        intentional_base_on_balls : 1,
+    });
+    await setPitcherGameStats({
+        intentional_base_on_balls : 1,
+    });
+
+    gameCurrentInfo.value.strike = 0;
+    gameCurrentInfo.value.ball = 0;
+
+    if(isAway.value) gameCurrentInfo.value.home_current_pitch_count = 0;
+    else gameCurrentInfo.value.away_current_pitch_count = 0;
+    
+    const runner1B = gameCurrentInfo.value.runner_1b;
+    const runner2B = gameCurrentInfo.value.runner_2b;
+    const runner3B = gameCurrentInfo.value.runner_3b;
+    
+    //3루 처리
+    if(runner1B?.player_id && runner2B?.player_id && runner3B?.player_id){
+        await setScore(3, false)
+
+        gameCurrentInfo.value.runner_3b = null;
+    }
+
+    //2루처리
+    if(runner1B?.player_id && runner2B?.player_id){
+        gameCurrentInfo.value.runner_3b = runner2B;
+        gameCurrentInfo.value.runner_2b = null;
+    }
+
+    //1루처리
+    if(runner1B?.player_id){
+        gameCurrentInfo.value.runner_2b = runner1B;
+        gameCurrentInfo.value.runner_1b = null;
+    }
+
+    gameCurrentInfo.value.runner_1b = { ...currentBatter.value, pitcher : { ... currentPitcher.value } };
+    
+    if(isAway.value) gameCurrentInfo.value.away_batting_number++;
+    else gameCurrentInfo.value.home_batting_number++;
+    
     await setCurrentGamedayInfo('lastInfo');
 }
 
