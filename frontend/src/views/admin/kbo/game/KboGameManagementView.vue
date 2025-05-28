@@ -217,6 +217,9 @@
                                                     <div v-else-if="ballInfo.type.startsWith('passedBall')" class="text-error">
                                                         포일
                                                     </div>
+                                                    <div v-else-if="ballInfo.type.startsWith('balk')" class="text-error">
+                                                        투수 보크
+                                                    </div>
 
                                                     <div v-if="['strike','ball','foul','swingAndMiss'].includes(ballInfo.type)">
                                                         {{ (ballInfo[topBottom==='top'?'home_current_pitch_count':'away_current_pitch_count'])+1 }}구 : {{ ballInfo.type==='strike'?'스트라이크':(ballInfo.type==='ball'?'볼':(ballInfo.type==='foul'?'파울':(ballInfo.type==='swingAndMiss'?'헛스윙':''))) }} <span class="text-grey-lighten-1">| {{ ballInfo.ball + (ballInfo.type==="ball"?1:0)}} - {{ ballInfo.strike + (["strike","swingAndMiss"].includes(ballInfo.type)?1:0) + (ballInfo.type === "foul" && ballInfo.strike<2 ? 1 : 0)}}</span>
@@ -466,7 +469,7 @@
                                     <v-chip-group column>
                                         <v-chip class="text-purple" @click="setWildPitch">폭투</v-chip>
                                         <v-chip class="text-purple" @click="setPassedBall">포일</v-chip>
-                                        <v-chip>보크</v-chip>
+                                        <v-chip class="text-purple" @click="setBalk">보크</v-chip>
                                         <div class="d-flex" style="gap:8px">
                                             <v-select
                                                 density="compact"
@@ -2047,7 +2050,7 @@ const setBatterAsRunner = async () => {
     await setCurrentGamedayInfo('lastInfo');
 }
 
-const setRunnerAdvanceFromFirst = async (runValue) => {
+const setRunnerAdvanceFromFirst = async (runValue, rbiConfirmYn=true) => {
     if(runValue === null || runValue === undefined) runValue = runner_1b.value;
     
     if(runValue === null || runValue === undefined){
@@ -2089,7 +2092,7 @@ const setRunnerAdvanceFromFirst = async (runValue) => {
     await setCurrentGamedayInfo('lastInfo');
 }
 
-const setRunnerAdvanceFromSecond = async (runValue) => {
+const setRunnerAdvanceFromSecond = async (runValue, rbiConfirmYn=true) => {
     if(runValue === null || runValue === undefined) runValue = runner_2b.value
     
     if(runValue === null || runValue === undefined){
@@ -2115,10 +2118,10 @@ const setRunnerAdvanceFromSecond = async (runValue) => {
     await setCurrentGamedayInfo('lastInfo');
 }
 
-const setRunnerAdvanceFromThird = async () => {
+const setRunnerAdvanceFromThird = async (rbiConfirmYn=true) => {
     const runner3B = { ...gameCurrentInfo.value.runner_3b }
     await setCurrentGamedayInfo('runner:3:4');
-    await setScore(3);
+    await setScore(3,rbiConfirmYn);
 
     gameCurrentInfo.value.runner_3b = null;
  
@@ -2829,14 +2832,14 @@ const setWildPitch = async () => {
             && gameCurrentInfo.value.runner_2b?.player_id
             && gameCurrentInfo.value.runner_1b?.player_id
         ){
-            await setRunnerAdvanceFromThird()
+            await setRunnerAdvanceFromThird(false)
             runnerMoveNum++;
         }
         else{
             const baseResult = await confirm("3루 주자를 홈베이스로 이동시키시겠습니까?");
 
             if(baseResult){
-                await setRunnerAdvanceFromThird()
+                await setRunnerAdvanceFromThird(false)
                 runnerMoveNum++;
             }
         }
@@ -2865,7 +2868,7 @@ const setWildPitch = async () => {
             );
 
             if (baseResult){
-                await setRunnerAdvanceFromSecond(baseResult);
+                await setRunnerAdvanceFromSecond(baseResult, false);
                 runnerMoveNum++;
             }
         }
@@ -2894,7 +2897,7 @@ const setWildPitch = async () => {
             );
 
             if (baseResult){
-                await setRunnerAdvanceFromFirst(baseResult);
+                await setRunnerAdvanceFromFirst(baseResult, false);
                 runnerMoveNum++;
             }
         }
@@ -2936,14 +2939,14 @@ const setPassedBall = async () => {
             && gameCurrentInfo.value.runner_2b?.player_id
             && gameCurrentInfo.value.runner_1b?.player_id
         ){
-            await setRunnerAdvanceFromThird()
+            await setRunnerAdvanceFromThird(false)
             runnerMoveNum++;
         }
         else{
             const baseResult = await confirm("3루 주자를 홈베이스로 이동시키시겠습니까?");
 
             if(baseResult){
-                await setRunnerAdvanceFromThird()
+                await setRunnerAdvanceFromThird(false)
                 runnerMoveNum++;
             }
         }
@@ -2972,7 +2975,7 @@ const setPassedBall = async () => {
             );
 
             if (baseResult){
-                await setRunnerAdvanceFromSecond(baseResult);
+                await setRunnerAdvanceFromSecond(baseResult, false);
                 runnerMoveNum++;
             }
         }
@@ -3001,7 +3004,7 @@ const setPassedBall = async () => {
             );
 
             if (baseResult){
-                await setRunnerAdvanceFromFirst(baseResult);
+                await setRunnerAdvanceFromFirst(baseResult, false);
                 runnerMoveNum++;
             }
         }
@@ -3025,6 +3028,16 @@ const setPassedBall = async () => {
     if(current_ball<3){
         gameCurrentInfo.value.ball++;
     }
+
+    await setCurrentGamedayInfo('lastInfo');
+}
+
+const setBalk = async () => {
+    await setCurrentGamedayInfo('balk');
+
+    if (gameCurrentInfo.value.runner_3b?.player_id) await setRunnerAdvanceFromThird(false)
+    if (gameCurrentInfo.value.runner_2b?.player_id) await setRunnerAdvanceFromSecond(1, false);
+    if (gameCurrentInfo.value.runner_1b?.player_id) await setRunnerAdvanceFromFirst(1, false);
 
     await setCurrentGamedayInfo('lastInfo');
 }
