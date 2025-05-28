@@ -211,6 +211,12 @@
                                                     <div v-else-if="ballInfo.type.startsWith('pitchclock')" class="text-error">
                                                         {{ ballInfo.type === "pitchclockStrike"?'타자':'투수' }} 피치클락 위반 
                                                     </div>
+                                                    <div v-else-if="ballInfo.type.startsWith('wildPitch')" class="text-error">
+                                                        투수 폭투
+                                                    </div>
+                                                    <div v-else-if="ballInfo.type.startsWith('passedBall')" class="text-error">
+                                                        포일
+                                                    </div>
 
                                                     <div v-if="['strike','ball','foul','swingAndMiss'].includes(ballInfo.type)">
                                                         {{ (ballInfo[topBottom==='top'?'home_current_pitch_count':'away_current_pitch_count'])+1 }}구 : {{ ballInfo.type==='strike'?'스트라이크':(ballInfo.type==='ball'?'볼':(ballInfo.type==='foul'?'파울':(ballInfo.type==='swingAndMiss'?'헛스윙':''))) }} <span class="text-grey-lighten-1">| {{ ballInfo.ball + (ballInfo.type==="ball"?1:0)}} - {{ ballInfo.strike + (["strike","swingAndMiss"].includes(ballInfo.type)?1:0) + (ballInfo.type === "foul" && ballInfo.strike<2 ? 1 : 0)}}</span>
@@ -458,9 +464,8 @@
                                         <span class="text-subtitle-1 font-weight-bold">실책</span>
                                     </div>
                                     <v-chip-group column>
-                                        <v-chip>폭투</v-chip>
-                                        <v-chip>패스트볼</v-chip>
-                                        <v-chip>인터페어런스</v-chip>
+                                        <v-chip class="text-purple" @click="setWildPitch">폭투</v-chip>
+                                        <v-chip class="text-purple" @click="setPassedBall">포일</v-chip>
                                         <v-chip>보크</v-chip>
                                         <div class="d-flex" style="gap:8px">
                                             <v-select
@@ -2800,7 +2805,7 @@ const setError = async () => {
                         })
 
     const errorInfo = errorList[0][isAway.value?'home':'away']?.[errorList.length - 1]
-    console.log(errorList, errorInfo)
+    
     if(!errorInfo) return alert("실책한 선수 정보가 잘못되었습니다.\n다시 시도해주세요.", "error")
 
     await setCurrentGamedayInfo(`error:${errorInfo.replaced_position??errorInfo.position}`);
@@ -2812,6 +2817,216 @@ const setError = async () => {
     await setCurrentGamedayInfo('lastInfo');
 
     errorPlayer.value = null
+}
+
+const setWildPitch = async () => {
+    if(gameCurrentInfo.value.ball === 3) return alert("3볼에서는 폭투처리를 할 수 없습니다.\n볼 처리를 해주세요.", "error");
+
+    let runnerMoveNum = 0;
+
+    if(gameCurrentInfo.value.runner_3b?.player_id){
+        if(gameCurrentInfo.value.runner_3b?.player_id
+            && gameCurrentInfo.value.runner_2b?.player_id
+            && gameCurrentInfo.value.runner_1b?.player_id
+        ){
+            await setRunnerAdvanceFromThird()
+            runnerMoveNum++;
+        }
+        else{
+            const baseResult = await confirm("3루 주자를 홈베이스로 이동시키시겠습니까?");
+
+            if(baseResult){
+                await setRunnerAdvanceFromThird()
+                runnerMoveNum++;
+            }
+        }
+    }
+
+    if (gameCurrentInfo.value.runner_2b?.player_id) {
+        if (!gameCurrentInfo.value.runner_3b?.player_id) {
+            // 3루 비어있고, 1루 있음 → 3루, 홈만 선택 가능
+            // 3루 비어있고, 1루 없음 → 2루, 3루, 홈 선택 가능
+            const options = [
+                { id: 0, name: '2루' },
+                { id: 1, name: '3루' },
+                { id: 2, name: '홈' },
+            ];
+
+            const baseResult = await prompt(
+                '2루 주자가 이동할 베이스를 선택해주세요.',
+                '',
+                {
+                    type: 'select',
+                    options,
+                    itemValue: 'id',
+                    itemTitle: 'name',
+                    rules: [(v) => (v!==undefined && v!==null && v!=='') || '이동할 베이스를 선택해주세요'],
+                }
+            );
+
+            if (baseResult){
+                await setRunnerAdvanceFromSecond(baseResult);
+                runnerMoveNum++;
+            }
+        }
+    }
+
+    if (gameCurrentInfo.value.runner_1b?.player_id) {
+        if (!gameCurrentInfo.value.runner_2b?.player_id) {
+            // 3루에 주자가 없으면 선택 가능: 2루, 3루, 홈
+            const options = [
+                { id: 0, name: '1루' },
+                ...(!gameCurrentInfo.value.runner_2b?.player_id ? [{ id: 1, name: '2루' }] : []),
+                ...(!gameCurrentInfo.value.runner_2b?.player_id && !gameCurrentInfo.value.runner_3b?.player_id ? [{ id: 2, name: '3루' }] : []),
+                ...(!gameCurrentInfo.value.runner_2b?.player_id && !gameCurrentInfo.value.runner_3b?.player_id ? [{ id: 3, name: '홈' }] : []),
+            ];
+
+            const baseResult = await prompt(
+                '1루 주자가 이동할 베이스를 선택해주세요.',
+                '',
+                {
+                    type: 'select',
+                    options,
+                    itemValue: 'id',
+                    itemTitle: 'name',
+                    rules: [(v) => !!v || '이동할 베이스를 선택해주세요'],
+                }
+            );
+
+            if (baseResult){
+                await setRunnerAdvanceFromFirst(baseResult);
+                runnerMoveNum++;
+            }
+        }
+    }
+
+    if(runnerMoveNum === 0) return alert("주자가 이동하지 않으면 폭투처리를 할 수 없습니다.","error");
+
+    await setCurrentGamedayInfo(`wildPitch`);
+    await setCurrentGamedayInfo(`ball`);
+
+    await setPitcherGameStats({
+        wild_pitches : 1,
+    });
+
+    const current_ball = gameCurrentInfo.value.ball;
+    if(isAway.value){
+        gameCurrentInfo.value.home_pitch_count++;
+        gameCurrentInfo.value.home_current_pitch_count++;
+    }
+    else{
+        gameCurrentInfo.value.away_pitch_count++;
+        gameCurrentInfo.value.away_current_pitch_count++;
+    }
+    
+    if(current_ball<3){
+        gameCurrentInfo.value.ball++;
+    }
+
+    await setCurrentGamedayInfo('lastInfo');
+}
+
+const setPassedBall = async () => {
+    if(gameCurrentInfo.value.ball === 3) return alert("3볼에서는 포일처리를 할 수 없습니다.\n볼 처리를 해주세요.", "error");
+
+    let runnerMoveNum = 0;
+
+    if(gameCurrentInfo.value.runner_3b?.player_id){
+        if(gameCurrentInfo.value.runner_3b?.player_id
+            && gameCurrentInfo.value.runner_2b?.player_id
+            && gameCurrentInfo.value.runner_1b?.player_id
+        ){
+            await setRunnerAdvanceFromThird()
+            runnerMoveNum++;
+        }
+        else{
+            const baseResult = await confirm("3루 주자를 홈베이스로 이동시키시겠습니까?");
+
+            if(baseResult){
+                await setRunnerAdvanceFromThird()
+                runnerMoveNum++;
+            }
+        }
+    }
+
+    if (gameCurrentInfo.value.runner_2b?.player_id) {
+        if (!gameCurrentInfo.value.runner_3b?.player_id) {
+            // 3루 비어있고, 1루 있음 → 3루, 홈만 선택 가능
+            // 3루 비어있고, 1루 없음 → 2루, 3루, 홈 선택 가능
+            const options = [
+                { id: 0, name: '2루' },
+                { id: 1, name: '3루' },
+                { id: 2, name: '홈' },
+            ];
+
+            const baseResult = await prompt(
+                '2루 주자가 이동할 베이스를 선택해주세요.',
+                '',
+                {
+                    type: 'select',
+                    options,
+                    itemValue: 'id',
+                    itemTitle: 'name',
+                    rules: [(v) => (v!==undefined && v!==null && v!=='') || '이동할 베이스를 선택해주세요'],
+                }
+            );
+
+            if (baseResult){
+                await setRunnerAdvanceFromSecond(baseResult);
+                runnerMoveNum++;
+            }
+        }
+    }
+
+    if (gameCurrentInfo.value.runner_1b?.player_id) {
+        if (!gameCurrentInfo.value.runner_2b?.player_id) {
+            // 3루에 주자가 없으면 선택 가능: 2루, 3루, 홈
+            const options = [
+                { id: 0, name: '1루' },
+                ...(!gameCurrentInfo.value.runner_2b?.player_id ? [{ id: 1, name: '2루' }] : []),
+                ...(!gameCurrentInfo.value.runner_2b?.player_id && !gameCurrentInfo.value.runner_3b?.player_id ? [{ id: 2, name: '3루' }] : []),
+                ...(!gameCurrentInfo.value.runner_2b?.player_id && !gameCurrentInfo.value.runner_3b?.player_id ? [{ id: 3, name: '홈' }] : []),
+            ];
+
+            const baseResult = await prompt(
+                '1루 주자가 이동할 베이스를 선택해주세요.',
+                '',
+                {
+                    type: 'select',
+                    options,
+                    itemValue: 'id',
+                    itemTitle: 'name',
+                    rules: [(v) => !!v || '이동할 베이스를 선택해주세요'],
+                }
+            );
+
+            if (baseResult){
+                await setRunnerAdvanceFromFirst(baseResult);
+                runnerMoveNum++;
+            }
+        }
+    }
+
+    if(runnerMoveNum === 0) return alert("주자가 이동하지 않으면 포일처리를 할 수 없습니다.","error");
+
+    await setCurrentGamedayInfo(`passedBall`);
+    await setCurrentGamedayInfo(`ball`);
+
+    const current_ball = gameCurrentInfo.value.ball;
+    if(isAway.value){
+        gameCurrentInfo.value.home_pitch_count++;
+        gameCurrentInfo.value.home_current_pitch_count++;
+    }
+    else{
+        gameCurrentInfo.value.away_pitch_count++;
+        gameCurrentInfo.value.away_current_pitch_count++;
+    }
+    
+    if(current_ball<3){
+        gameCurrentInfo.value.ball++;
+    }
+
+    await setCurrentGamedayInfo('lastInfo');
 }
 
 onMounted(async ()=>{
