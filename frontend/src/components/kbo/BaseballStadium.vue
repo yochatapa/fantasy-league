@@ -27,35 +27,83 @@
 
             <!-- 홈 베이스, 1루, 2루, 3루 -->
             <rect x="245" y="444" width="10" height="10" fill="white" stroke="black" />
-            <rect x="342" y="341" width="10" height="10" fill="white" stroke="black" />
-            <rect x="245" y="245" width="10" height="10" fill="white" stroke="black" />
-            <rect x="148" y="341" width="10" height="10" fill="white" stroke="black" />
+            <rect x="342" y="341" width="10" height="10" :fill="gameCurrentInfo.runner_1b?.player_id?'red':'white'" stroke="black"/>
+            <rect x="245" y="245" width="10" height="10" :fill="gameCurrentInfo.runner_2b?.player_id?'red':'white'" stroke="black" />
+            <rect x="148" y="341" width="10" height="10" :fill="gameCurrentInfo.runner_3b?.player_id?'red':'white'" stroke="black" />
         </svg>
 
         <!-- 수비수 정보 -->
         <div v-for="(player, index) in defenders" :key="index" :style="getPlayerPosition(player)" class="player" @click="showPlayerInfo(player)">
-            <span>{{ player.name }}</span>
+            <span>{{ lineupList
+                    .flatMap(inning => inning[isAway ? 'home' : 'away'])
+                    .filter(lPlayer => lPlayer?.position?.toLowerCase() === player.position.toLowerCase())
+                    .sort((a, b) => {
+                        if (a.replaced_inning !== b.replaced_inning) {
+                            return b.replaced_inning - a.replaced_inning;
+                        }
+                        return b.replaced_out - a.replaced_out;
+                    })[0].replaced_player_name
+                    ??lineupList
+                    .flatMap(inning => inning[isAway ? 'home' : 'away'])
+                    .filter(lPlayer => lPlayer?.position?.toLowerCase() === player.position.toLowerCase())
+                    .sort((a, b) => {
+                        if (a.replaced_inning !== b.replaced_inning) {
+                            return b.replaced_inning - a.replaced_inning;
+                        }
+                        return b.replaced_out - a.replaced_out;
+                    })[0]
+                    .player_name }}</span>
         </div>
 
         <!-- 투수 정보 -->
         <div class="pitcher" :style="getPlayerPosition(pitcher)" @click="showPlayerInfo(pitcher)">
-            <span>{{ pitcher.name }}</span>
+            <span>{{ currentPitcher.replaced_player_name??currentPitcher.player_name }}</span>
         </div>
 
         <!-- 포수 정보 -->
-        <div class="catcher" :style="getPlayerPosition(catcher)" @click="showPlayerInfo(catcher)">
+        <!-- <div class="catcher" :style="getPlayerPosition(catcher)" @click="showPlayerInfo(catcher)">
             <span>{{ catcher.name }}</span>
-        </div>
+        </div> -->
 
         <!-- 타자 정보 -->
         <div class="batter" :style="getPlayerPosition(batter)" @click="showPlayerInfo(batter)">
-            <span>{{ batter.name }}</span>
+            <span>{{ currentBatter.replaced_player_name??currentBatter.player_name }}</span>
+        </div>
+
+        <div class="position-absolute bottom-0 text-white mb-3 ml-3">
+            <span class="text-subtitle-1 font-weight-bold">
+                {{ gameCurrentInfo.inning }}회 {{ gameCurrentInfo.inning_half==="top"?'🔺':'🔻' }}
+            </span>
+            <div>
+                <span style="width: 20px;display: inline-flex;">S : </span><span v-for="number in 2"><span v-if="number<=gameCurrentInfo.strike">🟡</span><span v-else>⚫</span></span>
+            </div>
+            <div>
+                <span style="width: 20px;display: inline-flex">B : </span><span v-for="number in 3"><span v-if="number<=gameCurrentInfo.ball">🟢</span><span v-else>⚫</span></span>
+            </div>
+            <div>
+                <span style="width: 20px;display: inline-flex">O : </span><span v-for="number in 2"><span v-if="number<=gameCurrentInfo.out">🔴</span><span v-else>⚫</span></span>
+            </div>
         </div>
     </div>
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
+
+const props = defineProps({
+    gamedayInfo: Object,
+    currentInning: Number,
+    gameCurrentInfo: Object,
+    lineupList : Object,
+    currentBatter : Object,
+    currentPitcher : Object,
+})
+
+const lineupList = computed(()=>props.lineupList)
+const gameCurrentInfo = computed(()=>props.gameCurrentInfo)
+const isAway = computed(()=>gameCurrentInfo.value.inning_half === 'top');
+const currentBatter = computed(()=>props.currentBatter)
+const currentPitcher = computed(()=>props.currentPitcher)
 
 const defenders = ref([
     { name: '1루수', position: '1B', x: 342, y: 321 },
@@ -64,11 +112,11 @@ const defenders = ref([
     { name: '3루수', position: '3B', x: 148, y: 321 },
     { name: '좌익수', position: 'LF', x: 80, y: 150 },
     { name: '중견수', position: 'CF', x: 250, y: 70 },
-    { name: '우익수', position: 'RF', x: 420, y: 150 }
+    { name: '우익수', position: 'RF', x: 420, y: 150 },
+    { name: '포수', position: 'C', x: 250, y: 470 },
 ]);
 
 const pitcher = ref({ name: '투수', position: 'P', x: 250, y: 343 });
-const catcher = ref({ name: '포수', position: 'C', x: 250, y: 470 });
 const batter = ref({ name: '타자', position: 'B', x: 275, y: 445 });
 
 const getPlayerPosition = (player) => ({

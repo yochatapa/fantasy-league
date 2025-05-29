@@ -171,7 +171,14 @@
                         <v-card-title>경기 중계</v-card-title>
                         <v-divider></v-divider>
                         <v-card-text>
-                            <baseball-stadium></baseball-stadium>
+                            <baseball-stadium 
+                                :gameday-info="gamedayInfo" 
+                                :current-inning="currentInning" 
+                                :game-current-info="gameCurrentInfo"
+                                :lineup-list="lineupList"
+                                :current-batter="currentBatter"
+                                :current-pitcher="currentPitcher"
+                            />
                             <div class="chip-container mt-2">
                                 <div class="d-flex" style="gap: 4px; overflow-x: auto; white-space: nowrap;">
                                     <v-chip
@@ -321,7 +328,7 @@
                                     <div class="mb-3">
                                         <span class="text-subtitle-1 font-weight-bold">경기 진행 상황</span>
                                     </div>
-                                    <div class="d-flex flex-column align-start">
+                                    <!-- <div class="d-flex flex-column align-start">
                                         <div class="mb-3 d-flex">
                                             <div>
                                                 <span class="text-subtitle-1 font-weight-bold">
@@ -382,6 +389,26 @@
                                                 <v-chip class="text-green cursor-pointer" @click="setBatterAsRunner">타자 주자 진루</v-chip>
                                             </v-chip-group>
                                         </div>
+                                    </div> -->
+                                    <div v-if="gameCurrentInfo.is_available_stat">
+                                        <v-chip-group column>
+                                            <v-chip class="text-orange cursor-pointer" @click="setStrike">스트라이크</v-chip>
+                                            <v-chip class="text-orange cursor-pointer" @click="setSwingAndMiss">헛스윙</v-chip>
+                                            <v-chip class="text-brown cursor-pointer" @click="setFoul">파울</v-chip>
+                                            <v-chip class="text-orange cursor-pointer" @click="setPitchclockStrike">피치클락 위반 (스트라이크)</v-chip>
+                                        </v-chip-group>
+                                        <v-chip-group column>
+                                            <v-chip class="text-green cursor-pointer" @click="setBall">볼</v-chip>
+                                            <v-chip class="text-green cursor-pointer" @click="setPitchclockBall">피치클락 위반 (볼)</v-chip>
+                                            
+                                        </v-chip-group>
+                                    </div>
+                                    <div v-if="!gameCurrentInfo.is_available_stat">
+                                        <v-chip-group column>
+                                            <v-chip class="text-primary cursor-pointer" @click="setForceNonOut">타석 종료 (아웃X)</v-chip>
+                                            <v-chip class="text-error cursor-pointer" @click="setForceOut">타석 종료 (아웃O)</v-chip>
+                                            <v-chip class="text-green cursor-pointer" @click="setBatterAsRunner">타자 주자 진루</v-chip>
+                                        </v-chip-group>
                                     </div>
                                 </v-col>
                                 <v-divider vertical></v-divider>
