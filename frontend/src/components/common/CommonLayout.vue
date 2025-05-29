@@ -276,11 +276,11 @@ watch(route, () => {
     color: gray;
 }
 
-::v-deep .active .v-list-item__overlay{
+:deep(.active .v-list-item__overlay){
     background: transparent !important;
 }
 
-::v-deep .active .v-list-item__content{
+:deep(.active .v-list-item__content){
     padding: 4px 10px;
     border-radius: 10px;
     background-color: #1976d2;
@@ -288,11 +288,11 @@ watch(route, () => {
     color: white;
 }
 
-::v-deep a.active .v-list-item__content{
+:deep(a.active .v-list-item__content){
     transform: translateX(-10px);
 }
 
-::v-deep .v-navigation-drawer__scrim{
+:deep(.v-navigation-drawer__scrim){
     width: 100vw;
     height: 100vh;
     top: -11px;

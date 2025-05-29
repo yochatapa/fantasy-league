@@ -120,7 +120,7 @@
 </template>
 
 <script setup>
-import { ref, defineExpose, computed, watch } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { commonFetch } from '@/utils/common/commonFetch';
 
 const props = defineProps({
