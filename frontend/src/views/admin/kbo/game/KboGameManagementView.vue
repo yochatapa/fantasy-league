@@ -252,6 +252,12 @@
                                                     <div v-else-if="['intentionalBaseOnBalls'].includes(ballInfo.type)" class="text-green">
                                                         고의사구
                                                     </div>
+                                                    <div v-else-if="['fieldersChoice'].includes(ballInfo.type)" class="text-primary">
+                                                        타자 주자 야수선택으로 출루
+                                                    </div>
+                                                    <div v-else-if="['groundOutReached'].includes(ballInfo.type)" class="text-primary">
+                                                        티자 주자 땅볼로 출루
+                                                    </div>
                                                     <div v-else-if="['doubleplay'].includes(ballInfo.type)" class="text-error">
                                                         병살타
                                                     </div>
@@ -2200,7 +2206,7 @@ const setFieldersChoice = async () => {
         }
     }
 
-    await setCurrentGamedayInfo('fieldersChoice');
+    await setCurrentGamedayInfo(outResult.includes('none')?'fieldersChoice':'groundOutReached');
 
     await setBatterGameStats({
         plate_appearances : 1,
