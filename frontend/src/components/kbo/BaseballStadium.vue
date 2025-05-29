@@ -60,17 +60,29 @@
             <span>{{ currentPitcher.replaced_player_name??currentPitcher.player_name }}</span>
         </div>
 
+        <div v-if="gameCurrentInfo.runner_1b?.player_id" class="runner" :style="getPlayerPosition(runner_1b,false)" @click="showPlayerInfo(runner_1b)">
+            <span>{{ gameCurrentInfo.runner_1b?.replaced_player_name??gameCurrentInfo.runner_1b?.player_name }}</span> 
+        </div>
+
+        <div v-if="gameCurrentInfo.runner_2b?.player_id" class="runner" :style="getPlayerPosition(runner_2b,false)" @click="showPlayerInfo(runner_2b)">
+            <span>{{ gameCurrentInfo.runner_2b?.replaced_player_name??gameCurrentInfo.runner_2b?.player_name }}</span> 
+        </div>
+
+        <div v-if="gameCurrentInfo.runner_3b?.player_id" class="runner" :style="getPlayerPosition(runner_3b,false)" @click="showPlayerInfo(runner_3b)">
+            <span>{{ gameCurrentInfo.runner_3b?.replaced_player_name??gameCurrentInfo.runner_3b?.player_name }}</span> 
+        </div>
+
         <!-- 포수 정보 -->
         <!-- <div class="catcher" :style="getPlayerPosition(catcher)" @click="showPlayerInfo(catcher)">
             <span>{{ catcher.name }}</span>
         </div> -->
 
         <!-- 타자 정보 -->
-        <div class="batter" :style="getPlayerPosition(batter)" @click="showPlayerInfo(batter)">
+        <div class="batter" :style="getPlayerPosition(batter,false)" @click="showPlayerInfo(batter)">
             <span>{{ currentBatter.replaced_player_name??currentBatter.player_name }}</span>
         </div>
 
-        <div class="position-absolute bottom-0 text-white mb-3 ml-3">
+        <div class="position-absolute bottom-0 text-white mb-3 ml-3 text-caption">
             <span class="text-subtitle-1 font-weight-bold">
                 {{ gameCurrentInfo.inning }}회 {{ gameCurrentInfo.inning_half==="top"?'🔺':'🔻' }}
             </span>
@@ -82,6 +94,22 @@
             </div>
             <div>
                 <span style="width: 20px;display: inline-flex">O : </span><span v-for="number in 2"><span v-if="number<=gameCurrentInfo.out">🔴</span><span v-else>⚫</span></span>
+            </div>
+        </div>
+
+        <div class="position-absolute bottom-0 right-0 mb-3 mr-3 text-white text-caption">
+            <div>
+                <span class="font-weight-bold text-caption">{{ currentBatter?.batting_order }}번 : {{ currentBatter?.replaced_player_name??currentBatter?.player_name }}</span>
+                <div>
+                     ({{ currentBatter?.replaced_position??currentBatter?.position }})
+                </div>
+            </div>
+            <v-divider></v-divider>
+            <div>
+                <span class="font-weight-bold">{{ currentPitcher?.replaced_position??currentPitcher?.position }} : {{ currentPitcher.replaced_player_name??currentPitcher.player_name }}</span>
+                <div>
+                    투구수: {{ isAway?gameCurrentInfo.home_pitch_count:gameCurrentInfo.away_pitch_count }}
+                </div>
             </div>
         </div>
     </div>
@@ -106,25 +134,28 @@ const currentBatter = computed(()=>props.currentBatter)
 const currentPitcher = computed(()=>props.currentPitcher)
 
 const defenders = ref([
-    { name: '1루수', position: '1B', x: 342, y: 321 },
-    { name: '2루수', position: '2B', x: 310, y: 245 },
-    { name: '유격수', position: 'SS', x: 190, y: 245 },
-    { name: '3루수', position: '3B', x: 148, y: 321 },
-    { name: '좌익수', position: 'LF', x: 80, y: 150 },
+    { name: '1루수', position: '1B', x: 342, y: 300 },
+    { name: '2루수', position: '2B', x: 320, y: 225 },
+    { name: '유격수', position: 'SS', x: 180, y: 225 },
+    { name: '3루수', position: '3B', x: 148, y: 300 },
+    { name: '좌익수', position: 'LF', x: 90, y: 140 },
     { name: '중견수', position: 'CF', x: 250, y: 70 },
-    { name: '우익수', position: 'RF', x: 420, y: 150 },
+    { name: '우익수', position: 'RF', x: 420, y: 140 },
     { name: '포수', position: 'C', x: 250, y: 470 },
 ]);
 
 const pitcher = ref({ name: '투수', position: 'P', x: 250, y: 343 });
-const batter = ref({ name: '타자', position: 'B', x: 275, y: 445 });
+const runner_1b = ref({ name: '1루주자', position: '1R', x: 342, y: 340 });
+const runner_2b = ref({ name: '2루주자', position: '2R', x: 250, y: 250 });
+const runner_3b = ref({ name: '3루주자', position: '3R', x: 148, y: 340 });
+const batter = ref({ name: '타자', position: 'B', x: 300, y: 435 });
 
-const getPlayerPosition = (player) => ({
+const getPlayerPosition = (player, defenseYn=true) => ({
     position: 'absolute',
     left: `${(player.x / 500) * 100}%`,
     top: `${(player.y / 500) * 100}%`,
-    backgroundColor: '#333',
-    color: 'white',
+    backgroundColor: defenseYn?'#333':'#fff',
+    color: defenseYn?'#fff':'#333',
     borderRadius: '5px',
     padding: '2px 5px',
     fontSize: '12px',
