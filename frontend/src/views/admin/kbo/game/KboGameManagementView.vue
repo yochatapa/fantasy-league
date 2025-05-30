@@ -801,6 +801,8 @@ const gameCurrentInfo = ref({
     out : 0,
     strike : 0,
     ball : 0,
+    away_current_out : 0,
+    home_current_out : 0,
     away_pitch_count : 0,
     home_pitch_count : 0,
     away_current_pitch_count : 0,
@@ -1077,6 +1079,8 @@ const clearLineup = () => {
         out : 0,
         strike : 0,
         ball : 0,
+        away_current_out : 0,
+        home_current_out : 0,
         away_pitch_count : 0,
         home_pitch_count : 0,
         away_current_pitch_count : 0,
@@ -1173,15 +1177,13 @@ const saveRoster = async () => {
             await setCurrentGamedayInfo('changePitcher:'+lineup.value.replaced_by);
             await setPitcherGameStats({
                 pitches_thrown : isAway.value?gameCurrentInfo.value.home_pitch_count:gameCurrentInfo.value.away_pitch_count,
-                innings_pitched : gameCurrentInfo.value.inning,
-                outs_pitched : gameCurrentInfo.value.out,
+                outs_pitched : isAway.value?gameCurrentInfo.value.home_current_out:gameCurrentInfo.value.away_current_out,
                 batters_faced : isAway.value?gameCurrentInfo.value.away_current_batting_number:gameCurrentInfo.value.home_current_batting_number
             });
 
             console.log({
                 pitches_thrown : isAway.value?gameCurrentInfo.value.home_pitch_count:gameCurrentInfo.value.away_pitch_count,
-                innings_pitched : gameCurrentInfo.value.inning,
-                outs_pitched : gameCurrentInfo.value.out,
+                outs_pitched : isAway.value?gameCurrentInfo.value.home_current_out:gameCurrentInfo.value.away_current_out,
                 batters_faced : isAway.value?gameCurrentInfo.value.away_current_batting_number:gameCurrentInfo.value.home_current_batting_number
             })
 
@@ -1189,10 +1191,12 @@ const saveRoster = async () => {
                 if(isAway.value){
                     gameCurrentInfo.value.home_pitch_count = 0;
                     gameCurrentInfo.value.away_current_batting_number = 0;
+                    gameCurrentInfo.value.home_current_out = 0;
                 }
                 else{
                     gameCurrentInfo.value.away_pitch_count = 0;
                     gameCurrentInfo.value.home_current_batting_number = 0;
+                    gameCurrentInfo.value.away_current_out = 0;
                 }
             }
             await setCurrentGamedayInfo('lastInfo');
@@ -1353,6 +1357,13 @@ const setOut = async (battingNumberYn=true, confirmYn=true) => {
     }
     
     const current_out = gameCurrentInfo.value.out;
+
+    if(isAway.value){
+        gameCurrentInfo.value.home_current_out++;
+    }
+    else{
+        gameCurrentInfo.value.away_current_out++;
+    }
     
     if(current_out<2) gameCurrentInfo.value.out++;
     else{
