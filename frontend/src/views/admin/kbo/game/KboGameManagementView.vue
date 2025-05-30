@@ -199,6 +199,8 @@
                                         <!-- {{  console.log(JSON.stringify(gamedayInfo))??'' }} -->
                                         <div v-for="(inningInfo, topBottom) in gamedayInfo[currentInning]" class="w-100">
                                             <div>
+                                                <v-divider></v-divider>
+                                                <br>
                                                 <span>{{currentInning}}회 {{ topBottom==='top'?"초":"말" }}</span>
                                             </div>
                                             <div v-for="(outInfo, outcount) in inningInfo">
@@ -212,6 +214,10 @@
                                                 </div>
                                                 <br>
                                                 <div v-for="(ballInfo, index) in outInfo">
+                                                    <div v-if="ballInfo.type.startsWith('changePitcher')">
+                                                        투수 교체 ({{ lineupList[0][isAway?'home':'away']?.find(pitcher => pitcher.replaced_by?.toString() === ballInfo.type.split(':')[1])?.player_name }} ▶ {{ lineupList[0][isAway?'home':'away']?.find(pitcher => pitcher.replaced_by?.toString() === ballInfo.type.split(':')[1])?.replaced_player_name }})
+                                                    </div>
+                                                    
                                                     <div v-if="['flyout','groundout','linedrive','doubleplay','tripleplay','hitting','sacrificeFly','sacrificeBunt'].includes(ballInfo.type)">
                                                         {{ (ballInfo[topBottom==='top'?'home_current_pitch_count':'away_current_pitch_count'])+1 }}구 : 타격
                                                     </div>
@@ -361,6 +367,8 @@
                                         <v-chip class="text-primary" @click="setDouble">2루타</v-chip>
                                         <v-chip class="text-primary" @click="setTriple">3루타</v-chip>
                                         <v-chip class="text-primary" @click="setHomerun">홈런</v-chip>
+                                    </v-chip-group>
+                                    <v-chip-group column>
                                         <v-chip class="text-error" @click="setFlyout">플라이 아웃</v-chip>
                                         <v-chip class="text-error" @click="setGroundout">땅볼 아웃</v-chip>
                                         <v-chip class="text-error" @click="setLinedrive">직선타</v-chip>
@@ -369,25 +377,18 @@
                                         <v-chip class="text-error" @click="setTriplePlay">트리플 플레이</v-chip>
                                     </v-chip-group>
                                 </v-col>
-                                <v-col cols="12" md="6" v-if="gameCurrentInfo.is_available_stat">
+                                <v-col cols="12" v-if="gameCurrentInfo.is_available_stat">
                                     <div class="mb-3">
-                                        <span class="text-subtitle-1 font-weight-bold">희생타</span>
+                                        <span class="text-subtitle-1 font-weight-bold">희생타/사구</span>
                                     </div>
                                     <v-chip-group column>
                                         <v-chip class="text-secondary" @click="setSacrificeFly">희생플라이</v-chip>
                                         <v-chip class="text-secondary" @click="setSacrificeBunt">희생번트</v-chip>
-                                    </v-chip-group>
-                                </v-col>
-                                <v-col cols="12" md="6" v-if="gameCurrentInfo.is_available_stat">
-                                    <div class="mb-3">
-                                        <span class="text-subtitle-1 font-weight-bold">사구</span>
-                                    </div>
-                                    <v-chip-group column>
                                         <v-chip class="text-green" @click="setHitByPitch">사구</v-chip>
                                         <v-chip class="text-green" @click="setIntentionalBaseOnBalls">고의사구</v-chip>
                                     </v-chip-group>
                                 </v-col>
-                                <v-col>
+                                <v-col cols="12">
                                     <div class="mb-3">
                                         <span class="text-subtitle-1 font-weight-bold">실책</span>
                                     </div>
@@ -531,7 +532,7 @@
                                 <v-col class="d-flex flex-column" :class="{'selected-lineup' : selectedLineup[0] === 'away' && selectedLineup[1] === index}">
                                     <div v-for="(away, aIdx) in lineupList[((index + 1)%10)]?.away" class="d-flex justify-space-between cursor-pointer" @click="setPlayerInfo('away',index,aIdx)">
                                         <v-icon 
-                                            v-if="(aIdx === 0 && selectedMatchup.status === 'scheduled') || (aIdx > 0 && selectedMatchup.status === 'playball' && lineupList[((index + 1)%10)]?.away.length-1 === aIdx)" 
+                                            v-if="(aIdx === 0 && selectedMatchup.status === 'scheduled') || (aIdx > 0 && selectedMatchup.status === 'playball' && lineupList[((index + 1)%10)]?.away.length-1 === aIdx  && away.replaced_inning === gameCurrentInfo.inning && away.replaced_out === gameCurrentInfo.out)" 
                                             color="error" 
                                             class="cursor-pointer"
                                         >mdi-delete</v-icon>
@@ -547,7 +548,7 @@
                                             {{ (home?.replaced_position??home?.position)?'(':'' }}{{ (home?.replaced_position??home?.position) }}{{ (home?.replaced_position??home?.position)?') ':'' }}{{ home?.replaced_player_name??home?.player_name }}
                                         </span>
                                         <v-icon 
-                                            v-if="(hIdx === 0 && selectedMatchup.status === 'scheduled') || (hIdx > 0 && selectedMatchup.status === 'playball' && lineupList[((index + 1)%10)]?.home.length-1 === hIdx)" 
+                                            v-if="(hIdx === 0 && selectedMatchup.status === 'scheduled') || (hIdx > 0 && selectedMatchup.status === 'playball' && lineupList[((index + 1)%10)]?.home.length-1 === hIdx && home.replaced_inning === gameCurrentInfo.inning && home.replaced_out === gameCurrentInfo.out)" 
                                             color="error" 
                                             class="cursor-pointer"
                                             @click="deleteRoster(home?.roster_id)"
@@ -560,7 +561,7 @@
                 </v-col>
                 <v-col cols="12" md="8">
                     <v-card class="h-100">
-                        <v-card-title>라인업 설정</v-card-title>
+                        <v-card-title>라인업 설정 {{ isAway?gameCurrentInfo.away_current_batting_number:gameCurrentInfo.home_current_batting_number }}</v-card-title>
                         <v-divider></v-divider>
                         <v-card-text>
                             <v-container>
@@ -805,7 +806,9 @@ const gameCurrentInfo = ref({
     away_current_pitch_count : 0,
     home_current_pitch_count : 0,
     away_batting_number : 0,
+    away_current_batting_number : 0,
     home_batting_number : 0,
+    home_current_batting_number : 0,
     away_score : 0,
     home_score : 0,
     runner_1b : null,
@@ -1079,7 +1082,9 @@ const clearLineup = () => {
         away_current_pitch_count : 0,
         home_current_pitch_count : 0,
         away_batting_number : 0,
+        away_current_batting_number : 0,
         home_batting_number : 0,
+        home_current_batting_number : 0,
         away_score : 0,
         home_score : 0,
         runner_1b : null,
@@ -1165,6 +1170,32 @@ const saveRoster = async () => {
         })
 
         if(response.success){
+            await setCurrentGamedayInfo('changePitcher:'+lineup.value.replaced_by);
+            await setPitcherGameStats({
+                pitches_thrown : isAway.value?gameCurrentInfo.value.home_pitch_count:gameCurrentInfo.value.away_pitch_count,
+                innings_pitched : gameCurrentInfo.value.inning,
+                outs_pitched : gameCurrentInfo.value.out,
+                batters_faced : isAway.value?gameCurrentInfo.value.away_current_batting_number:gameCurrentInfo.value.home_current_batting_number
+            });
+
+            console.log({
+                pitches_thrown : isAway.value?gameCurrentInfo.value.home_pitch_count:gameCurrentInfo.value.away_pitch_count,
+                innings_pitched : gameCurrentInfo.value.inning,
+                outs_pitched : gameCurrentInfo.value.out,
+                batters_faced : isAway.value?gameCurrentInfo.value.away_current_batting_number:gameCurrentInfo.value.home_current_batting_number
+            })
+
+            if(lineup.value.batting_order === 0){
+                if(isAway.value){
+                    gameCurrentInfo.value.home_pitch_count = 0;
+                    gameCurrentInfo.value.away_current_batting_number = 0;
+                }
+                else{
+                    gameCurrentInfo.value.away_pitch_count = 0;
+                    gameCurrentInfo.value.home_current_batting_number = 0;
+                }
+            }
+            await setCurrentGamedayInfo('lastInfo');
             getGameDetailInfo(selectedMatchup.value.game_id)
         }
     } catch (error) {
@@ -1311,8 +1342,14 @@ const setOut = async (battingNumberYn=true, confirmYn=true) => {
     }
 
     if(battingNumberYn){
-        if(isAway.value) gameCurrentInfo.value.away_batting_number++;
-        else gameCurrentInfo.value.home_batting_number++;
+        if(isAway.value){
+            gameCurrentInfo.value.away_batting_number++;
+            gameCurrentInfo.value.away_current_batting_number++;
+        }
+        else{
+            gameCurrentInfo.value.home_batting_number++;
+            gameCurrentInfo.value.home_current_batting_number++;
+        }
     }
     
     const current_out = gameCurrentInfo.value.out;
@@ -1336,8 +1373,14 @@ const setOut = async (battingNumberYn=true, confirmYn=true) => {
 const setForceNonOut = async () => {
     if(!await confirm("타석이 종료됩니다.")) return;
     
-    if(isAway.value) gameCurrentInfo.value.away_batting_number++;
-    else gameCurrentInfo.value.home_batting_number++;
+    if(isAway.value){
+        gameCurrentInfo.value.away_batting_number++;
+        gameCurrentInfo.value.away_current_batting_number++;
+    }
+    else{
+        gameCurrentInfo.value.home_batting_number++;
+        gameCurrentInfo.value.home_current_batting_number++;
+    }
 
     gameCurrentInfo.value.is_available_stat = true;
 
@@ -1476,8 +1519,14 @@ const setBall = async () => {
         await setPitcherGameStats({
             walks_allowed : 1,
         });
-        if(isAway.value) gameCurrentInfo.value.away_batting_number++;
-        else gameCurrentInfo.value.home_batting_number++;
+        if(isAway.value){
+            gameCurrentInfo.value.away_batting_number++;
+            gameCurrentInfo.value.away_current_batting_number++;
+        }
+        else{
+            gameCurrentInfo.value.home_batting_number++;
+            gameCurrentInfo.value.home_current_batting_number++;
+        }
     }
     await setCurrentGamedayInfo('lastInfo');
 }
@@ -1508,8 +1557,14 @@ const setPitchclockBall = async () => {
         await setPitcherGameStats({
             walks_allowed : 1,
         });
-        if(isAway.value) gameCurrentInfo.value.away_batting_number++;
-        else gameCurrentInfo.value.home_batting_number++;
+        if(isAway.value){
+            gameCurrentInfo.value.away_batting_number++;
+            gameCurrentInfo.value.away_current_batting_number++;
+        }
+        else{
+            gameCurrentInfo.value.home_batting_number++;
+            gameCurrentInfo.value.home_current_batting_number++;
+        }
     }
     await setCurrentGamedayInfo('lastInfo');
 }
@@ -1710,8 +1765,14 @@ const setHit = async()=>{
         return;
     }
 
-    if(isAway.value) gameCurrentInfo.value.away_batting_number++;
-    else gameCurrentInfo.value.home_batting_number++;
+    if(isAway.value){
+        gameCurrentInfo.value.away_batting_number++;
+        gameCurrentInfo.value.away_current_batting_number++;
+    }
+    else{
+        gameCurrentInfo.value.home_batting_number++;
+        gameCurrentInfo.value.home_current_batting_number++;
+    }
 
     await setCurrentGamedayInfo('lastInfo');
 }
@@ -1811,8 +1872,14 @@ const setDouble = async () => {
         return;
     }
 
-    if(isAway.value) gameCurrentInfo.value.away_batting_number++;
-    else gameCurrentInfo.value.home_batting_number++;
+    if(isAway.value){
+        gameCurrentInfo.value.away_batting_number++;
+        gameCurrentInfo.value.away_current_batting_number++;
+    }
+    else{
+        gameCurrentInfo.value.home_batting_number++;
+        gameCurrentInfo.value.home_current_batting_number++;
+    }
 
     await setCurrentGamedayInfo('lastInfo');
 }
@@ -1867,8 +1934,14 @@ const setTriple = async () => {
         return;
     }
 
-    if(isAway.value) gameCurrentInfo.value.away_batting_number++;
-    else gameCurrentInfo.value.home_batting_number++;
+    if(isAway.value){
+        gameCurrentInfo.value.away_batting_number++;
+        gameCurrentInfo.value.away_current_batting_number++;
+    }
+    else{
+        gameCurrentInfo.value.home_batting_number++;
+        gameCurrentInfo.value.home_current_batting_number++;
+    }
 
     await setCurrentGamedayInfo('lastInfo');
 }
@@ -1928,8 +2001,14 @@ const setHomerun = async () => {
     if(isAway.value) gameCurrentInfo.value.home_current_pitch_count = 0;
     else gameCurrentInfo.value.away_current_pitch_count = 0;
 
-    if(isAway.value) gameCurrentInfo.value.away_batting_number++;
-    else gameCurrentInfo.value.home_batting_number++;
+    if(isAway.value){
+        gameCurrentInfo.value.away_batting_number++;
+        gameCurrentInfo.value.away_current_batting_number++;
+    }
+    else{
+        gameCurrentInfo.value.home_batting_number++;
+        gameCurrentInfo.value.home_current_batting_number++;
+    }
 
     await setCurrentGamedayInfo('lastInfo');
 }
@@ -2236,8 +2315,14 @@ const setFieldersChoice = async () => {
         return;
     }
 
-    if(isAway.value) gameCurrentInfo.value.away_batting_number++;
-    else gameCurrentInfo.value.home_batting_number++;
+    if(isAway.value){
+        gameCurrentInfo.value.away_batting_number++;
+        gameCurrentInfo.value.away_current_batting_number++;
+    }
+    else{
+        gameCurrentInfo.value.home_batting_number++;
+        gameCurrentInfo.value.home_current_batting_number++;
+    }
 
     await setCurrentGamedayInfo('lastInfo');
 }
@@ -2274,7 +2359,7 @@ const setDoublePlay = async() => {
                 multiple : true
             }
         );
-
+        
         if(!outResult) return alert("아웃 될 주자가 선택되지 않았습니다.","error")
     }
     
@@ -2378,8 +2463,14 @@ const setDoublePlay = async() => {
         gameCurrentInfo.value.away_current_pitch_count++;
     }
 
-    if(curIsAway) gameCurrentInfo.value.away_batting_number++;
-    else gameCurrentInfo.value.home_batting_number++;
+    if(isAway.value){
+        gameCurrentInfo.value.away_batting_number++;
+        gameCurrentInfo.value.away_current_batting_number++;
+    }
+    else{
+        gameCurrentInfo.value.home_batting_number++;
+        gameCurrentInfo.value.home_current_batting_number++;
+    }
 
     await setCurrentGamedayInfo('lastInfo');
 }
@@ -2445,8 +2536,14 @@ const setTriplePlay = async() => {
         gameCurrentInfo.value.away_current_pitch_count++;
     }
 
-    if(curIsAway) gameCurrentInfo.value.away_batting_number++;
-    else gameCurrentInfo.value.home_batting_number++;
+    if(isAway.value){
+        gameCurrentInfo.value.away_batting_number++;
+        gameCurrentInfo.value.away_current_batting_number++;
+    }
+    else{
+        gameCurrentInfo.value.home_batting_number++;
+        gameCurrentInfo.value.home_current_batting_number++;
+    }
 
     await setCurrentGamedayInfo('lastInfo');
 }
@@ -2750,8 +2847,14 @@ const setHitByPitch = async () => {
         gameCurrentInfo.value.away_current_pitch_count++;
     }
 
-    if(isAway.value) gameCurrentInfo.value.away_batting_number++;
-    else gameCurrentInfo.value.home_batting_number++;
+    if(isAway.value){
+        gameCurrentInfo.value.away_batting_number++;
+        gameCurrentInfo.value.away_current_batting_number++;
+    }
+    else{
+        gameCurrentInfo.value.home_batting_number++;
+        gameCurrentInfo.value.home_current_batting_number++;
+    }
     
     await setCurrentGamedayInfo('lastInfo');
 }
@@ -2798,8 +2901,14 @@ const setIntentionalBaseOnBalls = async () => {
 
     gameCurrentInfo.value.runner_1b = { ...currentBatter.value, pitcher : { ... currentPitcher.value } };
     
-    if(isAway.value) gameCurrentInfo.value.away_batting_number++;
-    else gameCurrentInfo.value.home_batting_number++;
+    if(isAway.value){
+        gameCurrentInfo.value.away_batting_number++;
+        gameCurrentInfo.value.away_current_batting_number++;
+    }
+    else{
+        gameCurrentInfo.value.home_batting_number++;
+        gameCurrentInfo.value.home_current_batting_number++;
+    }
     
     await setCurrentGamedayInfo('lastInfo');
 }

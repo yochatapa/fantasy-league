@@ -42,7 +42,7 @@
                             return b.replaced_inning - a.replaced_inning;
                         }
                         return b.replaced_out - a.replaced_out;
-                    })[0].replaced_player_name
+                    })?.[0]?.replaced_player_name
                     ??lineupList
                     .flatMap(inning => inning[isAway ? 'home' : 'away'])
                     .filter(lPlayer => lPlayer?.position?.toLowerCase() === player.position.toLowerCase())
@@ -51,8 +51,7 @@
                             return b.replaced_inning - a.replaced_inning;
                         }
                         return b.replaced_out - a.replaced_out;
-                    })[0]
-                    .player_name }}</span>
+                    })?.[0]?.player_name }}</span>
         </div>
 
         <!-- 투수 정보 -->

@@ -471,7 +471,7 @@ export const createKboCurrentInfo = async(req,res) => {
         game_id, type, inning, inning_half, strike, 
         ball, out, away_pitch_count, home_pitch_count, away_current_pitch_count, 
         home_current_pitch_count, away_batting_number, home_batting_number, away_score, home_score, 
-        runner_1b, runner_2b, runner_3b, batter, pitcher, is_available_stat
+        runner_1b, runner_2b, runner_3b, batter, pitcher, is_available_stat, away_current_batting_number, home_current_batting_number
     } = req.body;
 
     const accessToken = req.headers['authorization']?.split(' ')[1];
@@ -496,7 +496,8 @@ export const createKboCurrentInfo = async(req,res) => {
                     ball, out, away_pitch_count, home_pitch_count, away_current_pitch_count, 
                     home_current_pitch_count, away_batting_number, home_batting_number, away_score, home_score, 
                     runner_1b, runner_2b, runner_3b, batter_roster_id, pitcher_roster_id,
-                    runner_1b_pitcher, runner_2b_pitcher, runner_3b_pitcher, is_available_stat, created_at
+                    runner_1b_pitcher, runner_2b_pitcher, runner_3b_pitcher, is_available_stat, away_current_batting_number, 
+                    home_current_batting_number, created_at
                 )
                 VALUES 
                 (
@@ -504,7 +505,8 @@ export const createKboCurrentInfo = async(req,res) => {
                     $6, $7, $8, $9, $10,
                     $11, $12, $13, $14, $15,
                     $16, $17, $18, $19, $20,
-                    $21, $22, $23, $24, CURRENT_TIMESTAMP
+                    $21, $22, $23, $24, $25,
+                    $26, CURRENT_TIMESTAMP
                 )
             `;
 
@@ -513,7 +515,8 @@ export const createKboCurrentInfo = async(req,res) => {
                 ball, out, away_pitch_count, home_pitch_count, away_current_pitch_count, 
                 home_current_pitch_count, away_batting_number, home_batting_number, away_score, home_score, 
                 runner_1b?.roster_id, runner_2b?.roster_id, runner_3b?.roster_id, batter?.roster_id, pitcher?.roster_id,
-                runner_1b?.pitcher?.roster_id, runner_2b?.pitcher?.roster_id, runner_3b?.pitcher?.roster_id, (is_available_stat === null ? true : is_available_stat)
+                runner_1b?.pitcher?.roster_id, runner_2b?.pitcher?.roster_id, runner_3b?.pitcher?.roster_id, (is_available_stat === null ? true : is_available_stat), away_current_batting_number, 
+                home_current_batting_number
             ])
         })
         
@@ -552,6 +555,8 @@ export const getKboCurrentInfo = async (req, res) => {
                 kgcs.away_score, 
                 kgcs.home_score,
                 kgcs.is_available_stat,
+                kgcs.away_current_batting_number, 
+                kgcs.home_current_batting_number,
                 -- 🏃 Runner 1B
                 jsonb_build_object(
                     'batting_order', kgr1b.batting_order,
