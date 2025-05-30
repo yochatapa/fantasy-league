@@ -67,7 +67,7 @@ const isAdminRoute = computed(() => route.path.startsWith('/admin'))
             </v-snackbar>
 
             <!-- Confirm Dialog -->
-            <v-dialog v-model="alert.dialog" width="400">
+            <v-dialog v-model="alert.dialog" width="400" persistent>
                 <v-card>
                     <v-card-title class="text-h6">확인</v-card-title>
                     <v-card-text v-html="alert.dialogMessage"></v-card-text>
@@ -80,12 +80,12 @@ const isAdminRoute = computed(() => route.path.startsWith('/admin'))
             </v-dialog>
 
             <!-- Prompt Dialog -->
-            <v-dialog v-model="alert.promptDialog" width="400">
+            <v-dialog v-model="alert.promptDialog" width="400" persistent>
                 <v-card>
                     <v-card-title class="text-h6">입력</v-card-title>
                     <v-form ref="promptForm">
                         <v-card-text>
-                            <div class="mb-2" v-html="alert.promptMessage" />
+                            <div class="mb-2" v-html="alert.promptMessage"></div>
                             <div v-if="alert.promptType === 'select'">
                                 <v-select
                                     v-model="alert.promptValue"
