@@ -567,7 +567,7 @@
                 </v-col>
                 <v-col cols="12" md="8">
                     <v-card class="h-100">
-                        <v-card-title>라인업 설정 {{ isAway?gameCurrentInfo.away_current_batting_number:gameCurrentInfo.home_current_batting_number }}</v-card-title>
+                        <v-card-title>라인업 설정</v-card-title>
                         <v-divider></v-divider>
                         <v-card-text>
                             <v-container>
