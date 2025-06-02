@@ -100,7 +100,7 @@
             <div>
                 <span class="font-weight-bold text-caption">{{ currentBatter?.batting_order }}번 : {{ currentBatter?.replaced_player_name??currentBatter?.player_name }}</span>
                 <div>
-                     ({{ currentBatter?.replaced_position??currentBatter?.position }})
+                    ({{ currentBatter?.replaced_position??currentBatter?.position }})
                 </div>
             </div>
             <v-divider></v-divider>
@@ -115,7 +115,8 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
+import { commonFetch } from '@/utils/common/commonFetch';
 
 const props = defineProps({
     gamedayInfo: Object,
@@ -126,11 +127,18 @@ const props = defineProps({
     currentPitcher : Object,
 })
 
+const gamedayInfo = computed(()=>props.gamedayInfo);
 const lineupList = computed(()=>props.lineupList)
 const gameCurrentInfo = computed(()=>props.gameCurrentInfo)
 const isAway = computed(()=>gameCurrentInfo.value.inning_half === 'top');
 const currentBatter = computed(()=>props.currentBatter)
 const currentPitcher = computed(()=>props.currentPitcher)
+
+watch(()=>currentBatter.value, async (newVal) => {
+    await commonFetch(`/api/admin/game/${newVal.game_id}/batter/${newVal.player_id}/current-stats`,{
+        method : "GET"
+    })
+})
 
 const defenders = ref([
     { name: '1루수', position: '1B', x: 342, y: 300 },

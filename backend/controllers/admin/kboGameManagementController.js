@@ -9,6 +9,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { rootCertificates } from 'tls';
 import convertFileToBase64 from '../../utils/convertFileToBase64.js'; // apiResponse에서 임포트
 import { stat } from 'fs';
+import cluster from 'cluster';
 
 const finalUploadsBaseDir = path.join(process.cwd(), 'uploads');
 
@@ -954,5 +955,52 @@ export const createPitcherGameStats = async (req, res) => {
         });
     } catch (error) {
         return sendServerError(res, error, "투수 스탯 저장 중 오류가 발생했습니다. 다시 시도해주세요.");
+    }
+}
+
+export const getKboCurrentBatterStats = async (req,res) => {
+    let { gameId, playerId } = req.params;
+    
+    if (!gameId || !playerId) {
+        return sendBadRequest(res, "게임 정보가 잘못되었습니다.");
+    }
+
+    try {
+        const currentBatterStatsQuery = `
+            SELECT
+                bgs.game_id,
+                bgs.player_id,
+                SUM(COALESCE(bgs.plate_appearances, 0)) AS plate_appearances,
+                SUM(COALESCE(bgs.at_bats, 0)) AS at_bats,
+                SUM(COALESCE(bgs.hits, 0)) AS hits,
+                SUM(COALESCE(bgs.singles, 0)) AS singles,
+                SUM(COALESCE(bgs.doubles, 0)) AS doubles,
+                SUM(COALESCE(bgs.triples, 0)) AS triples,
+                SUM(COALESCE(bgs.home_runs, 0)) AS home_runs,
+                SUM(COALESCE(bgs.runs_batted_in, 0)) AS rbis,
+                SUM(COALESCE(bgs.runs, 0)) AS runs,
+                SUM(COALESCE(bgs.walks, 0)) AS walks,
+                SUM(COALESCE(bgs.strikeouts, 0)) AS strikeouts,
+                SUM(COALESCE(bgs.stolen_bases, 0)) AS stolen_bases,
+                SUM(COALESCE(bgs.caught_stealing, 0)) AS caught_stealing,
+                STRING_AGG(DISTINCT bgs.result, ', ') AS results
+            FROM
+                public.batter_game_stats bgs
+            WHERE
+                bgs.game_id = $1
+                AND bgs.player_id = $2
+            GROUP BY
+                bgs.game_id,
+                bgs.player_id
+        `
+
+        const { rows : currentBatterStats } = await query(currentBatterStatsQuery,[gameId,playerId]);
+        
+        return sendSuccess(res, {
+            message: "현 게임 타자 스탯 정보를 성공적으로 조회했습니다..",
+            currentBatterStats
+        });
+    } catch (error) {
+        return sendServerError(res, error, "현 게임 타자 스탯 정보 조회 중 오류가 발생했습니다. 다시 시도해주세요.");
     }
 }
