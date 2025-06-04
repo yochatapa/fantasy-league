@@ -210,6 +210,17 @@
                                                     <br>
                                                     <span>{{ outInfo[0]?.batter?.batting_order }}번 타자 : {{ outInfo[0]?.batter?.replaced_player_name??outInfo[0]?.batter?.player_name }}</span>
                                                     <br>
+                                                    <span>
+                                                        {{ outInfo[0]?.batter?.stats?.plate_appearances }}타석 {{ outInfo[0]?.batter?.stats?.at_bats }}타수 {{ outInfo[0]?.batter?.stats?.hits }}안타 {{ outInfo[0]?.batter?.stats?.walks }}볼넷 {{ outInfo[0]?.batter?.stats?.strikeouts }}삼진
+                                                    </span>
+                                                    <br>
+                                                    <span v-if="outInfo[0]?.batter?.stats?.hits>0">(1루타 {{ outInfo[0]?.batter?.stats?.singles }}, 2루타 {{ outInfo[0]?.batter?.stats?.doubles }}, 3루타 {{ outInfo[0]?.batter?.stats?.triples }}, 홈런 {{ outInfo[0]?.batter?.stats?.home_runs }})</span>
+                                                    <br v-if="outInfo[0]?.batter?.stats?.hits>0">
+                                                    <span>
+                                                        {{ outInfo[0]?.batter?.stats?.rbis }}타점 {{ outInfo[0]?.batter?.stats?.runs }}득점 {{ outInfo[0]?.batter?.stats?.stolen_bases }}도루
+                                                    </span>
+                                                    <br>
+                                                    <br>
                                                     <span>투수 : {{ outInfo[0]?.pitcher?.replaced_player_name??outInfo[0]?.pitcher?.player_name }}</span>
                                                 </div>
                                                 <br>
@@ -831,6 +842,7 @@ const currentBatter = computed(()=>{
     const awayHome = isAway.value?'away':'home';
     const battingOrderInfo = lineupList.value[(gameCurrentInfo.value[awayHome + '_batting_number'] % 9) + 1]?.[awayHome];
     const lastBatterInfo = battingOrderInfo?.[(battingOrderInfo?.length??1)-1]
+    
     return lastBatterInfo??{
         team_id: null,
         player_id: null,
@@ -943,6 +955,19 @@ watch(gamedayInfo, () => {
         }
     });
 }, { deep: true });
+
+watch(()=>currentBatter.value, async (newVal) => {
+    if(!!newVal.game_id && !!newVal.player_id){
+        const response = await commonFetch(`/api/admin/game/${newVal.game_id}/batter/${newVal.player_id}/current-stats`,{
+            method : "GET"
+        })
+
+        if(response.success && response?.data?.currentBatterStats?.[0]){
+            currentBatter.value.stats = response?.data?.currentBatterStats?.[0]
+        }else currentBatter.value.stats = {};
+    }
+})
+
 
 const updateMatchups = async (newVal) => {
     isExpanded.value = true
@@ -1104,6 +1129,8 @@ const clearLineup = () => {
     }
 
     errorPlayer.value = null;
+
+    currentInning.value = 1;
 }
 
 const getGameDetailInfo = async (game_id) => {
@@ -1308,6 +1335,7 @@ const setBatterGameStats = async (stats, player_id) => {
                 , inning : gameCurrentInfo.value.inning
                 , inning_half : gameCurrentInfo.value.inning_half
                 , out : gameCurrentInfo.value.out
+                , batting_number : isAway.value?gameCurrentInfo.value.away_batting_number:gameCurrentInfo.value.home_batting_number
             }
         })
     } catch (error) {
@@ -2122,16 +2150,8 @@ const setRunnerAdvanceFromThird = async (rbiConfirmYn=true) => {
 const setFlyout = async () => {
     // if(!await confirm("플라이 아웃 기록 시 주자 및 타점 입력이 제한되며,\n다음 타석으로 진행됩니다.\n계속하시겠습니까?")) return;
 
-    if(isAway.value){
-        gameCurrentInfo.value.home_pitch_count++;
-        gameCurrentInfo.value.home_current_pitch_count++;
-    }
-    else{
-        gameCurrentInfo.value.away_pitch_count++;
-        gameCurrentInfo.value.away_current_pitch_count++;
-    }
-
     await setCurrentGamedayInfo('flyout');
+
     await setBatterGameStats({
         at_bats : 1,
         plate_appearances : 1,
@@ -2140,6 +2160,15 @@ const setFlyout = async () => {
     await setPitcherGameStats({
         flyouts : 1,
     });
+
+    if(isAway.value){
+        gameCurrentInfo.value.home_pitch_count++;
+        gameCurrentInfo.value.home_current_pitch_count++;
+    }
+    else{
+        gameCurrentInfo.value.away_pitch_count++;
+        gameCurrentInfo.value.away_current_pitch_count++;
+    }
     
     await setOut();
 
@@ -3177,6 +3206,16 @@ const setPassedBall = async () => {
 
     await setCurrentGamedayInfo(`passedBall`);
     await setCurrentGamedayInfo(`ball`);
+
+    const catcherList = lineupList.value.flatMap(inning => inning[isAway.value ? 'home' : 'away'])?.filter(batter => (batter.replaced_position??batter.position)?.toString() === "C")
+
+    const catcherInfo = catcherList[catcherList.length - 1]
+
+    const catcherId = catcherInfo.replaced_by??catcherInfo.player_id
+
+    await setBatterGameStats({
+        errors : 1,
+    },catcherId);
 
     const current_ball = gameCurrentInfo.value.ball;
     if(isAway.value){

@@ -711,7 +711,8 @@ export const getKboCurrentInfo = async (req, res) => {
                             WHEN kgm.home_team_id = kgrbt.team_id THEN 'home'
                             ELSE 'away'
                         END,
-                    'updated_at', kgrbt.updated_at
+                    'updated_at', kgrbt.updated_at,
+                    'stats', COALESCE(bs.stats, '{}')
                 ) AS batter,
                 -- ⚾ Pitcher
                 jsonb_build_object(
@@ -767,6 +768,31 @@ export const getKboCurrentInfo = async (req, res) => {
                 LEFT JOIN kbo_player_master pm7 ON pm7.id = kgrbt.player_id
                 LEFT JOIN kbo_player_master pm8 ON pm8.id = kgrbt.replaced_by
                 LEFT JOIN kbo_team_master tm4 ON tm4.id = kgrbt.team_id
+                LEFT JOIN LATERAL (
+                    SELECT jsonb_build_object(
+                        'plate_appearances', COALESCE(SUM(COALESCE(bgs.plate_appearances, 0)), 0),
+                        'at_bats', COALESCE(SUM(COALESCE(bgs.at_bats, 0)), 0),
+                        'hits', COALESCE(SUM(COALESCE(bgs.hits, 0)), 0),
+                        'singles', COALESCE(SUM(COALESCE(bgs.singles, 0)), 0),
+                        'doubles', COALESCE(SUM(COALESCE(bgs.doubles, 0)), 0),
+                        'triples', COALESCE(SUM(COALESCE(bgs.triples, 0)), 0),
+                        'home_runs', COALESCE(SUM(COALESCE(bgs.home_runs, 0)), 0),
+                        'rbis', COALESCE(SUM(COALESCE(bgs.runs_batted_in, 0)), 0),
+                        'runs', COALESCE(SUM(COALESCE(bgs.runs, 0)), 0),
+                        'walks', COALESCE(SUM(COALESCE(bgs.walks, 0)), 0),
+                        'strikeouts', COALESCE(SUM(COALESCE(bgs.strikeouts, 0)), 0),
+                        'stolen_bases', COALESCE(SUM(COALESCE(bgs.stolen_bases, 0)), 0),
+                        'caught_stealing', COALESCE(SUM(COALESCE(bgs.caught_stealing, 0)), 0)
+                    ) AS stats
+                    FROM batter_game_stats bgs
+                    WHERE bgs.game_id = kgcs.game_id
+                    AND bgs.player_id = kgrbt.player_id
+                    AND bgs.batting_number < 
+                        CASE 
+                            WHEN kgcs.inning_half = 'top' THEN kgcs.away_batting_number
+                            ELSE kgcs.home_batting_number
+                        END
+                ) bs ON true
                 LEFT JOIN kbo_game_roster kgrpc ON kgrpc.id = kgcs.pitcher_roster_id
                 LEFT JOIN kbo_player_master pm9 ON pm9.id = kgrpc.player_id
                 LEFT JOIN kbo_player_master pm10 ON pm10.id = kgrpc.replaced_by
@@ -839,7 +865,7 @@ const organizeGameInfo = (gameInfo) => {
 export const createBatterGameStats = async (req, res) => {
     const { 
         game_id, player_id, team_id, opponent_team_id, batting_order,
-        inning, inning_half, out, stats
+        inning, inning_half, out, stats, batting_number
     } = req.body;
 
     const accessToken = req.headers['authorization']?.split(' ')[1];
@@ -874,18 +900,18 @@ export const createBatterGameStats = async (req, res) => {
                 INSERT INTO batter_game_stats
                 (
                     game_id, player_id, team_id, opponent_team_id, batting_order,
-                    inning, inning_half, out, created_at, ${queryParams.join(",")}
+                    inning, inning_half, out, created_at, ${queryParams.join(",")}, batting_number
                 )
                 VALUES 
                 (
                     $1, $2, $3, $4, $5,
-                    $6, $7, $8, CURRENT_TIMESTAMP, ${whereClauses.join(",")}
+                    $6, $7, $8, CURRENT_TIMESTAMP, ${whereClauses.join(",")}, $9
                 )
             `;
 
             client.query(batterStatsQuery,[
                 game_id, player_id, team_id, opponent_team_id, batting_order,
-                inning, inning_half, out,
+                inning, inning_half, out, batting_number
             ])
         })
         
@@ -982,8 +1008,7 @@ export const getKboCurrentBatterStats = async (req,res) => {
                 SUM(COALESCE(bgs.walks, 0)) AS walks,
                 SUM(COALESCE(bgs.strikeouts, 0)) AS strikeouts,
                 SUM(COALESCE(bgs.stolen_bases, 0)) AS stolen_bases,
-                SUM(COALESCE(bgs.caught_stealing, 0)) AS caught_stealing,
-                STRING_AGG(DISTINCT bgs.result, ', ') AS results
+                SUM(COALESCE(bgs.caught_stealing, 0)) AS caught_stealing
             FROM
                 public.batter_game_stats bgs
             WHERE

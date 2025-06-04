@@ -55,7 +55,7 @@
         </div>
 
         <!-- 투수 정보 -->
-        <div class="pitcher" :style="getPlayerPosition(pitcher)" @click="showPlayerInfo(pitcher)">
+        <div v-if="currentPitcher?.player_id" class="pitcher" :style="getPlayerPosition(pitcher)" @click="showPlayerInfo(pitcher)">
             <span>{{ currentPitcher.replaced_player_name??currentPitcher.player_name }}</span>
         </div>
 
@@ -77,7 +77,7 @@
         </div> -->
 
         <!-- 타자 정보 -->
-        <div class="batter" :style="getPlayerPosition(batter,false)" @click="showPlayerInfo(batter)">
+        <div v-if="currentBatter?.player_id" class="batter" :style="getPlayerPosition(batter,false)" @click="showPlayerInfo(batter)">
             <span>{{ currentBatter.replaced_player_name??currentBatter.player_name }}</span>
         </div>
 
@@ -100,7 +100,10 @@
             <div>
                 <span class="font-weight-bold text-caption">{{ currentBatter?.batting_order }}번 : {{ currentBatter?.replaced_player_name??currentBatter?.player_name }}</span>
                 <div>
-                    ({{ currentBatter?.replaced_position??currentBatter?.position }})
+                    {{ currentBatterStats.hits }}/{{ currentBatterStats.at_bats }} | {{ currentBatterStats.home_runs }} 홈런
+                </div>
+                <div>
+                    {{ currentBatterStats.runs }}득점/{{ currentBatterStats.rbis }}타점
                 </div>
             </div>
             <v-divider></v-divider>
@@ -133,12 +136,7 @@ const gameCurrentInfo = computed(()=>props.gameCurrentInfo)
 const isAway = computed(()=>gameCurrentInfo.value.inning_half === 'top');
 const currentBatter = computed(()=>props.currentBatter)
 const currentPitcher = computed(()=>props.currentPitcher)
-
-watch(()=>currentBatter.value, async (newVal) => {
-    await commonFetch(`/api/admin/game/${newVal.game_id}/batter/${newVal.player_id}/current-stats`,{
-        method : "GET"
-    })
-})
+const currentBatterStats = ref({});
 
 const defenders = ref([
     { name: '1루수', position: '1B', x: 342, y: 300 },
