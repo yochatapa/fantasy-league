@@ -36,7 +36,7 @@
         <div v-for="(player, index) in defenders" :key="index" :style="getPlayerPosition(player)" class="player" @click="showPlayerInfo(player)">
             <span>{{ lineupList
                     .flatMap(inning => inning[isAway ? 'home' : 'away'])
-                    .filter(lPlayer => lPlayer?.position?.toLowerCase() === player.position.toLowerCase())
+                    .filter(lPlayer => (lPlayer?.replaced_position??lPlayer?.position)?.toLowerCase() === player.position.toLowerCase())
                     .sort((a, b) => {
                         if (a.replaced_inning !== b.replaced_inning) {
                             return b.replaced_inning - a.replaced_inning;
@@ -45,7 +45,7 @@
                     })?.[0]?.replaced_player_name
                     ??lineupList
                     .flatMap(inning => inning[isAway ? 'home' : 'away'])
-                    .filter(lPlayer => lPlayer?.position?.toLowerCase() === player.position.toLowerCase())
+                    .filter(lPlayer => (lPlayer?.replaced_position??lPlayer?.position)?.toLowerCase() === player.position.toLowerCase())
                     .sort((a, b) => {
                         if (a.replaced_inning !== b.replaced_inning) {
                             return b.replaced_inning - a.replaced_inning;

@@ -996,19 +996,19 @@ export const getKboCurrentBatterStats = async (req,res) => {
             SELECT
                 bgs.game_id,
                 bgs.player_id,
-                SUM(COALESCE(bgs.plate_appearances, 0)) AS plate_appearances,
-                SUM(COALESCE(bgs.at_bats, 0)) AS at_bats,
-                SUM(COALESCE(bgs.hits, 0)) AS hits,
-                SUM(COALESCE(bgs.singles, 0)) AS singles,
-                SUM(COALESCE(bgs.doubles, 0)) AS doubles,
-                SUM(COALESCE(bgs.triples, 0)) AS triples,
-                SUM(COALESCE(bgs.home_runs, 0)) AS home_runs,
-                SUM(COALESCE(bgs.runs_batted_in, 0)) AS rbis,
-                SUM(COALESCE(bgs.runs, 0)) AS runs,
-                SUM(COALESCE(bgs.walks, 0)) AS walks,
-                SUM(COALESCE(bgs.strikeouts, 0)) AS strikeouts,
-                SUM(COALESCE(bgs.stolen_bases, 0)) AS stolen_bases,
-                SUM(COALESCE(bgs.caught_stealing, 0)) AS caught_stealing
+                COALESCE(SUM(COALESCE(bgs.plate_appearances, 0)), 0) AS plate_appearances,
+                COALESCE(SUM(COALESCE(bgs.at_bats, 0)), 0) AS at_bats,
+                COALESCE(SUM(COALESCE(bgs.hits, 0)), 0) AS hits,
+                COALESCE(SUM(COALESCE(bgs.singles, 0)), 0) AS singles,
+                COALESCE(SUM(COALESCE(bgs.doubles, 0)), 0) AS doubles,
+                COALESCE(SUM(COALESCE(bgs.triples, 0)), 0) AS triples,
+                COALESCE(SUM(COALESCE(bgs.home_runs, 0)), 0) AS home_runs,
+                COALESCE(SUM(COALESCE(bgs.runs_batted_in, 0)), 0) AS rbis,
+                COALESCE(SUM(COALESCE(bgs.runs, 0)), 0) AS runs,
+                COALESCE(SUM(COALESCE(bgs.walks, 0)), 0) AS walks,
+                COALESCE(SUM(COALESCE(bgs.strikeouts, 0)), 0) AS strikeouts,
+                COALESCE(SUM(COALESCE(bgs.stolen_bases, 0)), 0) AS stolen_bases,
+                COALESCE(SUM(COALESCE(bgs.caught_stealing, 0)), 0) AS caught_stealing
             FROM
                 public.batter_game_stats bgs
             WHERE
@@ -1016,10 +1016,30 @@ export const getKboCurrentBatterStats = async (req,res) => {
                 AND bgs.player_id = $2
             GROUP BY
                 bgs.game_id,
-                bgs.player_id
+                bgs.player_id;
         `
 
-        const { rows : currentBatterStats } = await query(currentBatterStatsQuery,[gameId,playerId]);
+        let { rows : currentBatterStats } = await query(currentBatterStatsQuery,[gameId,playerId]);
+
+        if (currentBatterStats.length === 0) {
+            currentBatterStats = [{
+                game_id: gameId,
+                player_id: playerId,
+                plate_appearances: 0,
+                at_bats: 0,
+                hits: 0,
+                singles: 0,
+                doubles: 0,
+                triples: 0,
+                home_runs: 0,
+                rbis: 0,
+                runs: 0,
+                walks: 0,
+                strikeouts: 0,
+                stolen_bases: 0,
+                caught_stealing: 0,
+            }];
+        }
         
         return sendSuccess(res, {
             message: "현 게임 타자 스탯 정보를 성공적으로 조회했습니다..",
