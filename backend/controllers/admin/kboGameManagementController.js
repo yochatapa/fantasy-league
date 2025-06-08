@@ -1049,3 +1049,165 @@ export const getKboCurrentBatterStats = async (req,res) => {
         return sendServerError(res, error, "현 게임 타자 스탯 정보 조회 중 오류가 발생했습니다. 다시 시도해주세요.");
     }
 }
+
+export const updateKboGameStats = async (req, res) => {
+    const { gameId } = req.body;
+    const accessToken = req.headers['authorization']?.split(' ')[1];
+
+    if (!accessToken) {
+        return sendBadRequest(res, '토큰이 제공되지 않았습니다.');
+    }
+
+    let user;
+    try {
+        user = jwt.verify(accessToken, process.env.JWT_SECRET);
+    } catch (err) {
+        return sendBadRequest(res, '유효하지 않은 토큰입니다.');
+    }
+
+    if (!gameId) {
+        return sendBadRequest(res, "필수 입력값을 모두 입력해주세요.");
+    }
+
+    try {
+        await withTransaction(async (client) => {
+            // 게임 연도 조회
+            const { rows: gameRows } = await client.query(
+                `SELECT season_year FROM kbo_game_master WHERE id = $1`, [gameId]
+            );
+
+            if (gameRows.length === 0) {
+                throw new Error("해당 게임을 찾을 수 없습니다.");
+            }
+
+            const seasonYear = gameRows[0].season_year;
+
+            // 🥎 1. 타자 스탯 누적
+            await client.query(`
+                INSERT INTO batter_season_stats (
+                    season_year, player_id, team_id,
+                    plate_appearances, at_bats, hits, singles, doubles, triples,
+                    home_runs, runs_batted_in, runs, walks, intentional_walks,
+                    strikeouts, hit_by_pitch, sacrifice_bunts, sacrifice_flies,
+                    stolen_bases, caught_stealing, grounded_into_double_play,
+                    errors, left_on_base, flyouts, groundouts, linedrives,
+                    triple_play, caught_stealings, pickoffs,
+                    intentional_base_on_balls, fielders_choice, grand_slams,
+                    solo_home_runs, two_run_home_runs, three_run_home_runs
+                )
+                SELECT
+                    $1 AS season_year, player_id, team_id,
+                    SUM(plate_appearances), SUM(at_bats), SUM(hits), SUM(singles), SUM(doubles), SUM(triples),
+                    SUM(home_runs), SUM(runs_batted_in), SUM(runs), SUM(walks), SUM(intentional_walks),
+                    SUM(strikeouts), SUM(hit_by_pitch), SUM(sacrifice_bunts), SUM(sacrifice_flies),
+                    SUM(stolen_bases), SUM(caught_stealing), SUM(grounded_into_double_play),
+                    SUM(errors), SUM(left_on_base), SUM(flyouts), SUM(groundouts), SUM(linedrives),
+                    SUM(triple_play), SUM(caught_stealings), SUM(pickoffs),
+                    SUM(intentional_base_on_balls), SUM(fielders_choice), SUM(grand_slams),
+                    SUM(solo_home_runs), SUM(two_run_home_runs), SUM(three_run_home_runs)
+                FROM batter_game_stats
+                WHERE game_id = $2
+                GROUP BY player_id, team_id
+                ON CONFLICT (season_year, player_id) DO UPDATE
+                SET
+                    plate_appearances = batter_season_stats.plate_appearances + EXCLUDED.plate_appearances,
+                    at_bats = batter_season_stats.at_bats + EXCLUDED.at_bats,
+                    hits = batter_season_stats.hits + EXCLUDED.hits,
+                    singles = batter_season_stats.singles + EXCLUDED.singles,
+                    doubles = batter_season_stats.doubles + EXCLUDED.doubles,
+                    triples = batter_season_stats.triples + EXCLUDED.triples,
+                    home_runs = batter_season_stats.home_runs + EXCLUDED.home_runs,
+                    runs_batted_in = batter_season_stats.runs_batted_in + EXCLUDED.runs_batted_in,
+                    runs = batter_season_stats.runs + EXCLUDED.runs,
+                    walks = batter_season_stats.walks + EXCLUDED.walks,
+                    intentional_walks = batter_season_stats.intentional_walks + EXCLUDED.intentional_walks,
+                    strikeouts = batter_season_stats.strikeouts + EXCLUDED.strikeouts,
+                    hit_by_pitch = batter_season_stats.hit_by_pitch + EXCLUDED.hit_by_pitch,
+                    sacrifice_bunts = batter_season_stats.sacrifice_bunts + EXCLUDED.sacrifice_bunts,
+                    sacrifice_flies = batter_season_stats.sacrifice_flies + EXCLUDED.sacrifice_flies,
+                    stolen_bases = batter_season_stats.stolen_bases + EXCLUDED.stolen_bases,
+                    caught_stealing = batter_season_stats.caught_stealing + EXCLUDED.caught_stealing,
+                    grounded_into_double_play = batter_season_stats.grounded_into_double_play + EXCLUDED.grounded_into_double_play,
+                    errors = batter_season_stats.errors + EXCLUDED.errors,
+                    left_on_base = batter_season_stats.left_on_base + EXCLUDED.left_on_base,
+                    flyouts = batter_season_stats.flyouts + EXCLUDED.flyouts,
+                    groundouts = batter_season_stats.groundouts + EXCLUDED.groundouts,
+                    linedrives = batter_season_stats.linedrives + EXCLUDED.linedrives,
+                    triple_play = batter_season_stats.triple_play + EXCLUDED.triple_play,
+                    caught_stealings = batter_season_stats.caught_stealings + EXCLUDED.caught_stealings,
+                    pickoffs = batter_season_stats.pickoffs + EXCLUDED.pickoffs,
+                    intentional_base_on_balls = batter_season_stats.intentional_base_on_balls + EXCLUDED.intentional_base_on_balls,
+                    fielders_choice = batter_season_stats.fielders_choice + EXCLUDED.fielders_choice,
+                    grand_slams = batter_season_stats.grand_slams + EXCLUDED.grand_slams,
+                    solo_home_runs = batter_season_stats.solo_home_runs + EXCLUDED.solo_home_runs,
+                    two_run_home_runs = batter_season_stats.two_run_home_runs + EXCLUDED.two_run_home_runs,
+                    three_run_home_runs = batter_season_stats.three_run_home_runs + EXCLUDED.three_run_home_runs;
+            `, [seasonYear, gameId]);
+
+            // ⚾ 2. 투수 스탯 누적
+            await client.query(`
+                INSERT INTO pitcher_season_stats (
+                    season_year, player_id, team_id,
+                    games_played, games_started, outs_pitched, batters_faced,
+                    pitches_thrown, hits_allowed, singles_allowed, doubles_allowed,
+                    triples_allowed, home_runs_allowed, runs_allowed, earned_runs,
+                    walks_allowed, intentional_walks_allowed, hit_batters, hit_by_pitch_allowed,
+                    intentional_base_on_balls, strikeouts, wild_pitches, balks, wins,
+                    losses, saves, holds, blown_saves, flyouts, groundouts, linedrives,
+                    grounded_into_double_play, triple_play, pickoffs
+                )
+                SELECT
+                    $1 AS season_year, player_id, team_id,
+                    SUM(games_played), SUM(games_started), SUM(outs_pitched), SUM(batters_faced),
+                    SUM(pitches_thrown), SUM(hits_allowed), SUM(singles_allowed), SUM(doubles_allowed),
+                    SUM(triples_allowed), SUM(home_runs_allowed), SUM(runs_allowed), SUM(earned_runs),
+                    SUM(walks_allowed), SUM(intentional_walks_allowed), SUM(hit_batters), SUM(hit_by_pitch_allowed),
+                    SUM(intentional_base_on_balls), SUM(strikeouts), SUM(wild_pitches), SUM(balks), SUM(wins),
+                    SUM(losses), SUM(saves), SUM(holds), SUM(blown_saves), SUM(flyouts), SUM(groundouts), SUM(linedrives),
+                    SUM(grounded_into_double_play), SUM(triple_play), SUM(pickoffs)
+                FROM pitcher_game_stats
+                WHERE game_id = $2
+                GROUP BY player_id, team_id
+                ON CONFLICT (season_year, player_id) DO UPDATE
+                SET
+                    games_played = pitcher_season_stats.games_played + EXCLUDED.games_played,
+                    games_started = pitcher_season_stats.games_started + EXCLUDED.games_started,
+                    outs_pitched = pitcher_season_stats.outs_pitched + EXCLUDED.outs_pitched,
+                    batters_faced = pitcher_season_stats.batters_faced + EXCLUDED.batters_faced,
+                    pitches_thrown = pitcher_season_stats.pitches_thrown + EXCLUDED.pitches_thrown,
+                    hits_allowed = pitcher_season_stats.hits_allowed + EXCLUDED.hits_allowed,
+                    singles_allowed = pitcher_season_stats.singles_allowed + EXCLUDED.singles_allowed,
+                    doubles_allowed = pitcher_season_stats.doubles_allowed + EXCLUDED.doubles_allowed,
+                    triples_allowed = pitcher_season_stats.triples_allowed + EXCLUDED.triples_allowed,
+                    home_runs_allowed = pitcher_season_stats.home_runs_allowed + EXCLUDED.home_runs_allowed,
+                    runs_allowed = pitcher_season_stats.runs_allowed + EXCLUDED.runs_allowed,
+                    earned_runs = pitcher_season_stats.earned_runs + EXCLUDED.earned_runs,
+                    walks_allowed = pitcher_season_stats.walks_allowed + EXCLUDED.walks_allowed,
+                    intentional_walks_allowed = pitcher_season_stats.intentional_walks_allowed + EXCLUDED.intentional_walks_allowed,
+                    hit_batters = pitcher_season_stats.hit_batters + EXCLUDED.hit_batters,
+                    hit_by_pitch_allowed = pitcher_season_stats.hit_by_pitch_allowed + EXCLUDED.hit_by_pitch_allowed,
+                    intentional_base_on_balls = pitcher_season_stats.intentional_base_on_balls + EXCLUDED.intentional_base_on_balls,
+                    strikeouts = pitcher_season_stats.strikeouts + EXCLUDED.strikeouts,
+                    wild_pitches = pitcher_season_stats.wild_pitches + EXCLUDED.wild_pitches,
+                    balks = pitcher_season_stats.balks + EXCLUDED.balks,
+                    wins = pitcher_season_stats.wins + EXCLUDED.wins,
+                    losses = pitcher_season_stats.losses + EXCLUDED.losses,
+                    saves = pitcher_season_stats.saves + EXCLUDED.saves,
+                    holds = pitcher_season_stats.holds + EXCLUDED.holds,
+                    blown_saves = pitcher_season_stats.blown_saves + EXCLUDED.blown_saves,
+                    flyouts = pitcher_season_stats.flyouts + EXCLUDED.flyouts,
+                    groundouts = pitcher_season_stats.groundouts + EXCLUDED.groundouts,
+                    linedrives = pitcher_season_stats.linedrives + EXCLUDED.linedrives,
+                    grounded_into_double_play = pitcher_season_stats.grounded_into_double_play + EXCLUDED.grounded_into_double_play,
+                    triple_play = pitcher_season_stats.triple_play + EXCLUDED.triple_play,
+                    pickoffs = pitcher_season_stats.pickoffs + EXCLUDED.pickoffs;
+            `, [seasonYear, gameId]);
+
+            return sendSuccess(res, {
+                message: "게임 통계를 시즌 누적으로 반영했습니다.",
+            });
+        });
+    } catch (error) {
+        return sendServerError(res, error, "게임 상태 변경 중 오류가 발생했습니다. 다시 시도해주세요.");
+    }
+};

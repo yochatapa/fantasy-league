@@ -121,7 +121,7 @@
             <v-row align="stretch" class="h-100">
                 <v-col cols="12">
                     <v-card class="h-100">
-                        <v-card-title>경기 정보</v-card-title>
+                        <v-card-title>경기 정보 {{ isAway }}</v-card-title>
                         <v-divider></v-divider>
                         <v-card-text>
                             <div v-if="selectedMatchup">
@@ -152,12 +152,13 @@
                                     <v-chip link v-if="selectedMatchup.status === 'scheduled' && lineupList.filter(ll => ll.away.length > 0 && ll.home.length >0).length=== 10" color="primary" @click="updateGameStatus('playball')">
                                         경기시작
                                     </v-chip>
-                                    <v-chip link v-else-if="selectedMatchup.status === 'playball'" color="primary" @click="updateGameStatus('completed')">
+                                    <!-- <v-chip link v-else-if="selectedMatchup.status === 'playball'" color="primary" @click="updateGameStatus('completed')">
                                         경기종료
-                                    </v-chip>
+                                    </v-chip> -->
                                     <v-chip link v-if="selectedMatchup.status !== 'completed' && selectedMatchup.status !== 'cancelled'" color="error" @click="updateGameStatus('cancelled')">
                                         경기취소
                                     </v-chip>
+                                    <v-btn @click="setGameOver">game end test</v-btn>
                                 </div>
                             </div>
                             <div v-else class="text-center">
@@ -182,12 +183,13 @@
                             <div class="chip-container mt-2">
                                 <div class="d-flex" style="gap: 4px; overflow-x: auto; white-space: nowrap;">
                                     <v-chip
-                                        v-for="number in 12"
+                                        v-for="number in gameCurrentInfo.inning>9?gameCurrentInfo.inning:9"
                                         :key="number"
                                         class="d-flex justify-center align-center cursor-pointer"
                                         size="small"
                                         :variant="number === currentInning ? 'tonal' : 'text'"
                                         @click="setCurrentInning(number)"
+                                        :disabled="number>gameCurrentInfo.inning"
                                     >
                                         {{ number }}회
                                     </v-chip>
@@ -225,6 +227,14 @@
                                                 </div>
                                                 <br>
                                                 <div v-for="(ballInfo, index) in outInfo">
+                                                    <div v-if="ballInfo.type === 'gameEnd'">
+                                                        경기 종료
+                                                        <br>
+                                                        {{ selectedMatchup.away_team_name }} : {{ gameCurrentInfo.away_score }}점
+                                                        <br>
+                                                        {{ selectedMatchup.home_team_name }} : {{ gameCurrentInfo.home_score }}점
+                                                    </div>
+
                                                     <div v-if="ballInfo.type.startsWith('changePitcher')">
                                                         투수 교체 ({{ lineupList[0][isAway?'home':'away']?.find(pitcher => pitcher.replaced_by?.toString() === ballInfo.type.split(':')[1])?.player_name }} ▶ {{ lineupList[0][isAway?'home':'away']?.find(pitcher => pitcher.replaced_by?.toString() === ballInfo.type.split(':')[1])?.replaced_player_name }})
                                                     </div>
@@ -581,7 +591,7 @@
                         </v-card-text>
                     </v-card>
                 </v-col>
-                <v-col cols="12" md="8">
+                <v-col cols="12" md="8" v-if="['scheduled','playball'].includes(selectedMatchup.status)">
                     <v-card class="h-100">
                         <v-card-title>라인업 설정</v-card-title>
                         <v-divider></v-divider>
@@ -701,7 +711,7 @@
                                                         if(hasPlayer) return false
                                                         else return true
                                                     })?.toSorted((a,b)=>lineup.batting_order===0?b.player_type.localeCompare(a.player_type):a.player_type.localeCompare(b.player_type))"
-                                                    item-title="player_name"
+                                                    :item-title="item => `(${item.uniform_number}) ${item.player_name} `"
                                                     item-value="player_id"
                                                     label="교체 선수"
                                                     :rules="[v => !!v || '교체 선수를 선택해 주세요.']"
@@ -1083,10 +1093,24 @@ const updateGameStatus = async (status) => {
         })
         
         if(response.success){
-            getGameDetailInfo(gameId)
+            await getGameDetailInfo(gameId)
         }else throw new Error();
 
         return true
+    } catch (error) {
+        
+    }
+}
+
+const updateGameStats = async () => {
+    const gameId = selectedMatchup.value.game_id;
+    try {
+        const response = await commonFetch(`/api/admin/game/stats/update`,{
+            method : "PUT",
+            body : {
+                gameId
+            }
+        })
     } catch (error) {
         
     }
@@ -1269,15 +1293,16 @@ const saveRoster = async () => {
                 else await setCurrentGamedayInfo('changeDefense:'+lineup.value.replaced_by);
             }
 
+            await setCurrentGamedayInfo('lastInfo');
+
             if(await getGameDetailInfo(selectedMatchup.value.game_id) && runnerNum){
                 const awayHome = isAway.value?'away':'home';
                 const battingOrderInfo = lineupList.value[runnerOrderNum]?.[awayHome];
                 const lastBatterInfo = battingOrderInfo?.[(battingOrderInfo?.length??1)-1]
-                console.log(lineupList.value,runnerOrderNum,lineupList.value[runnerOrderNum]?.[awayHome],lastBatterInfo)
                 gameCurrentInfo.value[`runner_${runnerNum}b`] = lastBatterInfo
+
+                await setCurrentGamedayInfo('lastInfo');
             }    
-            
-            await setCurrentGamedayInfo('lastInfo');
         }
     } catch (error) {
         alert("라인업 저장 중 문제가 발생하였습니다.\n다시 한 번 시도해주세요.");
@@ -1450,6 +1475,18 @@ const setOut = async (battingNumberYn=true, confirmYn=true) => {
         gameCurrentInfo.value.runner_1b = null;
         gameCurrentInfo.value.runner_2b = null;
         gameCurrentInfo.value.runner_3b = null;
+
+        if(
+            gameCurrentInfo.value.inning >= 9
+            && (
+                (current_inning_half === "top" && gameCurrentInfo.value.away_score < gameCurrentInfo.value.home_score) 
+                || (current_inning_half === "bottom" && gameCurrentInfo.value.away_score !== gameCurrentInfo.value.home_score)
+            )
+        ){
+            setGameOver();
+            return
+        }
+            
         if(current_inning_half === "top") gameCurrentInfo.value.inning_half = "bottom"
         else {
             gameCurrentInfo.value.inning++;
@@ -3288,6 +3325,14 @@ const setBalk = async () => {
     if (gameCurrentInfo.value.runner_1b?.player_id) await setRunnerAdvanceFromFirst(1, false);
 
     await setCurrentGamedayInfo('lastInfo');
+}
+
+const setGameOver = async () => {
+    alert("게임이 종료되었습니다.");
+    await setCurrentGamedayInfo('gameEnd');
+    await setCurrentGamedayInfo('lastInfo');
+    await updateGameStatus('completed');
+    await updateGameStats();
 }
 
 onMounted(async ()=>{

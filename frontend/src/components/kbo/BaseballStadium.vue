@@ -100,10 +100,10 @@
             <div>
                 <span class="font-weight-bold text-caption">{{ currentBatter?.batting_order }}번 : {{ currentBatter?.replaced_player_name??currentBatter?.player_name }}</span>
                 <div>
-                    {{ currentBatterStats.hits }}/{{ currentBatterStats.at_bats }} | {{ currentBatterStats.home_runs }} 홈런
+                    {{ currentBatter?.stats?.at_bats }}타수 {{ currentBatter?.stats?.hits }}안타
                 </div>
                 <div>
-                    {{ currentBatterStats.runs }}득점/{{ currentBatterStats.rbis }}타점
+                    {{ currentBatter?.stats?.runs }}득점 {{ currentBatter?.stats?.rbis }}타점
                 </div>
             </div>
             <v-divider></v-divider>
