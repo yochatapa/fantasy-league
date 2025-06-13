@@ -562,8 +562,9 @@
                                             :items="lineupList[0][gameCurrentInfo.away_score>gameCurrentInfo.home_score?'away':'home'].filter(item=>getPlayerId(item)!==save_pitcher && !hold_pitcher?.includes(getPlayerId(item)))"
                                             :item-title="item => `(${getPlayerPosition(item)}) ${getPlayerName(item)} `"
                                             :item-value="item => getPlayerId(item)"
+                                            :readonly="!winning_pitcher_yn"
                                         ></v-select>
-                                        <v-btn style="margin-top: 2px;" color="primary" @click="setRunnerAdvanceFromSecond(runner_2b)">
+                                        <v-btn style="margin-top: 2px;" color="primary" @click="setWinningPitcher()" v-if="winning_pitcher_yn">
                                             저장
                                         </v-btn>
                                     </div>
@@ -579,8 +580,9 @@
                                             :items="lineupList[0][gameCurrentInfo.away_score<gameCurrentInfo.home_score?'away':'home'].filter(item=>!hold_pitcher?.includes(getPlayerId(item)))"
                                             :item-title="item => `(${getPlayerPosition(item)}) ${getPlayerName(item)} `"
                                             :item-value="item => getPlayerId(item)"
+                                            :readonly="!losing_pitcher_yn"
                                         ></v-select>
-                                        <v-btn style="margin-top: 2px;" color="primary" @click="setRunnerAdvanceFromSecond(runner_2b)">
+                                        <v-btn style="margin-top: 2px;" color="primary" @click="setLosingPitcher()" v-if="losing_pitcher_yn">
                                             저장
                                         </v-btn>
                                     </div>
@@ -593,11 +595,12 @@
                                         <v-select
                                             density="compact"
                                             v-model="save_pitcher"
-                                            :items="lineupList[0][gameCurrentInfo.away_score>gameCurrentInfo.home_score?'away':'home'].filter(item=>getPlayerId(item)!==winning_pitcher && !hold_pitcher?.includes(getPlayerId(item)))"
+                                            :items="lineupList[0][gameCurrentInfo.away_score>gameCurrentInfo.home_score?'away':'home'].filter(item=>getPlayerId(item)!==winning_pitcher && !hold_pitcher?.includes(getPlayerId(item)) && !blown_save_pitcher?.includes(getPlayerId(item)))"
                                             :item-title="item => `(${getPlayerPosition(item)}) ${getPlayerName(item)} `"
                                             :item-value="item => getPlayerId(item)"
+                                            :readonly="!save_pitcher_yn"
                                         ></v-select>
-                                        <v-btn style="margin-top: 2px;" color="primary" @click="setRunnerAdvanceFromSecond(runner_2b)">
+                                        <v-btn style="margin-top: 2px;" color="primary" @click="setSavePitcher()" v-if="save_pitcher_yn">
                                             저장
                                         </v-btn>
                                     </div>
@@ -619,8 +622,33 @@
                                             ]"
                                             :item-title="item => `(${getPlayerPosition(item)}) ${getPlayerName(item)} `"
                                             :item-value="item => getPlayerId(item)"
+                                            :readonly="!hold_pitcher_yn"
                                         ></v-select>
-                                        <v-btn style="margin-top: 2px;" color="primary" @click="console.log(hold_pitcher)">
+                                        <v-btn style="margin-top: 2px;" color="primary" @click="setHoldPitcher()" v-if="hold_pitcher_yn">
+                                            저장
+                                        </v-btn>
+                                    </div>
+                                </v-col>
+                            </v-row>
+                            <v-row>
+                                <v-col cols="12">
+                                    <div class="mb-3">
+                                        <span class="text-subtitle-1 font-weight-bold">블론 세이브 투수</span>
+                                    </div>
+                                    <div class="d-flex" style="gap:8px">
+                                        <v-select
+                                            density="compact"
+                                            multiple
+                                            v-model="blown_save_pitcher"
+                                            :items="[
+                                                ...lineupList[0]['away'].filter(item=>getPlayerId(item)!==save_pitcher)
+                                                ,...lineupList[0]['home'].filter(item=>getPlayerId(item)!==save_pitcher)
+                                            ]"
+                                            :item-title="item => `(${getPlayerPosition(item)}) ${getPlayerName(item)} `"
+                                            :item-value="item => getPlayerId(item)"
+                                            :readonly="!blown_save_pitcher_yn"
+                                        ></v-select>
+                                        <v-btn style="margin-top: 2px;" color="primary" @click="setBlownSavePitcher()" v-if="blown_save_pitcher_yn">
                                             저장
                                         </v-btn>
                                     </div>
@@ -938,6 +966,13 @@ const winning_pitcher = ref(null);
 const losing_pitcher = ref(null);
 const save_pitcher = ref(null);
 const hold_pitcher = ref(null);
+const blown_save_pitcher = ref(null);
+
+const winning_pitcher_yn = ref(true);
+const losing_pitcher_yn = ref(true);
+const save_pitcher_yn = ref(true);
+const hold_pitcher_yn = ref(true);
+const blown_save_pitcher_yn = ref(true);
 
 const gamedayInfo = ref({});
 
@@ -1301,6 +1336,9 @@ const getGameDetailInfo = async (game_id) => {
                 homeTeamInfo.value = gameMasterRes.data.homeTeamInfo
                 selectedMatchup.value = gameMasterRes.data.gameInfo
                 await getRosterDetailInfo(selectedMatchup.value.away_team_id,selectedMatchup.value.home_team_id);
+                if(selectedMatchup.value.status === "completed"){
+                    await getCompletedInfo();
+                }
             }else{
                 awayTeamInfo.value = [];
                 homeTeamInfo.value = [];
@@ -1322,6 +1360,31 @@ const getGameDetailInfo = async (game_id) => {
         return true
     } catch (error) {
         alert("게임 정보 조회 중 문제가 발생하였습니다.\n다시 한 번 시도해주세요.");
+    }
+}
+
+const getCompletedInfo = async () => {
+    try {
+        const response = await commonFetch(`/api/admin/game/${selectedMatchup.value.game_id}/completed-info`)
+
+        if(response.success){
+            if(response.data.gameCompletedInfo.win) winning_pitcher_yn.value = false;
+            winning_pitcher.value = response.data.gameCompletedInfo.win?.player_id
+
+            if(response.data.gameCompletedInfo.loss) losing_pitcher_yn.value = false;
+            losing_pitcher.value = response.data.gameCompletedInfo.loss?.player_id
+
+            if(response.data.gameCompletedInfo.save) save_pitcher_yn.value = false;
+            save_pitcher.value = response.data.gameCompletedInfo.save?.player_id
+            
+            if(response.data.gameCompletedInfo.hold.length > 0) hold_pitcher_yn.value = false;
+            hold_pitcher.value = response.data.gameCompletedInfo.hold?.map(info => info?.player_id)
+            
+            if(response.data.gameCompletedInfo.blown_save.length > 0) blown_save_pitcher_yn.value = false;
+            blown_save_pitcher.value = response.data.gameCompletedInfo.blown_save?.map(info => info?.player_id)
+        }
+    } catch (error) {
+        alert("게임 완료 정보 조회 중 오류가 발생했습니다.\n다시 시도해주세요.","error")
     }
 }
 
@@ -1528,16 +1591,16 @@ const setBatterGameStats = async (stats, player_id) => {
     }
 }
 
-const setPitcherGameStats = async (stats) => {
+const setPitcherGameStats = async (stats, player_id) => {
     try {
         const response = await commonFetch(`/api/admin/game/pitcher/stats`,{
             method : 'POST'
             , body : {
                 stats
                 , game_id : selectedMatchup.value.game_id
-                , player_id : currentBatter.value.player_id
-                , team_id : currentBatter.value.team_id
-                , opponent_team_id : currentPitcher.value.team_id
+                , player_id : player_id??currentPitcher.value.player_id
+                , team_id : currentPitcher.value.team_id
+                , opponent_team_id : currentBatter.value.team_id
                 , batting_order : currentBatter.value.batting_order
                 , inning : gameCurrentInfo.value.inning
                 , inning_half : gameCurrentInfo.value.inning_half
@@ -3448,6 +3511,45 @@ const setGameOver = async () => {
     await updateGameStatus('completed');
     await updateGameStats();
 }
+
+const setWinningPitcher = async () => {
+    await setPitcherGameStats({
+        wins : 1
+    }, winning_pitcher.value)
+    winning_pitcher_yn.value = false;
+}
+
+const setLosingPitcher = async () => {
+    await setPitcherGameStats({
+        losses : 1
+    }, losing_pitcher.value);
+    losing_pitcher_yn.value = false;
+}
+
+const setSavePitcher = async () => {
+    await setPitcherGameStats({
+        saves : 1
+    }, save_pitcher.value);
+    save_pitcher_yn.value = false;
+}
+
+const setHoldPitcher = async () => {
+    await Promise.all(
+        hold_pitcher.value.map(pitcher =>
+            setPitcherGameStats({ holds: 1 }, pitcher)
+        )
+    );
+    hold_pitcher_yn.value = false;
+};
+
+const setBlownSavePitcher = async () => {
+    await Promise.all(
+        blown_save_pitcher.value.map(pitcher =>
+            setPitcherGameStats({ blown_saves: 1 }, pitcher)
+        )
+    );
+    blown_save_pitcher_yn.value = false;
+};
 
 onMounted(async ()=>{
     await updateMatchups(selectedDate.value);

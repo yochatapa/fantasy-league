@@ -909,10 +909,32 @@ export const createBatterGameStats = async (req, res) => {
                 )
             `;
 
-            client.query(batterStatsQuery,[
+            await client.query(batterStatsQuery,[
                 game_id, player_id, team_id, opponent_team_id, batting_order,
                 inning, inning_half, out, batting_number
             ])
+
+            const { rows } = await client.query(
+                `SELECT season_year FROM kbo_game_master WHERE id = $1`,
+                [game_id]
+            );
+            if (rows.length === 0) throw new Error('게임 정보를 찾을 수 없습니다.');
+            const season_year = rows[0].season_year;
+
+            const updates = queryParams
+                .map(col => `${col} = COALESCE(batter_season_stats.${col}, 0) + EXCLUDED.${col}`)
+                .join(', ');
+
+            const insertSeasonSql = `
+                INSERT INTO batter_season_stats
+                (season_year, player_id, team_id, ${queryParams.join(",")})
+                VALUES ($1, $2, $3, ${queryParams.map((_, i) => `$${4 + i}`).join(",")})
+                ON CONFLICT (season_year, player_id) DO UPDATE
+                SET ${updates}, updated_at = now()
+            `;
+            
+            // values 는 whereClauses 배열이어야 하고, queryParams 개수와 길이 맞춰져야 함
+            await client.query(insertSeasonSql, [season_year, player_id, team_id, ...whereClauses]);
         })
         
         return sendSuccess(res, {
@@ -970,10 +992,32 @@ export const createPitcherGameStats = async (req, res) => {
                 )
             `;
 
-            client.query(batterStatsQuery,[
+            await client.query(batterStatsQuery,[
                 game_id, player_id, team_id, opponent_team_id, batting_order,
                 inning, inning_half, out,
             ])
+
+            const { rows } = await client.query(
+                `SELECT season_year FROM kbo_game_master WHERE id = $1`,
+                [game_id]
+            );
+            if (rows.length === 0) throw new Error('게임 정보를 찾을 수 없습니다.');
+            const season_year = rows[0].season_year;
+
+            const updates = queryParams
+                .map(col => `${col} = COALESCE(pitcher_season_stats.${col}, 0) + EXCLUDED.${col}`)
+                .join(', ');
+
+            const insertSeasonSql = `
+                INSERT INTO pitcher_season_stats
+                (season_year, player_id, team_id, ${queryParams.join(",")})
+                VALUES ($1, $2, $3, ${queryParams.map((_, i) => `$${4 + i}`).join(",")})
+                ON CONFLICT (season_year, player_id) DO UPDATE
+                SET ${updates}, updated_at = now()
+            `;
+            
+            // values 는 whereClauses 배열이어야 하고, queryParams 개수와 길이 맞춰져야 함
+            await client.query(insertSeasonSql, [season_year, player_id, team_id, ...whereClauses]);
         })
         
         return sendSuccess(res, {
@@ -1209,5 +1253,77 @@ export const updateKboGameStats = async (req, res) => {
         });
     } catch (error) {
         return sendServerError(res, error, "게임 상태 변경 중 오류가 발생했습니다. 다시 시도해주세요.");
+    }
+};
+
+export const getKboGameCompletedInfo = async (req, res) => {
+    const { gameId } = req.params;
+
+    if (!gameId) {
+        return sendBadRequest(res, "게임 정보가 잘못되었습니다.");
+    }
+
+    try {
+        const gameCompletedInfoQuery = `
+            SELECT 
+                player_id,
+                team_id,
+                'win' AS role
+            FROM pitcher_game_stats
+            WHERE game_id = $1 AND wins = 1
+
+            UNION ALL
+
+            SELECT 
+                player_id,
+                team_id,
+                'loss' AS role
+            FROM pitcher_game_stats
+            WHERE game_id = $1 AND losses = 1
+
+            UNION ALL
+
+            SELECT 
+                player_id,
+                team_id,
+                'save' AS role
+            FROM pitcher_game_stats
+            WHERE game_id = $1 AND saves = 1
+
+            UNION ALL
+
+            SELECT 
+                player_id,
+                team_id,
+                'hold' AS role
+            FROM pitcher_game_stats
+            WHERE game_id = $1 AND holds > 0
+
+            UNION ALL
+
+            SELECT 
+                player_id,
+                team_id,
+                'blown_save' AS role
+            FROM pitcher_game_stats
+            WHERE game_id = $1 AND blown_saves > 0
+        `;
+
+        const { rows } = await query(gameCompletedInfoQuery, [gameId]);
+
+        const gameCompletedInfo = {
+            win: rows.find(r => r.role === 'win') || null,
+            loss: rows.find(r => r.role === 'loss') || null,
+            save: rows.find(r => r.role === 'save') || null,
+            hold: rows.filter(r => r.role === 'hold'),
+            blown_save: rows.filter(r => r.role === 'blown_save'),
+        };
+
+        return sendSuccess(res, {
+            message: "게임 완료 정보를 성공적으로 조회했습니다.",
+            gameCompletedInfo
+        });
+    } catch (error) {
+        return sendServerError(res, error, "게임 완료 정보 조회 중 오류가 발생했습니다. 다시 시도해주세요.");
     }
 };
