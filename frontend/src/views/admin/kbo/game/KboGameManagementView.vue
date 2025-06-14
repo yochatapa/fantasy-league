@@ -121,7 +121,7 @@
             <v-row align="stretch" class="h-100">
                 <v-col cols="12">
                     <v-card class="h-100">
-                        <v-card-title>경기 정보 {{ isAway }}</v-card-title>
+                        <v-card-title>경기 정보</v-card-title>
                         <v-divider></v-divider>
                         <v-card-text>
                             <div v-if="selectedMatchup">
@@ -167,7 +167,7 @@
                         </v-card-text>
                     </v-card>
                 </v-col>
-                <v-col cols="12" md="4">
+                <v-col cols="12" md="4" v-if="selectedMatchup.status !== 'scheduled'">
                     <v-card class="h-100">
                         <v-card-title>경기 중계</v-card-title>
                         <v-divider></v-divider>
@@ -562,9 +562,9 @@
                                             :items="lineupList[0][gameCurrentInfo.away_score>gameCurrentInfo.home_score?'away':'home'].filter(item=>getPlayerId(item)!==save_pitcher && !hold_pitcher?.includes(getPlayerId(item)))"
                                             :item-title="item => `(${getPlayerPosition(item)}) ${getPlayerName(item)} `"
                                             :item-value="item => getPlayerId(item)"
-                                            :readonly="!winning_pitcher_yn"
+                                            :readonly="winning_pitcher_yn"
                                         ></v-select>
-                                        <v-btn style="margin-top: 2px;" color="primary" @click="setWinningPitcher()" v-if="winning_pitcher_yn">
+                                        <v-btn style="margin-top: 2px;" color="primary" @click="setWinningPitcher()" v-if="!winning_pitcher_yn">
                                             저장
                                         </v-btn>
                                     </div>
@@ -580,9 +580,10 @@
                                             :items="lineupList[0][gameCurrentInfo.away_score<gameCurrentInfo.home_score?'away':'home'].filter(item=>!hold_pitcher?.includes(getPlayerId(item)))"
                                             :item-title="item => `(${getPlayerPosition(item)}) ${getPlayerName(item)} `"
                                             :item-value="item => getPlayerId(item)"
-                                            :readonly="!losing_pitcher_yn"
+                                            :readonly="losing_pitcher_yn"
                                         ></v-select>
-                                        <v-btn style="margin-top: 2px;" color="primary" @click="setLosingPitcher()" v-if="losing_pitcher_yn">
+                                        {{ losing_pitcher_yn }}
+                                        <v-btn style="margin-top: 2px;" color="primary" @click="setLosingPitcher()" v-if="!losing_pitcher_yn">
                                             저장
                                         </v-btn>
                                     </div>
@@ -598,9 +599,9 @@
                                             :items="lineupList[0][gameCurrentInfo.away_score>gameCurrentInfo.home_score?'away':'home'].filter(item=>getPlayerId(item)!==winning_pitcher && !hold_pitcher?.includes(getPlayerId(item)) && !blown_save_pitcher?.includes(getPlayerId(item)))"
                                             :item-title="item => `(${getPlayerPosition(item)}) ${getPlayerName(item)} `"
                                             :item-value="item => getPlayerId(item)"
-                                            :readonly="!save_pitcher_yn"
+                                            :readonly="save_pitcher_yn"
                                         ></v-select>
-                                        <v-btn style="margin-top: 2px;" color="primary" @click="setSavePitcher()" v-if="save_pitcher_yn">
+                                        <v-btn style="margin-top: 2px;" color="primary" @click="setSavePitcher()" v-if="!save_pitcher_yn">
                                             저장
                                         </v-btn>
                                     </div>
@@ -622,9 +623,9 @@
                                             ]"
                                             :item-title="item => `(${getPlayerPosition(item)}) ${getPlayerName(item)} `"
                                             :item-value="item => getPlayerId(item)"
-                                            :readonly="!hold_pitcher_yn"
+                                            :readonly="hold_pitcher_yn"
                                         ></v-select>
-                                        <v-btn style="margin-top: 2px;" color="primary" @click="setHoldPitcher()" v-if="hold_pitcher_yn">
+                                        <v-btn style="margin-top: 2px;" color="primary" @click="setHoldPitcher()" v-if="!hold_pitcher_yn">
                                             저장
                                         </v-btn>
                                     </div>
@@ -646,9 +647,9 @@
                                             ]"
                                             :item-title="item => `(${getPlayerPosition(item)}) ${getPlayerName(item)} `"
                                             :item-value="item => getPlayerId(item)"
-                                            :readonly="!blown_save_pitcher_yn"
+                                            :readonly="blown_save_pitcher_yn"
                                         ></v-select>
-                                        <v-btn style="margin-top: 2px;" color="primary" @click="setBlownSavePitcher()" v-if="blown_save_pitcher_yn">
+                                        <v-btn style="margin-top: 2px;" color="primary" @click="setBlownSavePitcher()" v-if="!blown_save_pitcher_yn">
                                             저장
                                         </v-btn>
                                     </div>
@@ -682,7 +683,7 @@
                         </v-card-text>
                     </v-card>
                 </v-col>
-                <v-col cols="12" md="4">
+                <v-col cols="12" md="4" v-if="['scheduled','playball'].includes(selectedMatchup.status)">
                     <v-card class="h-100">
                         <v-card-title>라인업</v-card-title>
                         <v-divider></v-divider>
@@ -788,7 +789,7 @@
                                                             else return true
                                                         }
                                                     })?.toSorted((a,b)=>lineup.batting_order===0?b.player_type.localeCompare(a.player_type):a.player_type.localeCompare(b.player_type))"
-                                                    item-title="player_name"
+                                                    :item-title="item => `(${item.uniform_number}) ${getPlayerName(item)} `"
                                                     item-value="player_id"
                                                     label="선수 선택"
                                                     :rules="[v => !!v || '선수를 선택해 주세요.']"
@@ -866,6 +867,83 @@
                                 </v-row>
                             </v-container>
                         </v-card-text>
+                    </v-card>
+                </v-col>
+                <v-col cols="12" v-if="selectedMatchup.status === 'completed'">
+                    <v-card>
+                        <v-card-title>선수 기록</v-card-title>
+                        <v-divider></v-divider>
+                        <v-card-text>
+                            <h2>홈 팀</h2>
+                            <v-col cols="12">
+                                <span class="text-h6">타자 스탯</span>
+                            </v-col>
+                            <v-data-table
+                                :headers="batterHeaders"
+                                :items="homeBatters"
+                                class="mb-6"
+                                hide-default-footer
+                                :items-per-page="-1"
+                                disable-sort
+                            >
+                                <template #item.player_name="{ item }">
+                                    <div class="d-flex">
+                                        <div class="d-flex justify-center" style="width: 28px;">
+                                            <v-icon v-if="item.replaced_by" color="primary">mdi-swap-horizontal</v-icon>
+                                            <span v-else>{{ item.batting_order }}</span>
+                                        </div>
+                                        {{ item.player_name }}
+                                    </div>
+                                </template>
+                            </v-data-table>
+
+                            <v-col cols="12">
+                                <span class="text-h6">투수 스탯</span>
+                            </v-col>
+                            <v-data-table
+                                :headers="pitcherHeaders"
+                                :items="homePitchers"
+                                class="mb-12"
+                                hide-default-footer
+                                :items-per-page="-1"
+                                disable-sort
+                            />
+                            <v-divider class="mb-8"></v-divider>
+                            <h2>원정팀</h2>
+                            <v-col cols="12">
+                                <span class="text-h6">타자 스탯</span>
+                            </v-col>
+                            <v-data-table
+                                :headers="batterHeaders"
+                                :items="awayBatters"
+                                class="mb-6"
+                                hide-default-footer
+                                :items-per-page="-1"
+                                disable-sort
+                            >
+                                <template #item.player_name="{ item }">
+                                    <div class="d-flex">
+                                        <div class="d-flex justify-center" style="width: 28px;">
+                                            <v-icon v-if="item.replaced_by" color="primary">mdi-swap-horizontal</v-icon>
+                                            <span v-else>{{ item.batting_order }}</span>
+                                        </div>
+                                        {{ item.player_name }}
+                                    </div>
+                                </template>
+                            </v-data-table>
+
+                            <v-col cols="12">
+                                <span class="text-h6">투수 스탯</span>
+                            </v-col>
+                            <v-data-table
+                                :headers="pitcherHeaders"
+                                :items="awayPitchers"
+                                hide-default-footer
+                                :items-per-page="-1"
+                                disable-sort
+                            />
+                        </v-card-text>
+                        
                     </v-card>
                 </v-col>
             </v-row>
@@ -973,6 +1051,65 @@ const losing_pitcher_yn = ref(true);
 const save_pitcher_yn = ref(true);
 const hold_pitcher_yn = ref(true);
 const blown_save_pitcher_yn = ref(true);
+
+const fullPlayerStats = ref([]);
+
+// 전체 타자 스탯 필드
+const batterHeaders = [
+    { title: '이름', key: 'player_name', minWidth: 150, fixed: true, align: 'center' },
+    { title: '타석', key: 'plate_appearances', nowrap: true, align: 'center' },
+    { title: '타수', key: 'at_bats', nowrap: true, align: 'center' },
+    { title: '안타', key: 'hits', nowrap: true, align: 'center' },
+    { title: '1루타', key: 'singles', nowrap: true, align: 'center' },
+    { title: '2루타', key: 'doubles', nowrap: true, align: 'center' },
+    { title: '3루타', key: 'triples', nowrap: true, align: 'center' },
+    { title: '홈런', key: 'home_runs', nowrap: true, align: 'center' },
+    { title: '타점', key: 'rbi', nowrap: true, align: 'center' },
+    { title: '득점', key: 'runs', nowrap: true, align: 'center' },
+    { title: '볼넷', key: 'walks', nowrap: true, align: 'center' },
+    { title: '고의사구', key: 'intentional_walks', nowrap: true, align: 'center' },
+    { title: '삼진', key: 'batter_strikeouts', nowrap: true, align: 'center' },
+    { title: '사구', key: 'hit_by_pitch', nowrap: true, align: 'center' },
+    { title: '희생번트', key: 'sacrifice_bunts', nowrap: true, align: 'center' },
+    { title: '희생플라이', key: 'sacrifice_flies', nowrap: true, align: 'center' },
+    { title: '도루', key: 'stolen_bases', nowrap: true, align: 'center' },
+    { title: '도루실패', key: 'caught_stealing', nowrap: true, align: 'center' },
+    { title: '실책', key: 'batter_errors', nowrap: true, align: 'center' }
+];
+
+// 전체 투수 스탯 필드
+const pitcherHeaders = [
+    { title: '이름', key: 'player_name', minWidth: 120},
+    { title: '아웃수', key: 'outs_pitched', nowrap: true, align: 'center' },
+    { title: '상대한 타자 수', key: 'batters_faced', nowrap: true, align: 'center' },
+    { title: '투구 수', key: 'pitches_thrown', nowrap: true, align: 'center' },
+    { title: '피안타', key: 'hits_allowed', nowrap: true, align: 'center' },
+    { title: '피홈런', key: 'home_runs_allowed', nowrap: true, align: 'center' },
+    { title: '실점', key: 'runs_allowed', nowrap: true, align: 'center' },
+    { title: '자책점', key: 'earned_runs', nowrap: true, align: 'center' },
+    { title: '볼넷허용', key: 'walks_allowed', nowrap: true, align: 'center' },
+    { title: '탈삼진', key: 'pitcher_strikeouts', nowrap: true, align: 'center' },
+    { title: '폭투', key: 'wild_pitches', nowrap: true, align: 'center' },
+    { title: '승', key: 'wins', nowrap: true, align: 'center' },
+    { title: '패', key: 'losses', nowrap: true, align: 'center' },
+    { title: '세이브', key: 'saves', nowrap: true, align: 'center' },
+    { title: '홀드', key: 'holds', nowrap: true, align: 'center' },
+    { title: '블론세이브', key: 'blown_saves', nowrap: true, align: 'center' }
+];
+
+// 필터링된 데이터
+const homeBatters = computed(() =>
+    fullPlayerStats.value.filter(p => p.player_type === 'B' && p.team_id === selectedMatchup.value.home_team_id)
+);
+const homePitchers = computed(() =>
+    fullPlayerStats.value.filter(p => p.player_type === 'P' && p.team_id === selectedMatchup.value.home_team_id)
+);
+const awayBatters = computed(() =>
+    fullPlayerStats.value.filter(p => p.player_type === 'B' && p.team_id === selectedMatchup.value.away_team_id)
+);
+const awayPitchers = computed(() =>
+    fullPlayerStats.value.filter(p => p.player_type === 'P' && p.team_id === selectedMatchup.value.away_team_id)
+);
 
 const gamedayInfo = ref({});
 
@@ -1368,20 +1505,22 @@ const getCompletedInfo = async () => {
         const response = await commonFetch(`/api/admin/game/${selectedMatchup.value.game_id}/completed-info`)
 
         if(response.success){
-            if(response.data.gameCompletedInfo.win) winning_pitcher_yn.value = false;
+            winning_pitcher_yn.value = !!response.data.gameCompletedInfo.win;
             winning_pitcher.value = response.data.gameCompletedInfo.win?.player_id
 
-            if(response.data.gameCompletedInfo.loss) losing_pitcher_yn.value = false;
+            losing_pitcher_yn.value = !!response.data.gameCompletedInfo.loss;
             losing_pitcher.value = response.data.gameCompletedInfo.loss?.player_id
 
-            if(response.data.gameCompletedInfo.save) save_pitcher_yn.value = false;
+            save_pitcher_yn.value = !!response.data.gameCompletedInfo.save;
             save_pitcher.value = response.data.gameCompletedInfo.save?.player_id
             
-            if(response.data.gameCompletedInfo.hold.length > 0) hold_pitcher_yn.value = false;
+            hold_pitcher_yn.value = response.data.gameCompletedInfo.hold.length > 0;
             hold_pitcher.value = response.data.gameCompletedInfo.hold?.map(info => info?.player_id)
             
-            if(response.data.gameCompletedInfo.blown_save.length > 0) blown_save_pitcher_yn.value = false;
+            blown_save_pitcher_yn.value = response.data.gameCompletedInfo.blown_save.length > 0;
             blown_save_pitcher.value = response.data.gameCompletedInfo.blown_save?.map(info => info?.player_id)
+
+            fullPlayerStats.value = response.data.fullPlayerStats
         }
     } catch (error) {
         alert("게임 완료 정보 조회 중 오류가 발생했습니다.\n다시 시도해주세요.","error")
@@ -1411,7 +1550,7 @@ const getRosterDetailInfo = async (awayTeamId, homeTeamId) => {
 }
 
 const saveRoster = async () => {
-    if(!await confirm(`선수를 ${selectedMatchup.status === "scheduled"?"저장":"교체"}하시겠습니까?`)) return;
+    if(!await confirm(`선수를 ${selectedMatchup.value.status === "scheduled"?"저장":"교체"}하시겠습니까?`)) return;
 
     try {
         const response = await commonFetch("/api/admin/game/roster/create",{
@@ -1427,6 +1566,7 @@ const saveRoster = async () => {
 
         if(response.success){
             let runnerNum, runnerOrderNum;
+            if(selectedMatchup.value.status !== "playball") return await getGameDetailInfo(selectedMatchup.value.game_id);
 
             if(lineup.value.batting_order === 0){
                 await setCurrentGamedayInfo('changePitcher:'+lineup.value.replaced_by);
@@ -1576,7 +1716,7 @@ const setBatterGameStats = async (stats, player_id) => {
             , body : {
                 stats
                 , game_id : selectedMatchup.value.game_id
-                , player_id : player_id??currentBatter.value.player_id
+                , player_id : player_id??getPlayerId(currentBatter.value)
                 , team_id : currentBatter.value.team_id
                 , opponent_team_id : currentPitcher.value.team_id
                 , batting_order : currentBatter.value.batting_order
@@ -1598,7 +1738,7 @@ const setPitcherGameStats = async (stats, player_id) => {
             , body : {
                 stats
                 , game_id : selectedMatchup.value.game_id
-                , player_id : player_id??currentPitcher.value.player_id
+                , player_id : player_id??getPlayerId(currentPitcher.value)
                 , team_id : currentPitcher.value.team_id
                 , opponent_team_id : currentBatter.value.team_id
                 , batting_order : currentBatter.value.batting_order
@@ -3516,21 +3656,21 @@ const setWinningPitcher = async () => {
     await setPitcherGameStats({
         wins : 1
     }, winning_pitcher.value)
-    winning_pitcher_yn.value = false;
+    await getCompletedInfo();
 }
 
 const setLosingPitcher = async () => {
     await setPitcherGameStats({
         losses : 1
     }, losing_pitcher.value);
-    losing_pitcher_yn.value = false;
+    await getCompletedInfo();
 }
 
 const setSavePitcher = async () => {
     await setPitcherGameStats({
         saves : 1
     }, save_pitcher.value);
-    save_pitcher_yn.value = false;
+    await getCompletedInfo();
 }
 
 const setHoldPitcher = async () => {
@@ -3539,7 +3679,7 @@ const setHoldPitcher = async () => {
             setPitcherGameStats({ holds: 1 }, pitcher)
         )
     );
-    hold_pitcher_yn.value = false;
+    await getCompletedInfo();
 };
 
 const setBlownSavePitcher = async () => {
@@ -3548,7 +3688,7 @@ const setBlownSavePitcher = async () => {
             setPitcherGameStats({ blown_saves: 1 }, pitcher)
         )
     );
-    blown_save_pitcher_yn.value = false;
+    await getCompletedInfo();
 };
 
 onMounted(async ()=>{

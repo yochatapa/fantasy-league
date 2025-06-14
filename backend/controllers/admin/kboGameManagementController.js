@@ -1319,9 +1319,157 @@ export const getKboGameCompletedInfo = async (req, res) => {
             blown_save: rows.filter(r => r.role === 'blown_save'),
         };
 
+        const fullStatsQuery = `
+            WITH roster_base AS (
+                SELECT DISTINCT ON (
+                    CASE 
+                        WHEN kgr.replaced_by IS NOT NULL THEN kgr.replaced_by 
+                        ELSE kgr.player_id
+                    END
+                )
+                    CASE 
+                        WHEN kgr.team_id = kgm.away_team_id THEN 'away'
+                        ELSE 'home'
+                    END AS team_type,
+                    kgr.id AS roster_id,
+                    kgr.game_id,
+                    kgr.team_id,
+                    ktm.name AS team_name,
+                    CASE 
+                        WHEN kgr.replaced_by IS NOT NULL THEN kgr.replaced_by 
+                        ELSE kgr.player_id
+                    END AS player_id,
+                    CASE 
+                        WHEN kgr.replaced_by IS NOT NULL THEN krp.name 
+                        ELSE kp.name 
+                    END AS player_name,
+                    kgr.batting_order,
+                    kgr.role,
+                    kgr.replaced_by,
+                    kgr.replaced_inning,
+                    kgr.replaced_out,
+                    kgr.replaced_position,
+                    kgr.created_at,
+                    kgr.updated_at,
+                    kgr.position,
+                    CASE 
+                        WHEN kgr.replaced_by IS NOT NULL THEN krp.player_type
+                        ELSE kp.player_type
+                    END AS player_type
+                FROM kbo_game_roster kgr
+                JOIN kbo_game_master kgm ON kgr.game_id = kgm.id
+                LEFT JOIN kbo_team_master ktm ON kgr.team_id = ktm.id
+                LEFT JOIN kbo_player_master kp ON kgr.player_id = kp.id
+                LEFT JOIN kbo_player_master krp ON kgr.replaced_by = krp.id
+                WHERE kgr.game_id = $1
+                ORDER BY 
+                    CASE 
+                        WHEN kgr.replaced_by IS NOT NULL THEN kgr.replaced_by 
+                        ELSE kgr.player_id
+                    END,
+                    kgr.replaced_inning NULLS FIRST,
+                    kgr.replaced_out NULLS FIRST
+            ),
+            batter_stats AS (
+                SELECT 
+                    player_id,
+                    COALESCE(SUM(plate_appearances), 0) AS plate_appearances,
+                    COALESCE(SUM(at_bats), 0) AS at_bats,
+                    COALESCE(SUM(hits), 0) AS hits,
+                    COALESCE(SUM(singles), 0) AS singles,
+                    COALESCE(SUM(doubles), 0) AS doubles,
+                    COALESCE(SUM(triples), 0) AS triples,
+                    COALESCE(SUM(home_runs), 0) AS home_runs,
+                    COALESCE(SUM(runs_batted_in), 0) AS rbi,
+                    COALESCE(SUM(runs), 0) AS runs,
+                    COALESCE(SUM(walks), 0) AS walks,
+                    COALESCE(SUM(intentional_walks), 0) AS intentional_walks,
+                    COALESCE(SUM(strikeouts), 0) AS strikeouts,
+                    COALESCE(SUM(hit_by_pitch), 0) AS hit_by_pitch,
+                    COALESCE(SUM(sacrifice_bunts), 0) AS sac_bunts,
+                    COALESCE(SUM(sacrifice_flies), 0) AS sac_flies,
+                    COALESCE(SUM(stolen_bases), 0) AS stolen_bases,
+                    COALESCE(SUM(caught_stealing), 0) AS caught_stealing,
+                    COALESCE(SUM(errors), 0) AS errors
+                FROM batter_game_stats
+                WHERE game_id = $1
+                GROUP BY player_id
+            ),
+            pitcher_stats AS (
+                SELECT
+                    player_id,
+                    COALESCE(SUM(outs_pitched), 0) AS outs_pitched,
+                    COALESCE(SUM(batters_faced), 0) AS batters_faced,
+                    COALESCE(SUM(pitches_thrown), 0) AS pitches_thrown,
+                    COALESCE(SUM(hits_allowed), 0) AS hits_allowed,
+                    COALESCE(SUM(home_runs_allowed), 0) AS home_runs_allowed,
+                    COALESCE(SUM(runs_allowed), 0) AS runs_allowed,
+                    COALESCE(SUM(earned_runs), 0) AS earned_runs,
+                    COALESCE(SUM(walks_allowed), 0) AS walks_allowed,
+                    COALESCE(SUM(strikeouts), 0) AS strikeouts,
+                    COALESCE(SUM(wild_pitches), 0) AS wild_pitches,
+                    COALESCE(SUM(wins), 0) AS wins,
+                    COALESCE(SUM(losses), 0) AS losses,
+                    COALESCE(SUM(saves), 0) AS saves,
+                    COALESCE(SUM(holds), 0) AS holds,
+                    COALESCE(SUM(blown_saves), 0) AS blown_saves
+                FROM pitcher_game_stats
+                WHERE game_id = $1
+                GROUP BY player_id
+            )
+            SELECT
+                rb.*,
+                -- 타자 스탯
+                COALESCE(bs.plate_appearances, 0) AS plate_appearances,
+                COALESCE(bs.at_bats, 0) AS at_bats,
+                COALESCE(bs.hits, 0) AS hits,
+                COALESCE(bs.singles, 0) AS singles,
+                COALESCE(bs.doubles, 0) AS doubles,
+                COALESCE(bs.triples, 0) AS triples,
+                COALESCE(bs.home_runs, 0) AS home_runs,
+                COALESCE(bs.rbi, 0) AS rbi,
+                COALESCE(bs.runs, 0) AS runs,
+                COALESCE(bs.walks, 0) AS walks,
+                COALESCE(bs.intentional_walks, 0) AS intentional_walks,
+                COALESCE(bs.strikeouts, 0) AS batter_strikeouts,
+                COALESCE(bs.hit_by_pitch, 0) AS hit_by_pitch,
+                COALESCE(bs.sac_bunts, 0) AS sacrifice_bunts,
+                COALESCE(bs.sac_flies, 0) AS sacrifice_flies,
+                COALESCE(bs.stolen_bases, 0) AS stolen_bases,
+                COALESCE(bs.caught_stealing, 0) AS caught_stealing,
+                COALESCE(bs.errors, 0) AS batter_errors,
+                -- 투수 스탯
+                COALESCE(ps.outs_pitched, 0) AS outs_pitched,
+                COALESCE(ps.batters_faced, 0) AS batters_faced,
+                COALESCE(ps.pitches_thrown, 0) AS pitches_thrown,
+                COALESCE(ps.hits_allowed, 0) AS hits_allowed,
+                COALESCE(ps.home_runs_allowed, 0) AS home_runs_allowed,
+                COALESCE(ps.runs_allowed, 0) AS runs_allowed,
+                COALESCE(ps.earned_runs, 0) AS earned_runs,
+                COALESCE(ps.walks_allowed, 0) AS walks_allowed,
+                COALESCE(ps.strikeouts, 0) AS pitcher_strikeouts,
+                COALESCE(ps.wild_pitches, 0) AS wild_pitches,
+                COALESCE(ps.wins, 0) AS wins,
+                COALESCE(ps.losses, 0) AS losses,
+                COALESCE(ps.saves, 0) AS saves,
+                COALESCE(ps.holds, 0) AS holds,
+                COALESCE(ps.blown_saves, 0) AS blown_saves
+            FROM roster_base rb
+            LEFT JOIN batter_stats bs 
+                ON bs.player_id = rb.player_id
+            LEFT JOIN pitcher_stats ps 
+                ON ps.player_id = rb.player_id
+            ORDER BY
+                rb.batting_order,
+                COALESCE(rb.replaced_inning, 0),
+                COALESCE(rb.replaced_out, 0);   
+        `;
+        const { rows: fullPlayerStats } = await query(fullStatsQuery, [gameId]);
+
         return sendSuccess(res, {
             message: "게임 완료 정보를 성공적으로 조회했습니다.",
-            gameCompletedInfo
+            gameCompletedInfo,
+            fullPlayerStats
         });
     } catch (error) {
         return sendServerError(res, error, "게임 완료 정보 조회 중 오류가 발생했습니다. 다시 시도해주세요.");
