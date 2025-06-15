@@ -211,7 +211,7 @@ export const getKboGameDetail = async (req, res) => {
             LEFT JOIN kbo_player_master kp ON kgr.player_id = kp.id
             LEFT JOIN kbo_player_master krp ON kgr.replaced_by = krp.id
             WHERE kgr.game_id = $1
-            ORDER BY kgr.batting_order, CASE WHEN kgr.replaced_inning IS NULL THEN 0 ELSE kgr.replaced_inning END, CASE WHEN kgr.replaced_out IS NULL THEN 0 ELSE kgr.replaced_out END;
+            ORDER BY kgr.batting_order, CASE WHEN kgr.replaced_inning IS NULL THEN 0 ELSE kgr.replaced_inning END, CASE WHEN kgr.replaced_out IS NULL THEN 0 ELSE kgr.replaced_out END, kgr.id;
         `;
         
         const { rows : gameInfo} = await query(gameInfoQuery, [gameId]);
@@ -1462,7 +1462,8 @@ export const getKboGameCompletedInfo = async (req, res) => {
             ORDER BY
                 rb.batting_order,
                 COALESCE(rb.replaced_inning, 0),
-                COALESCE(rb.replaced_out, 0);   
+                COALESCE(rb.replaced_out, 0),
+                rb.roster_id;   
         `;
         const { rows: fullPlayerStats } = await query(fullStatsQuery, [gameId]);
 

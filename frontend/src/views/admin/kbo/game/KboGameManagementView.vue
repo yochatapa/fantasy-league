@@ -236,19 +236,19 @@
                                                     </div>
 
                                                     <div v-if="ballInfo.type.startsWith('changePitcher')">
-                                                        투수 교체 ({{ lineupList[0][isAway?'home':'away']?.find(pitcher => pitcher.replaced_by?.toString() === ballInfo.type.split(':')[1])?.player_name }} ▶ {{ lineupList[0][isAway?'home':'away']?.find(pitcher => pitcher.replaced_by?.toString() === ballInfo.type.split(':')[1])?.replaced_player_name }})
+                                                        투수 교체 ({{ getPlayerName(lineupList.flatMap(inning => inning[isAway ? 'home' : 'away'])?.find(pitcher => {return getPlayerId(pitcher)?.toString() === ballInfo.type.split(':')[1]})) }} ▶ {{ getPlayerName(lineupList.flatMap(inning => inning[isAway ? 'home' : 'away'])?.find(pitcher => {return getPlayerId(pitcher)?.toString() === ballInfo.type.split(':')[2]})) }})
                                                     </div>
                                                     <div v-else-if="ballInfo.type.startsWith('changeBatter')">
-                                                        타자 교체 ({{ lineupList.flatMap(inning => inning[isAway ? 'away' : 'home'])?.find(batter => batter.replaced_by?.toString() === ballInfo.type.split(':')[1])?.player_name }} ▶ {{ lineupList.flatMap(inning => inning[isAway ? 'away' : 'home'])?.find(batter => batter.replaced_by?.toString() === ballInfo.type.split(':')[1])?.replaced_player_name }})
+                                                        타자 교체 ({{ getPlayerName(lineupList.flatMap(inning => inning[isAway ? 'away' : 'home'])?.find(batter => {return getPlayerId(batter)?.toString() === ballInfo.type.split(':')[1]})) }} ▶ {{ getPlayerName(lineupList.flatMap(inning => inning[isAway ? 'away' : 'home'])?.find(batter => {return getPlayerId(batter)?.toString() === ballInfo.type.split(':')[2]})) }})
                                                     </div>
                                                     <div v-else-if="ballInfo.type.startsWith('changeRunner')">
-                                                        {{ ballInfo.type.split(':')[1] }}루 주자 교체 ({{ lineupList.flatMap(inning => inning[isAway ? 'away' : 'home'])?.find(batter => batter.replaced_by?.toString() === ballInfo.type.split(':')[2])?.player_name }} ▶ {{ lineupList.flatMap(inning => inning[isAway ? 'away' : 'home'])?.find(batter => batter.replaced_by?.toString() === ballInfo.type.split(':')[2])?.replaced_player_name }})
+                                                        {{ ballInfo.type.split(':')[1] }}루 주자 교체 ({{ getPlayerName(lineupList.flatMap(inning => inning[isAway ? 'away' : 'home'])?.find(batter => {return getPlayerId(batter)?.toString() === ballInfo.type.split(':')[2]})) }} ▶ {{ getPlayerName(lineupList.flatMap(inning => inning[isAway ? 'away' : 'home'])?.find(batter => {return getPlayerId(batter)?.toString() === ballInfo.type.split(':')[3]})) }})
                                                     </div>
                                                     <div v-else-if="ballInfo.type.startsWith('changePlayer')">
-                                                        선수 교체 ({{ lineupList.flatMap(inning => inning[isAway ? 'away' : 'home'])?.find(batter => batter.replaced_by?.toString() === ballInfo.type.split(':')[1])?.player_name }} ▶ {{ lineupList.flatMap(inning => inning[isAway ? 'away' : 'home'])?.find(batter => batter.replaced_by?.toString() === ballInfo.type.split(':')[1])?.replaced_player_name }})
+                                                        선수 교체 ({{ getPlayerName(lineupList.flatMap(inning => inning[isAway ? 'away' : 'home'])?.find(batter => {return getPlayerId(batter)?.toString() === ballInfo.type.split(':')[1]})) }} ▶ {{ getPlayerName(lineupList.flatMap(inning => inning[isAway ? 'away' : 'home'])?.find(batter => {return getPlayerId(batter)?.toString() === ballInfo.type.split(':')[2]})) }})
                                                     </div>
                                                     <div v-else-if="ballInfo.type.startsWith('changeDefense')">
-                                                        수비 교체 ({{ lineupList.flatMap(inning => inning[isAway ? 'home' : 'away'])?.find(batter => batter.replaced_by?.toString() === ballInfo.type.split(':')[1])?.position }} {{ lineupList.flatMap(inning => inning[isAway ? 'home' : 'away'])?.find(batter => batter.replaced_by?.toString() === ballInfo.type.split(':')[1])?.player_name }} ▶ {{ lineupList.flatMap(inning => inning[isAway ? 'home' : 'away'])?.find(batter => batter.replaced_by?.toString() === ballInfo.type.split(':')[1])?.replaced_position }} {{ lineupList.flatMap(inning => inning[isAway ? 'home' : 'away'])?.find(batter => batter.replaced_by?.toString() === ballInfo.type.split(':')[1])?.replaced_player_name }})
+                                                        수비 교체 ({{ ballInfo.type.split(':')[1] }} {{ lineupList.flatMap(inning => inning[isAway ? 'home' : 'away'])?.filter(batter => batter.player_id?.toString() === ballInfo.type.split(':')[2])?.at(-1)?.player_name }} ▶ {{ ballInfo.type.split(':')[3] }} {{ lineupList.flatMap(inning => inning[isAway ? 'home' : 'away'])?.filter(batter => batter.replaced_by?.toString() === ballInfo.type.split(':')[4])?.at(-1)?.replaced_player_name }})
                                                     </div>
                                                     
                                                     <div v-if="['flyout','groundout','linedrive','doubleplay','tripleplay','hitting','sacrificeFly','sacrificeBunt'].includes(ballInfo.type)">
@@ -437,7 +437,7 @@
                                                     return arr.length > 0 ? arr[arr.length - 1] : null;
                                                 }).filter(item => !['DH'].includes(getPlayerPosition(item)))"
                                                 :item-title="item => `(${getPlayerPosition(item)}) ${getPlayerName(item)} `"
-                                                item-value="player_id"
+                                                :item-value="item => `${getPlayerId(item)}`"
                                             ></v-select>
                                             <v-chip class="text-purple" @click="setError">
                                                 실책
@@ -582,7 +582,6 @@
                                             :item-value="item => getPlayerId(item)"
                                             :readonly="losing_pitcher_yn"
                                         ></v-select>
-                                        {{ losing_pitcher_yn }}
                                         <v-btn style="margin-top: 2px;" color="primary" @click="setLosingPitcher()" v-if="!losing_pitcher_yn">
                                             저장
                                         </v-btn>
@@ -801,7 +800,10 @@
                                                 <v-select 
                                                     :disabled="isReplace"
                                                     v-model="lineup.position"
-                                                    :items="POSITIONS.toSorted((a,b)=>lineup.batting_order===0?b.player_type.localeCompare(a.player_type):a.player_type.localeCompare(b.player_type))"
+                                                    :items="[...POSITIONS
+                                                        , { code: 'PH', name: '대타', player_type: 'B', description: '타자를 대신해 타석에 들어서는 선수로, 주로 공격력을 강화하기 위해 투입됩니다.' }
+                                                        , { code: 'PR', name: '대주자', player_type: 'B', description: '주자를 대신해 출루하여 빠른 발과 주루 능력으로 득점을 노리는 선수입니다.' }
+                                                    ].toSorted((a,b)=>lineup.batting_order===0?b.player_type.localeCompare(a.player_type):a.player_type.localeCompare(b.player_type))"
                                                     item-title="name"
                                                     item-value="code"
                                                     label="포지션"
@@ -818,7 +820,10 @@
                                             <v-col cols="12" md="3">
                                                 <v-select
                                                     v-model="lineup.replaced_position"
-                                                    :items="POSITIONS.filter(pr=>{
+                                                    :items="[...POSITIONS
+                                                        , { code: 'PH', name: '대타', player_type: 'B', description: '타자를 대신해 타석에 들어서는 선수로, 주로 공격력을 강화하기 위해 투입됩니다.' }
+                                                        , { code: 'PR', name: '대주자', player_type: 'B', description: '주자를 대신해 출루하여 빠른 발과 주루 능력으로 득점을 노리는 선수입니다.' } 
+                                                    ].filter(pr=>{
                                                         if(lineup.batting_order === 0){
                                                             return pr.player_type === 'P'
                                                         }
@@ -1258,8 +1263,8 @@ watch(gamedayInfo, () => {
 }, { deep: true });
 
 watch(()=>currentBatter.value, async (newVal) => {
-    if(!!newVal.game_id && !!newVal.player_id){
-        const response = await commonFetch(`/api/admin/game/${newVal.game_id}/batter/${newVal.player_id}/current-stats`,{
+    if(!!newVal.game_id && !!getPlayerId(newVal)){
+        const response = await commonFetch(`/api/admin/game/${newVal.game_id}/batter/${getPlayerId(newVal)}/current-stats`,{
             method : "GET"
         })
 
@@ -1569,7 +1574,7 @@ const saveRoster = async () => {
             if(selectedMatchup.value.status !== "playball") return await getGameDetailInfo(selectedMatchup.value.game_id);
 
             if(lineup.value.batting_order === 0){
-                await setCurrentGamedayInfo('changePitcher:'+lineup.value.replaced_by);
+                await setCurrentGamedayInfo('changePitcher:'+lineup.value.player_id+':'+lineup.value.replaced_by);
                 await setPitcherGameStats({
                     pitches_thrown : isAway.value?gameCurrentInfo.value.home_pitch_count:gameCurrentInfo.value.away_pitch_count,
                     outs_pitched : isAway.value?gameCurrentInfo.value.home_current_out:gameCurrentInfo.value.away_current_out,
@@ -1588,26 +1593,28 @@ const saveRoster = async () => {
                 }
             }else{
                 if((selectedMatchup.value.away_team_id === lineup.value.team_id && isAway.value) || (selectedMatchup.value.home_team_id === lineup.value.team_id && !isAway.value)){
-                    if(currentBatter.value.player_id === lineup.value.player_id) await setCurrentGamedayInfo('changeBatter:'+lineup.value.replaced_by);
+                    if(currentBatter.value.player_id === lineup.value.player_id) await setCurrentGamedayInfo('changeBatter:'+lineup.value.player_id+':'+lineup.value.replaced_by);
                     else if(getPlayerId(gameCurrentInfo.value.runner_1b)=== lineup.value.player_id){
-                        await setCurrentGamedayInfo('changeRunner:1:'+lineup.value.replaced_by);
+                        await setCurrentGamedayInfo('changeRunner:1:'+lineup.value.player_id+':'+lineup.value.replaced_by);
                         runnerNum = 1;
                         runnerOrderNum = lineup.value.batting_order;
                     }
                     else if(getPlayerId(gameCurrentInfo.value.runner_2b)=== lineup.value.player_id){
-                        await setCurrentGamedayInfo('changeRunner:2:'+lineup.value.replaced_by);
+                        await setCurrentGamedayInfo('changeRunner:2:'+lineup.value.player_id+':'+lineup.value.replaced_by);
                         runnerNum = 2;
                         runnerOrderNum = lineup.value.batting_order;
                     }
                     else if(getPlayerId(gameCurrentInfo.value.runner_3b)=== lineup.value.player_id){
-                        await setCurrentGamedayInfo('changeRunner:3:'+lineup.value.replaced_by);
+                        await setCurrentGamedayInfo('changeRunner:3:'+lineup.value.player_id+':'+lineup.value.replaced_by);
                         runnerNum = 3;
                         runnerOrderNum = lineup.value.batting_order;
                     }
-                    else await setCurrentGamedayInfo('changePlayer:'+lineup.value.replaced_by);
-                    //await setCurrentGamedayInfo('changeBatter:'+lineup.value.replaced_by);
+                    else await setCurrentGamedayInfo('changePlayer:'+lineup.value.player_id+':'+lineup.value.replaced_by);
+                    //await setCurrentGamedayInfo('changeBatter:'+lineup.value.player_id+':'+lineup.value.replaced_by);
                 }
-                else await setCurrentGamedayInfo('changeDefense:'+lineup.value.replaced_by);
+                else{
+                    await setCurrentGamedayInfo('changeDefense:'+lineup.value.position+":"+lineup.value.player_id+':'+lineup.value.replaced_position+":"+lineup.value.replaced_by);
+                }
             }
 
             await setCurrentGamedayInfo('lastInfo');
@@ -2076,7 +2083,7 @@ const setScore = async (scoreBase, rbiConfirmYn = true) => {
 
     await setBatterGameStats({
         runs : 1,
-    }, runnerInfo.player_id);
+    }, getPlayerId(runnerInfo));
 
     if(rbiConfirmYn){
         if(await confirm(`${getPlayerName(runnerInfo)}의 득점을 ${getPlayerName(currentBatter.value)}의 타점으로 등록하시겠습니까?`)){
@@ -3003,7 +3010,7 @@ const setStolenBaseToSecond = async () => {
     await setCurrentGamedayInfo('stolenBase:2');
     await setBatterGameStats({
         stolen_bases : 1,
-    },gameCurrentInfo.value.runner_1b.player_id);
+    },getPlayerId(gameCurrentInfo.value.runner_1b));
 
     gameCurrentInfo.value.runner_2b = { ...gameCurrentInfo.value.runner_1b };
     gameCurrentInfo.value.runner_1b = null;
@@ -3017,7 +3024,7 @@ const setStolenBaseToThird = async () => {
     await setCurrentGamedayInfo('stolenBase:3');
     await setBatterGameStats({
         stolen_bases : 1,
-    },gameCurrentInfo.value.runner_2b.player_id);
+    },getPlayerId(gameCurrentInfo.value.runner_2b));
 
     gameCurrentInfo.value.runner_3b = { ...gameCurrentInfo.value.runner_2b };
     gameCurrentInfo.value.runner_2b = null;
@@ -3029,7 +3036,7 @@ const setStolenBaseToHome = async () => {
     await setCurrentGamedayInfo('stolenBase:4');
     await setBatterGameStats({
         stolen_bases : 1,
-    },gameCurrentInfo.value.runner_3b.player_id);
+    },getPlayerId(gameCurrentInfo.value.runner_3b));
 
     await setScore(3,false);
 
@@ -3044,7 +3051,7 @@ const setCaughtStealingSecondBase = async () => {
     await setCurrentGamedayInfo('caughtStealing:2');
     await setBatterGameStats({
         caught_stealings : 1,
-    },gameCurrentInfo.value.runner_1b.player_id);
+    },getPlayerId(gameCurrentInfo.value.runner_1b));
 
     gameCurrentInfo.value.runner_1b = null;
 
@@ -3059,7 +3066,7 @@ const setCaughtStealingThirdBase = async () => {
     await setCurrentGamedayInfo('caughtStealing:3');
     await setBatterGameStats({
         caught_stealings : 1,
-    },gameCurrentInfo.value.runner_2b.player_id);
+    },getPlayerId(gameCurrentInfo.value.runner_2b));
 
     gameCurrentInfo.value.runner_2b = null;
 
@@ -3072,7 +3079,7 @@ const setCaughtStealingHomeBase = async () => {
     await setCurrentGamedayInfo('caughtStealing:4');
     await setBatterGameStats({
         caught_stealings : 1,
-    },gameCurrentInfo.value.runner_3b.player_id);
+    },getPlayerId(gameCurrentInfo.value.runner_3b));
 
     gameCurrentInfo.value.runner_3b = null;
 
@@ -3085,7 +3092,7 @@ const setPickoffFromFirst = async () => {
     await setCurrentGamedayInfo('pickoff:1');
     await setBatterGameStats({
         pickoffs : 1,
-    },gameCurrentInfo.value.runner_1b.player_id);
+    },getPlayerId(gameCurrentInfo.value.runner_1b));
 
     await setPitcherGameStats({
         pickoffs : 1,
@@ -3102,7 +3109,7 @@ const setPickoffFromSecond = async () => {
     await setCurrentGamedayInfo('pickoff:2');
     await setBatterGameStats({
         pickoffs : 1,
-    },gameCurrentInfo.value.runner_2b.player_id);
+    },getPlayerId(gameCurrentInfo.value.runner_2b));
 
     await setPitcherGameStats({
         pickoffs : 1,
@@ -3119,7 +3126,7 @@ const setPickoffFromThird = async () => {
     await setCurrentGamedayInfo('pickoff:3');
     await setBatterGameStats({
         pickoffs : 1,
-    },gameCurrentInfo.value.runner_3b.player_id);
+    },getPlayerId(gameCurrentInfo.value.runner_3b));
 
     await setPitcherGameStats({
         pickoffs : 1,
@@ -3407,7 +3414,7 @@ const setError = async () => {
 
     await setBatterGameStats({
         errors : 1,
-    },errorInfo.player_id);
+    },getPlayerId(errorInfo));
 
     await setCurrentGamedayInfo('lastInfo');
 
@@ -3646,6 +3653,29 @@ const setBalk = async () => {
 
 const setGameOver = async () => {
     alert("게임이 종료되었습니다.");
+    
+    const homePitcher = lineupList.value[0]?.['home']?.at(-1);
+    const awayPitcher = lineupList.value[0]?.['away']?.at(-1);
+
+    await setPitcherGameStats({
+        pitches_thrown : gameCurrentInfo.value.home_pitch_count,
+        outs_pitched : gameCurrentInfo.value.home_current_out,
+        batters_faced : gameCurrentInfo.value.away_current_batting_number
+    }, getPlayerId(homePitcher));
+
+    await setPitcherGameStats({
+        pitches_thrown : gameCurrentInfo.value.away_pitch_count,
+        outs_pitched : gameCurrentInfo.value.away_current_out,
+        batters_faced : gameCurrentInfo.value.home_current_batting_number
+    }, getPlayerId(awayPitcher));
+    
+    gameCurrentInfo.value.home_pitch_count = 0;
+    gameCurrentInfo.value.away_current_batting_number = 0;
+    gameCurrentInfo.value.home_current_out = 0;
+    gameCurrentInfo.value.away_pitch_count = 0;
+    gameCurrentInfo.value.home_current_batting_number = 0;
+    gameCurrentInfo.value.away_current_out = 0;
+
     await setCurrentGamedayInfo('gameEnd');
     await setCurrentGamedayInfo('lastInfo');
     await updateGameStatus('completed');
