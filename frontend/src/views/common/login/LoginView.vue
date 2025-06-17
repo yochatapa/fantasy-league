@@ -1,7 +1,7 @@
 <template>
     <v-container class="d-flex justify-center align-center" style="height: 100vh;">
         <v-row class="d-flex justify-center" style="height: 100%;">
-        <v-col cols="12">
+        <v-col cols="12" md="8">
             <v-card class="pa-4">
             <v-card-title class="justify-center mb-4">
                 <span class="text-h6 font-weight-bold">로그인</span>

@@ -33,25 +33,20 @@
         </svg>
 
         <!-- 수비수 정보 -->
-        <div v-for="(player, index) in defenders" :key="index" :style="getPlayerPosition(player)" class="player" @click="showPlayerInfo(player)">
-            <span>{{ lineupList
-                    .flatMap(inning => inning[isAway ? 'home' : 'away'])
-                    .filter(lPlayer => (lPlayer?.replaced_position??lPlayer?.position)?.toLowerCase() === player.position.toLowerCase())
-                    .sort((a, b) => {
-                        if (a.replaced_inning !== b.replaced_inning) {
-                            return b.replaced_inning - a.replaced_inning;
-                        }
-                        return b.replaced_out - a.replaced_out;
-                    })?.[0]?.replaced_player_name
-                    ??lineupList
-                    .flatMap(inning => inning[isAway ? 'home' : 'away'])
-                    .filter(lPlayer => (lPlayer?.replaced_position??lPlayer?.position)?.toLowerCase() === player.position.toLowerCase())
-                    .sort((a, b) => {
-                        if (a.replaced_inning !== b.replaced_inning) {
-                            return b.replaced_inning - a.replaced_inning;
-                        }
-                        return b.replaced_out - a.replaced_out;
-                    })?.[0]?.player_name }}</span>
+        <div
+            v-for="(player, index) in defenders"
+            :key="index"
+            :style="getPlayerPosition(player)"
+            class="player"
+            @click="showPlayerInfo(currentDefenders.get(player.position) || null)"
+        >
+            <span>
+                {{
+                    currentDefenders.get(player.position)?.replaced_player_name
+                    || currentDefenders.get(player.position)?.player_name
+                    || '-'
+                }}
+            </span>
         </div>
 
         <!-- 투수 정보 -->
@@ -165,6 +160,26 @@ const getPlayerPosition = (player, defenseYn=true) => ({
     padding: '2px 5px',
     fontSize: '12px',
     transform: 'translate(-50%, -50%)'
+});
+
+const currentDefenders = computed(() => {
+    const side = isAway.value ? 'home' : 'away';
+
+    const latestNine = lineupList.value
+        .map(order => order[side]?.at(-1))
+        .filter(Boolean)
+        .reverse(); // 최신 선수 우선
+
+    const defenderMap = new Map();
+
+    for (const player of latestNine) {
+        const position = (player.replaced_position ?? player.position)?.toUpperCase();
+        if (!defenderMap.has(position)) {
+            defenderMap.set(position, player);
+        }
+    }
+
+    return defenderMap;
 });
 </script>
 
