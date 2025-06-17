@@ -1719,6 +1719,7 @@ const setPlayerInfo = (teamFlag, orderIndex) => {
 }
 
 const setCurrentGamedayInfo = async (type) => {
+    if(selectedMatchup.value.status !== 'playball') return;
     const pushData = {...gameCurrentInfo.value, batter: {...currentBatter.value}, pitcher : {...currentPitcher.value}, type:type};
     if(!!!gamedayInfo.value[gameCurrentInfo.value.inning]) gamedayInfo.value[gameCurrentInfo.value.inning] = {}
     if(!!!gamedayInfo.value[gameCurrentInfo.value.inning][gameCurrentInfo.value.inning_half]) gamedayInfo.value[gameCurrentInfo.value.inning][gameCurrentInfo.value.inning_half] = {}
@@ -1817,16 +1818,7 @@ const setOut = async (battingNumberYn=true, confirmYn=true) => {
         }
     }
 
-    if(battingNumberYn){
-        if(isAway.value){
-            gameCurrentInfo.value.away_batting_number++;
-            gameCurrentInfo.value.away_current_batting_number++;
-        }
-        else{
-            gameCurrentInfo.value.home_batting_number++;
-            gameCurrentInfo.value.home_current_batting_number++;
-        }
-    }
+    
     
     const current_out = gameCurrentInfo.value.out;
 
@@ -1852,15 +1844,31 @@ const setOut = async (battingNumberYn=true, confirmYn=true) => {
                 || (current_inning_half === "bottom" && gameCurrentInfo.value.away_score !== gameCurrentInfo.value.home_score)
             )
         ){
-            setGameOver();
+            await setGameOver();
             return
         }
             
         if(current_inning_half === "top") gameCurrentInfo.value.inning_half = "bottom"
         else {
+            // 무승부
+            if(gameCurrentInfo.value.inning === 11 && gameCurrentInfo.value.inning_half === "bottom"){
+                await setGameOver();
+                return
+            }
             gameCurrentInfo.value.inning++;
             currentInning.value = gameCurrentInfo.value.inning
             gameCurrentInfo.value.inning_half = "top"
+        }
+    }
+
+    if(battingNumberYn){
+        if(isAway.value){
+            gameCurrentInfo.value.away_batting_number++;
+            gameCurrentInfo.value.away_current_batting_number++;
+        }
+        else{
+            gameCurrentInfo.value.home_batting_number++;
+            gameCurrentInfo.value.home_current_batting_number++;
         }
     }
 }
@@ -2152,6 +2160,15 @@ const setScore = async (scoreBase, rbiConfirmYn = true) => {
                 runs_allowed : 1,
             });
         }
+    }
+
+    // 끝내기
+    if(
+        gameCurrentInfo.value.inning >= 9
+        && (gameCurrentInfo.value.inning_half === "bottom" && gameCurrentInfo.value.away_score < gameCurrentInfo.value.home_score)
+    ){ 
+        await setGameOver();
+        return
     }
 }
 
