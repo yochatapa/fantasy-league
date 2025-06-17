@@ -698,29 +698,50 @@
                                 class="d-flex align-center text-center"
                             >
                                 <v-divider></v-divider>
-                                <v-col class="d-flex flex-column" :class="{'selected-lineup' : selectedLineup[0] === 'away' && selectedLineup[1] === index}">
-                                    <div v-for="(away, aIdx) in lineupList[((index + 1)%10)]?.away" class="d-flex justify-space-between cursor-pointer" @click="setPlayerInfo('away',index,aIdx)">
-                                        <v-icon 
-                                            v-if="(aIdx === 0 && selectedMatchup.status === 'scheduled')/* || (aIdx > 0 && selectedMatchup.status === 'playball' && lineupList[((index + 1)%10)]?.away.length-1 === aIdx  && away.replaced_inning === gameCurrentInfo.inning && away.replaced_out === gameCurrentInfo.out)*/" 
-                                            color="error" 
+                                <v-col
+                                    class="d-flex flex-column"
+                                    :class="{ 'selected-lineup': selectedLineup[0] === 'away' && selectedLineup[1] === index }"
+                                >
+                                    <div
+                                        v-for="(player, aIdx) in groupPlayers(lineupList[((index + 1) % 10)]?.away || [])"
+                                        :key="aIdx"
+                                        class="d-flex justify-space-between cursor-pointer"
+                                        @click="setPlayerInfo('away', index)"
+                                    >
+                                        <v-icon
+                                            v-if="aIdx === 0 && selectedMatchup.status === 'scheduled'"
+                                            color="error"
                                             class="cursor-pointer"
+                                            @click.stop="deleteRoster(player.roster_id)"
                                         >mdi-delete</v-icon>
-                                        <span class="w-100" @click="setPlayerInfo('away',index,hIdx)">
-                                            {{ getPlayerPosition(away)?'(':'' }}{{ getPlayerPosition(away) }}{{ getPlayerPosition(away)?') ':'' }}{{ getPlayerName(away) }}
+                                        <span class="w-100">
+                                            ({{ player.positions.join(',') }}) {{ player.name }}
                                         </span>
                                     </div>
                                 </v-col>
-                                <span class="pa-3 ">{{ ((index + 1)%10)===0 ? "투수" : ((index + 1)%10) + "번" }}</span>
-                                <v-col class="d-flex flex-column" :class="{'selected-lineup' : selectedLineup[0] === 'home' && selectedLineup[1] === index}">
-                                    <div v-for="(home, hIdx) in lineupList[((index + 1)%10)]?.home" class="d-flex justify-space-between cursor-pointer" @click="setPlayerInfo('home',index,hIdx)">
+
+                                <span class="pa-3">
+                                    {{ ((index + 1) % 10) === 0 ? "투수" : ((index + 1) % 10) + "번" }}
+                                </span>
+
+                                <v-col
+                                    class="d-flex flex-column"
+                                    :class="{ 'selected-lineup': selectedLineup[0] === 'home' && selectedLineup[1] === index }"
+                                >
+                                    <div
+                                        v-for="(player, hIdx) in groupPlayers(lineupList[((index + 1) % 10)]?.home || [])"
+                                        :key="hIdx"
+                                        class="d-flex justify-space-between cursor-pointer"
+                                        @click="setPlayerInfo('home', index)"
+                                    >
                                         <span class="w-100">
-                                            {{ getPlayerPosition(home)?'(':'' }}{{ getPlayerPosition(home) }}{{ getPlayerPosition(home)?') ':'' }}{{ getPlayerName(home) }}
+                                            ({{ player.positions.join(',') }}) {{ player.name }}
                                         </span>
-                                        <v-icon 
-                                            v-if="(hIdx === 0 && selectedMatchup.status === 'scheduled')/* || (hIdx > 0 && selectedMatchup.status === 'playball' && lineupList[((index + 1)%10)]?.home.length-1 === hIdx && home.replaced_inning === gameCurrentInfo.inning && home.replaced_out === gameCurrentInfo.out)*/" 
-                                            color="error" 
+                                        <v-icon
+                                            v-if="hIdx === 0 && selectedMatchup.status === 'scheduled'"
+                                            color="error"
                                             class="cursor-pointer"
-                                            @click="deleteRoster(home?.roster_id)"
+                                            @click.stop="deleteRoster(player.roster_id)"
                                         >mdi-delete</v-icon>
                                     </div>
                                 </v-col>
@@ -1172,6 +1193,30 @@ const currentPitcher = computed(()=>{
         position : null,
     }
 })
+
+const groupPlayers = (players) => {
+    const grouped = new Map();
+
+    players.forEach((player) => {
+        const name = getPlayerName(player);
+        const pos = getPlayerPosition(player);
+
+        if (!grouped.has(name)) {
+            grouped.set(name, {
+                name,
+                positions: [pos],
+                roster_id: player.roster_id,
+            });
+        } else {
+            const existing = grouped.get(name);
+            if (!existing.positions.includes(pos)) {
+                existing.positions.push(pos);
+            }
+        }
+    });
+
+    return Array.from(grouped.values());
+};
 
 const teams = ref([]);
 const battingOrders = new Array(10).fill(null).map((val,idx) => ({ code :  (idx+1)%10 , name : (idx+1)%10 === 0 ? "투수" : (idx+1)%10 + "번 타자"}))
@@ -1656,8 +1701,8 @@ const setCurrentInning = (inning) => {
     currentInning.value = inning;
 }
 
-const setPlayerInfo = (teamFlag, orderIndex, replaceIndex) => {
-    const playerInfo = lineupList.value[((orderIndex + 1)%10)]?.[teamFlag]?.[replaceIndex];
+const setPlayerInfo = (teamFlag, orderIndex) => {
+    const playerInfo = lineupList.value[((orderIndex + 1)%10)]?.[teamFlag]?.at(-1);
     
     if(!playerInfo) return;
 
