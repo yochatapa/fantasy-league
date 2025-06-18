@@ -198,6 +198,8 @@ export const getKboGameDetail = async (req, res) => {
                 kgr.batting_order,
                 kgr.role,
                 kgr.replaced_by,
+                COALESCE(krp.batting_hand,kp.batting_hand) as batting_hand,
+                COALESCE(krp.throwing_hand,kp.throwing_hand) as throwing_hand,
                 krp.name AS replaced_player_name,
                 kgr.replaced_inning,
                 kgr.replaced_out,
@@ -706,6 +708,8 @@ export const getKboCurrentInfo = async (req, res) => {
                     'roster_id', kgrbt.id,
                     'team_id', kgrbt.team_id,
                     'team_name', tm4.name,
+                    'batting_hand', COALESCE(pm8.batting_hand,pm7.batting_hand),
+                    'throwing_hand', COALESCE(pm8.throwing_hand,pm7.throwing_hand),
                     'team_type', 
                         CASE 
                             WHEN kgm.home_team_id = kgrbt.team_id THEN 'home'
@@ -728,6 +732,8 @@ export const getKboCurrentInfo = async (req, res) => {
                     'replaced_out', kgrpc.replaced_out,
                     'replaced_position', kgrpc.replaced_position,
                     'role', kgrpc.role,
+                    'batting_hand', COALESCE(pm10.batting_hand,pm9.batting_hand),
+                    'throwing_hand', COALESCE(pm10.throwing_hand,pm9.throwing_hand),
                     'roster_id', kgrpc.id,
                     'team_id', kgrpc.team_id,
                     'team_name', tm5.name,
@@ -1352,6 +1358,8 @@ export const getKboGameCompletedInfo = async (req, res) => {
                     kgr.created_at,
                     kgr.updated_at,
                     kgr.position,
+                    COALESCE(krp.batting_hand,kp.batting_hand) as batting_hand,
+                    COALESCE(krp.throwing_hand,kp.throwing_hand) as throwing_hand,
                     CASE 
                         WHEN kgr.replaced_by IS NOT NULL THEN krp.player_type
                         ELSE kp.player_type

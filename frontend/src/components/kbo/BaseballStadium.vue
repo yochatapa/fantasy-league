@@ -72,7 +72,7 @@
         </div> -->
 
         <!-- 타자 정보 -->
-        <div v-if="currentBatter?.player_id" class="batter" :style="getPlayerPosition(batter,false)" @click="showPlayerInfo(batter)">
+        <div v-if="currentBatter?.player_id" class="batter" :style="getPlayerPosition(batter[currentBatter.batting_hand==='B'?(currentPitcher.throwing_hand==='R'?'L':'R'):currentBatter.batting_hand],false)" @click="showPlayerInfo(batter)">
             <span>{{ currentBatter.replaced_player_name??currentBatter.player_name }}</span>
         </div>
 
@@ -148,7 +148,10 @@ const pitcher = ref({ name: '투수', position: 'P', x: 250, y: 343 });
 const runner_1b = ref({ name: '1루주자', position: '1R', x: 342, y: 340 });
 const runner_2b = ref({ name: '2루주자', position: '2R', x: 250, y: 250 });
 const runner_3b = ref({ name: '3루주자', position: '3R', x: 148, y: 340 });
-const batter = ref({ name: '타자', position: 'B', x: 300, y: 435 });
+const batter = ref({
+    "R" : { name: '타자', position: 'B', x: 200, y: 435 },
+    "L" : { name: '타자', position: 'B', x: 300, y: 435 }
+});
 
 const getPlayerPosition = (player, defenseYn=true) => ({
     position: 'absolute',
