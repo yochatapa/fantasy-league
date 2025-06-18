@@ -920,27 +920,27 @@ export const createBatterGameStats = async (req, res) => {
                 inning, inning_half, out, batting_number
             ])
 
-            const { rows } = await client.query(
-                `SELECT season_year FROM kbo_game_master WHERE id = $1`,
-                [game_id]
-            );
-            if (rows.length === 0) throw new Error('게임 정보를 찾을 수 없습니다.');
-            const season_year = rows[0].season_year;
+            // const { rows } = await client.query(
+            //     `SELECT season_year FROM kbo_game_master WHERE id = $1`,
+            //     [game_id]
+            // );
+            // if (rows.length === 0) throw new Error('게임 정보를 찾을 수 없습니다.');
+            // const season_year = rows[0].season_year;
 
-            const updates = queryParams
-                .map(col => `${col} = COALESCE(batter_season_stats.${col}, 0) + EXCLUDED.${col}`)
-                .join(', ');
+            // const updates = queryParams
+            //     .map(col => `${col} = COALESCE(batter_season_stats.${col}, 0) + EXCLUDED.${col}`)
+            //     .join(', ');
 
-            const insertSeasonSql = `
-                INSERT INTO batter_season_stats
-                (season_year, player_id, team_id, ${queryParams.join(",")})
-                VALUES ($1, $2, $3, ${queryParams.map((_, i) => `$${4 + i}`).join(",")})
-                ON CONFLICT (season_year, player_id) DO UPDATE
-                SET ${updates}, updated_at = now()
-            `;
+            // const insertSeasonSql = `
+            //     INSERT INTO batter_season_stats
+            //     (season_year, player_id, team_id, ${queryParams.join(",")})
+            //     VALUES ($1, $2, $3, ${queryParams.map((_, i) => `$${4 + i}`).join(",")})
+            //     ON CONFLICT (season_year, player_id) DO UPDATE
+            //     SET ${updates}, updated_at = now()
+            // `;
             
-            // values 는 whereClauses 배열이어야 하고, queryParams 개수와 길이 맞춰져야 함
-            await client.query(insertSeasonSql, [season_year, player_id, team_id, ...whereClauses]);
+            // // values 는 whereClauses 배열이어야 하고, queryParams 개수와 길이 맞춰져야 함
+            // await client.query(insertSeasonSql, [season_year, player_id, team_id, ...whereClauses]);
         })
         
         return sendSuccess(res, {

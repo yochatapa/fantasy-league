@@ -155,10 +155,33 @@
                                     <!-- <v-chip link v-else-if="selectedMatchup.status === 'playball'" color="primary" @click="updateGameStatus('completed')">
                                         경기종료
                                     </v-chip> -->
-                                    <v-chip link v-if="selectedMatchup.status !== 'completed' && selectedMatchup.status !== 'cancelled'" color="error" @click="updateGameStatus('cancelled')">
-                                        경기취소
+                                    <v-chip
+                                        v-if="!['completed','cancelled','calledGame'].includes(selectedMatchup.status) 
+                                            && gameCurrentInfo.inning < 5"
+                                        color="error"
+                                        @click="updateGameStatus('cancelled')"
+                                    >
+                                        노 게임
                                     </v-chip>
-                                    <v-btn @click="setGameOver">game end test</v-btn>
+
+                                    <!-- 콜드 게임: 5이닝 이상 or 5회말 홈팀 리드 중 -->
+                                    <v-chip
+                                        v-if="!['completed','cancelled','calledGame'].includes(selectedMatchup.status)
+                                            && (
+                                                gameCurrentInfo.inning > 5 ||
+                                                (
+                                                    gameCurrentInfo.inning === 5 &&
+                                                    (
+                                                        (!isAway && gameCurrentInfo.home_score > gameCurrentInfo.away_score) || 
+                                                        (isAway && gameCurrentInfo.home_score !== gameCurrentInfo.away_score)
+                                                    )
+                                                )
+                                            )"
+                                        color="error"
+                                        @click="setCalledGame();"
+                                    >
+                                        콜드 게임
+                                    </v-chip>
                                 </div>
                             </div>
                             <div v-else class="text-center">
@@ -822,8 +845,8 @@
                                                     :disabled="isReplace"
                                                     v-model="lineup.position"
                                                     :items="[...POSITIONS
-                                                        , { code: 'PH', name: '대타', player_type: 'B', description: '타자를 대신해 타석에 들어서는 선수로, 주로 공격력을 강화하기 위해 투입됩니다.' }
-                                                        , { code: 'PR', name: '대주자', player_type: 'B', description: '주자를 대신해 출루하여 빠른 발과 주루 능력으로 득점을 노리는 선수입니다.' }
+                                                        , ...(selectedMatchup.status !== 'scheduled'? [{ code: 'PH', name: '대타', player_type: 'B', description: '타자를 대신해 타석에 들어서는 선수로, 주로 공격력을 강화하기 위해 투입됩니다.' }] : [])
+                                                        , ...(selectedMatchup.status !== 'scheduled'? [{ code: 'PR', name: '대주자', player_type: 'B', description: '주자를 대신해 출루하여 빠른 발과 주루 능력으로 득점을 노리는 선수입니다.' }] : [])
                                                     ].toSorted((a,b)=>lineup.batting_order===0?b.player_type.localeCompare(a.player_type):a.player_type.localeCompare(b.player_type))"
                                                     item-title="name"
                                                     item-value="code"
@@ -1319,6 +1342,23 @@ watch(()=>currentBatter.value, async (newVal) => {
     }
 })
 
+watch(
+    () => [gameCurrentInfo.value.away_batting_number, gameCurrentInfo.value.home_batting_number],
+    async () => {
+        const info = gameCurrentInfo.value;
+        const status = selectedMatchup.value.status;
+
+        if (
+            status === 'playball' &&
+            info.inning >= 9 &&
+            info.inning_half === 'bottom' &&
+            info.away_score < info.home_score
+        ) {
+            await setGameOver();
+        }
+    }
+)
+
 const updateMatchups = async (newVal) => {
     isExpanded.value = true
     router.replace(`/admin/game/management?date=${formatDate(newVal)}`)
@@ -1415,6 +1455,11 @@ const deleteMatchup = async (game_id) => {
     } catch (error) {
         
     }
+}
+
+const setCalledGame = async () => {
+    await setGameOver();
+    updateGameStatus('calledGame');
 }
 
 const updateGameStatus = async (status) => {
@@ -1808,8 +1853,8 @@ const setPitcherGameStats = async (stats, player_id) => {
 const setOut = async (battingNumberYn=true, confirmYn=true) => {
     gameCurrentInfo.value.strike = 0;
     gameCurrentInfo.value.ball = 0;
-    if(isAway.value) gameCurrentInfo.value.home_current_pitch_count = 0;
-    else gameCurrentInfo.value.away_current_pitch_count = 0;
+    gameCurrentInfo.value.home_current_pitch_count = 0;
+    gameCurrentInfo.value.away_current_pitch_count = 0;
 
     if(confirmYn){
         if(!await confirm(`※ ${getPlayerName(currentBatter.value)}의 타석을 종료하시겠습니까?\n\n주자 및 타점 입력이 제한되며,\n다음 타석으로 진행됩니다.`)){
@@ -1818,7 +1863,16 @@ const setOut = async (battingNumberYn=true, confirmYn=true) => {
         }
     }
 
-    
+    if(battingNumberYn){
+        if(isAway.value){
+            gameCurrentInfo.value.away_batting_number++;
+            gameCurrentInfo.value.away_current_batting_number++;
+        }
+        else{
+            gameCurrentInfo.value.home_batting_number++;
+            gameCurrentInfo.value.home_current_batting_number++;
+        }
+    }
     
     const current_out = gameCurrentInfo.value.out;
 
@@ -1851,24 +1905,13 @@ const setOut = async (battingNumberYn=true, confirmYn=true) => {
         if(current_inning_half === "top") gameCurrentInfo.value.inning_half = "bottom"
         else {
             // 무승부
-            if(gameCurrentInfo.value.inning === 11 && gameCurrentInfo.value.inning_half === "bottom"){
+            if(gameCurrentInfo.value.inning === ((Number(formattedDate.value.substr(0,4))??new Date().getUTCFullYear())<2025?12:11) && gameCurrentInfo.value.inning_half === "bottom"){
                 await setGameOver();
                 return
             }
             gameCurrentInfo.value.inning++;
             currentInning.value = gameCurrentInfo.value.inning
             gameCurrentInfo.value.inning_half = "top"
-        }
-    }
-
-    if(battingNumberYn){
-        if(isAway.value){
-            gameCurrentInfo.value.away_batting_number++;
-            gameCurrentInfo.value.away_current_batting_number++;
-        }
-        else{
-            gameCurrentInfo.value.home_batting_number++;
-            gameCurrentInfo.value.home_current_batting_number++;
         }
     }
 }
@@ -2093,8 +2136,8 @@ const setFoul = async () => {
 const setBaseOnBalls = async (rbiConfirmYn=true)=>{
     await setCurrentGamedayInfo('baseonballs');
     
-    if(isAway.value) gameCurrentInfo.value.home_current_pitch_count = 0;
-    else gameCurrentInfo.value.away_current_pitch_count = 0;
+    gameCurrentInfo.value.home_current_pitch_count = 0;
+    gameCurrentInfo.value.away_current_pitch_count = 0;
 
     const current_inning_half = gameCurrentInfo.value.inning_half;
     
@@ -2160,15 +2203,6 @@ const setScore = async (scoreBase, rbiConfirmYn = true) => {
                 runs_allowed : 1,
             });
         }
-    }
-
-    // 끝내기
-    if(
-        gameCurrentInfo.value.inning >= 9
-        && (gameCurrentInfo.value.inning_half === "bottom" && gameCurrentInfo.value.away_score < gameCurrentInfo.value.home_score)
-    ){ 
-        await setGameOver();
-        return
     }
 }
 
@@ -2268,8 +2302,8 @@ const setHit = async()=>{
     gameCurrentInfo.value.ball = 0;
     gameCurrentInfo.value.runner_1b = { ...currentBatter.value, pitcher : { ...currentPitcher.value } };
     
-    if(isAway.value) gameCurrentInfo.value.home_current_pitch_count = 0;
-    else gameCurrentInfo.value.away_current_pitch_count = 0;
+    gameCurrentInfo.value.home_current_pitch_count = 0;
+    gameCurrentInfo.value.away_current_pitch_count = 0;
 
     if(!await confirm(`※ ${getPlayerName(currentBatter.value)}의 타석을 종료하시겠습니까?\n\n주자 및 타점 입력이 제한되며,\n다음 타석으로 진행됩니다.`)){
         gameCurrentInfo.value.is_available_stat = false;
@@ -2375,8 +2409,9 @@ const setDouble = async () => {
     gameCurrentInfo.value.ball = 0;
     gameCurrentInfo.value.runner_2b = { ...currentBatter.value, pitcher : { ...currentPitcher.value } };
     
-    if(isAway.value) gameCurrentInfo.value.home_current_pitch_count = 0;
-    else gameCurrentInfo.value.away_current_pitch_count = 0;
+    gameCurrentInfo.value.home_current_pitch_count = 0;
+    gameCurrentInfo.value.away_current_pitch_count = 0;
+
 
     if(!await confirm(`※ ${getPlayerName(currentBatter.value)}의 타석을 종료하시겠습니까?\n\n주자 및 타점 입력이 제한되며,\n다음 타석으로 진행됩니다.`)){
         gameCurrentInfo.value.is_available_stat = false;
@@ -2437,8 +2472,8 @@ const setTriple = async () => {
     gameCurrentInfo.value.ball = 0;
     gameCurrentInfo.value.runner_3b = { ...currentBatter.value, pitcher : { ...currentPitcher.value } };
     
-    if(isAway.value) gameCurrentInfo.value.home_current_pitch_count = 0;
-    else gameCurrentInfo.value.away_current_pitch_count = 0;
+    gameCurrentInfo.value.home_current_pitch_count = 0;
+    gameCurrentInfo.value.away_current_pitch_count = 0;
 
     if(!await confirm(`※ ${getPlayerName(currentBatter.value)}의 타석을 종료하시겠습니까?\n\n주자 및 타점 입력이 제한되며,\n다음 타석으로 진행됩니다.`)){
         gameCurrentInfo.value.is_available_stat = false;
@@ -2514,8 +2549,9 @@ const setHomerun = async () => {
     gameCurrentInfo.value.runner_2b = null;
     gameCurrentInfo.value.runner_3b = null;
     
-    if(isAway.value) gameCurrentInfo.value.home_current_pitch_count = 0;
-    else gameCurrentInfo.value.away_current_pitch_count = 0;
+    gameCurrentInfo.value.home_current_pitch_count = 0;
+    gameCurrentInfo.value.away_current_pitch_count = 0;
+
 
     if(isAway.value){
         gameCurrentInfo.value.away_batting_number++;
@@ -2823,8 +2859,9 @@ const setFieldersChoice = async () => {
     gameCurrentInfo.value.ball = 0;
     gameCurrentInfo.value.runner_1b = { ...currentBatter.value, pitcher : { ...currentPitcher.value } };
     
-    if(isAway.value) gameCurrentInfo.value.home_current_pitch_count = 0;
-    else gameCurrentInfo.value.away_current_pitch_count = 0;
+    gameCurrentInfo.value.home_current_pitch_count = 0;
+    gameCurrentInfo.value.away_current_pitch_count = 0;
+
 
     if(!await confirm(`※ ${getPlayerName(currentBatter.value)}의 타석을 종료하시겠습니까?\n\n주자 및 타점 입력이 제한되며,\n다음 타석으로 진행됩니다.`)){
         gameCurrentInfo.value.is_available_stat = false;
@@ -2845,7 +2882,7 @@ const setFieldersChoice = async () => {
 }
 
 const setDoublePlay = async() => {
-    const curOut = gameCurrentInfo.value.out
+    const curOut = gameCurrentInfo.value.out;
     if(curOut > 1) return alert("2아웃 이후에는 더블 플레이가 불가능합니다.", "error")
 
     const options = [
@@ -2890,14 +2927,17 @@ const setDoublePlay = async() => {
         grounded_into_double_play : 1,
     });
 
+    
     if(gameCurrentInfo.value.runner_3b?.player_id){
         if(outResult[0] === 3 || outResult[1] === 3){
             await setCurrentGamedayInfo('out:3');
             gameCurrentInfo.value.runner_3b = null;
             await setOut(false, (curOut!==gameCurrentInfo.value.out?true:false));
         }else{
-            const thirdBaseResult = await confirm("3루 주자를 홈베이스로 이동시키시겠습니까?");
-            if(thirdBaseResult) await setRunnerAdvanceFromThird()
+            if(curOut < 1){
+                const thirdBaseResult = await confirm("3루 주자를 홈베이스로 이동시키시겠습니까?");
+                if(thirdBaseResult) await setRunnerAdvanceFromThird()
+            }
         }
     }
     
@@ -2916,19 +2956,21 @@ const setDoublePlay = async() => {
                     { id: 2, name: '홈' },
                 ];
 
-                const baseResult = await prompt(
-                    '2루 주자가 이동할 베이스를 선택해주세요.',
-                    '',
-                    {
-                        type: 'select',
-                        options,
-                        itemValue: 'id',
-                        itemTitle: 'name',
-                        rules: [(v) => (v!==undefined && v!==null && v!=='') || '이동할 베이스를 선택해주세요'],
-                    }
-                );
+                if(curOut < 1){
+                    const baseResult = await prompt(
+                        '2루 주자가 이동할 베이스를 선택해주세요.',
+                        '',
+                        {
+                            type: 'select',
+                            options,
+                            itemValue: 'id',
+                            itemTitle: 'name',
+                            rules: [(v) => (v!==undefined && v!==null && v!=='') || '이동할 베이스를 선택해주세요'],
+                        }
+                    );
 
-                if (baseResult) await setRunnerAdvanceFromSecond(baseResult);
+                    if (baseResult) await setRunnerAdvanceFromSecond(baseResult);
+                }
             }
         }
     }
@@ -2946,20 +2988,22 @@ const setDoublePlay = async() => {
                 ...(!gameCurrentInfo.value.runner_3b?.player_id || !gameCurrentInfo.value.runner_2b?.player_id ? [{ id: 3, name: '홈' }] : []),
             ];
 
-            const baseResult = await prompt(
-                '1루 주자가 이동할 베이스를 선택해주세요.',
-                '',
-                {
-                    type: 'select',
-                    options,
-                    itemValue: 'id',
-                    itemTitle: 'name',
-                    rules: [(v) => !!v || '이동할 베이스를 선택해주세요'],
-                }
-            );
+            if(curOut < 1){
+                const baseResult = await prompt(
+                    '1루 주자가 이동할 베이스를 선택해주세요.',
+                    '',
+                    {
+                        type: 'select',
+                        options,
+                        itemValue: 'id',
+                        itemTitle: 'name',
+                        rules: [(v) => !!v || '이동할 베이스를 선택해주세요'],
+                    }
+                );
 
-            if (baseResult) {
-                await setRunnerAdvanceFromFirst(baseResult);
+                if (baseResult) {
+                    await setRunnerAdvanceFromFirst(baseResult);
+                }
             }
         }
     }
@@ -2980,7 +3024,7 @@ const setDoublePlay = async() => {
         gameCurrentInfo.value.away_current_pitch_count++;
     }
 
-    if(isAway.value){
+    if(curIsAway){
         gameCurrentInfo.value.away_batting_number++;
         gameCurrentInfo.value.away_current_batting_number++;
     }
@@ -2988,7 +3032,7 @@ const setDoublePlay = async() => {
         gameCurrentInfo.value.home_batting_number++;
         gameCurrentInfo.value.home_current_batting_number++;
     }
-
+    console.log(curIsAway,JSON.stringify(gameCurrentInfo.value))
     await setCurrentGamedayInfo('lastInfo');
 }
 
@@ -3043,7 +3087,7 @@ const setTriplePlay = async() => {
         await setCurrentGamedayInfo('out:'+outNum);
         await setOut(false, (gameCurrentInfo.value.out===2?true:false));
     }
-
+    
     if(curIsAway){
         gameCurrentInfo.value.home_pitch_count++;
         gameCurrentInfo.value.home_current_pitch_count++;
@@ -3053,7 +3097,7 @@ const setTriplePlay = async() => {
         gameCurrentInfo.value.away_current_pitch_count++;
     }
 
-    if(isAway.value){
+    if(curIsAway){
         gameCurrentInfo.value.away_batting_number++;
         gameCurrentInfo.value.away_current_batting_number++;
     }
@@ -3327,8 +3371,9 @@ const setHitByPitch = async () => {
     gameCurrentInfo.value.strike = 0;
     gameCurrentInfo.value.ball = 0;
 
-    if(isAway.value) gameCurrentInfo.value.home_current_pitch_count = 0;
-    else gameCurrentInfo.value.away_current_pitch_count = 0;
+    gameCurrentInfo.value.home_current_pitch_count = 0;
+    gameCurrentInfo.value.away_current_pitch_count = 0;
+
     
     const runner1B = gameCurrentInfo.value.runner_1b;
     const runner2B = gameCurrentInfo.value.runner_2b;
@@ -3357,11 +3402,9 @@ const setHitByPitch = async () => {
 
     if(isAway.value){
         gameCurrentInfo.value.home_pitch_count++;
-        gameCurrentInfo.value.home_current_pitch_count++;
     }
     else{
         gameCurrentInfo.value.away_pitch_count++;
-        gameCurrentInfo.value.away_current_pitch_count++;
     }
 
     if(isAway.value){
@@ -3390,8 +3433,9 @@ const setIntentionalBaseOnBalls = async () => {
     gameCurrentInfo.value.strike = 0;
     gameCurrentInfo.value.ball = 0;
 
-    if(isAway.value) gameCurrentInfo.value.home_current_pitch_count = 0;
-    else gameCurrentInfo.value.away_current_pitch_count = 0;
+    gameCurrentInfo.value.home_current_pitch_count = 0;
+    gameCurrentInfo.value.away_current_pitch_count = 0;
+
     
     const runner1B = gameCurrentInfo.value.runner_1b;
     const runner2B = gameCurrentInfo.value.runner_2b;
@@ -3465,10 +3509,11 @@ const setError = async () => {
 
     const errorList =   lineupList.value.filter(inning => {
                             const arr = inning[isAway.value?'home':'away'];
-                            return arr.length > 0 ? arr[arr.length - 1].player_id === errorPlayer.value : false;
+                            console.log(arr,arr.length,getPlayerId(arr.at(-1)),errorPlayer.value)
+                            return arr.length > 0 ? Number(getPlayerId(arr.at(-1))) === Number(errorPlayer.value) : false;
                         })
-
-    const errorInfo = errorList[0][isAway.value?'home':'away']?.[errorList.length - 1]
+    
+    const errorInfo = errorList[0]?.[isAway.value?'home':'away']?.at(-1)
     
     if(!errorInfo) return alert("실책한 선수 정보가 잘못되었습니다.\n다시 시도해주세요.", "error")
 

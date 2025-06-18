@@ -72,7 +72,7 @@
         </div> -->
 
         <!-- 타자 정보 -->
-        <div v-if="currentBatter?.player_id" class="batter" :style="getPlayerPosition(batter[currentBatter.batting_hand==='B'?(currentPitcher.throwing_hand==='R'?'L':'R'):currentBatter.batting_hand],false)" @click="showPlayerInfo(batter)">
+        <div v-if="currentBatter?.player_id" class="batter" :style="getPlayerPosition(batter[currentBatter.batting_hand==='B'?(currentPitcher.throwing_hand==='R'?'L':'R'):(currentBatter.batting_hand)]??batter['R'],false)">
             <span>{{ currentBatter.replaced_player_name??currentBatter.player_name }}</span>
         </div>
 
@@ -153,17 +153,19 @@ const batter = ref({
     "L" : { name: '타자', position: 'B', x: 300, y: 435 }
 });
 
-const getPlayerPosition = (player, defenseYn=true) => ({
-    position: 'absolute',
-    left: `${(player.x / 500) * 100}%`,
-    top: `${(player.y / 500) * 100}%`,
-    backgroundColor: defenseYn?'#333':'#fff',
-    color: defenseYn?'#fff':'#333',
-    borderRadius: '5px',
-    padding: '2px 5px',
-    fontSize: '12px',
-    transform: 'translate(-50%, -50%)'
-});
+const getPlayerPosition = (player, defenseYn=true) => {
+    return {
+        position: 'absolute',
+        left: `${(player?.x / 500) * 100}%`,
+        top: `${(player?.y / 500) * 100}%`,
+        backgroundColor: defenseYn?'#333':'#fff',
+        color: defenseYn?'#fff':'#333',
+        borderRadius: '5px',
+        padding: '2px 5px',
+        fontSize: '12px',
+        transform: 'translate(-50%, -50%)'
+    }
+};
 
 const currentDefenders = computed(() => {
     const side = isAway.value ? 'home' : 'away';
