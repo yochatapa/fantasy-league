@@ -623,7 +623,7 @@
                                             :item-value="item => getPlayerId(item)"
                                             :readonly="save_pitcher_yn"
                                         ></v-select>
-                                        <v-btn style="margin-top: 2px;" color="primary" @click="setSavePitcher()" v-if="!save_pitcher_yn">
+                                        <v-btn style="margin-top: 2px;" color="primary" @click="setSavePitcher()" v-if="!save_pitcher_yn"> 
                                             저장
                                         </v-btn>
                                     </div>
@@ -930,7 +930,7 @@
                             <v-data-table
                                 :headers="batterHeaders"
                                 :items="homeBatters"
-                                class="mb-6"
+                                class="mb-6 no-cell-padding"
                                 hide-default-footer
                                 :items-per-page="-1"
                                 disable-sort
@@ -952,11 +952,67 @@
                             <v-data-table
                                 :headers="pitcherHeaders"
                                 :items="homePitchers"
-                                class="mb-12"
+                                class="mb-12 no-cell-padding"
                                 hide-default-footer
                                 :items-per-page="-1"
                                 disable-sort
-                            />
+                            >
+                                <template #item.player_name="{ item }">
+                                    <div class="d-flex align-center">
+                                        {{ item.player_name }}
+                                        <v-chip
+                                            v-if="item.wins > 0"
+                                            color="primary"
+                                            class="ma-1"
+                                            size="small"
+                                            variant="elevated"
+                                            style="border-radius: 50%; width: 20px; height: 20px; padding: 0; justify-content: center;"
+                                        >
+                                            승
+                                        </v-chip>
+                                        <v-chip
+                                            v-else-if="item.losses > 0"
+                                            color="error"
+                                            class="ma-1"
+                                            size="small"
+                                            variant="elevated"
+                                            style="border-radius: 50%; width: 20px; height: 20px; padding: 0; justify-content: center;"
+                                        >
+                                            패
+                                        </v-chip>
+                                        <v-chip
+                                            v-else-if="item.saves > 0"
+                                            color="green"
+                                            class="ma-1"
+                                            size="small"
+                                            variant="elevated"
+                                            style="border-radius: 50%; width: 20px; height: 20px; padding: 0; justify-content: center;"
+                                        >
+                                            세
+                                        </v-chip>
+                                        <v-chip
+                                            v-else-if="item.holds > 0"
+                                            color="gray"
+                                            class="ma-1"
+                                            size="small"
+                                            variant="elevated"
+                                            style="border-radius: 50%; width: 20px; height: 20px; padding: 0; justify-content: center;"
+                                        >
+                                            홀
+                                        </v-chip>
+                                        <v-chip
+                                            v-else-if="item.blown_saves > 0"
+                                            color="gray"
+                                            class="ma-1"
+                                            size="small"
+                                            variant="elevated"
+                                            style="border-radius: 50%; width: 20px; height: 20px; padding: 0; justify-content: center;"
+                                        >
+                                            블
+                                        </v-chip>
+                                    </div>
+                                </template>
+                            </v-data-table>
                             <v-divider class="mb-8"></v-divider>
                             <h2>원정팀</h2>
                             <v-col cols="12">
@@ -965,7 +1021,7 @@
                             <v-data-table
                                 :headers="batterHeaders"
                                 :items="awayBatters"
-                                class="mb-6"
+                                class="mb-6 no-cell-padding"
                                 hide-default-footer
                                 :items-per-page="-1"
                                 disable-sort
@@ -987,10 +1043,67 @@
                             <v-data-table
                                 :headers="pitcherHeaders"
                                 :items="awayPitchers"
+                                class="no-cell-padding"
                                 hide-default-footer
                                 :items-per-page="-1"
                                 disable-sort
-                            />
+                            >
+                                <template #item.player_name="{ item }">
+                                    <div class="d-flex align-center">
+                                        {{ item.player_name }}
+                                        <v-chip
+                                            v-if="item.wins > 0"
+                                            color="primary"
+                                            class="ma-1"
+                                            size="small"
+                                            variant="elevated"
+                                            style="border-radius: 50%; width: 20px; height: 20px; padding: 0; justify-content: center;"
+                                        >
+                                            승
+                                        </v-chip>
+                                        <v-chip
+                                            v-else-if="item.losses > 0"
+                                            color="error"
+                                            class="ma-1"
+                                            size="small"
+                                            variant="elevated"
+                                            style="border-radius: 50%; width: 20px; height: 20px; padding: 0; justify-content: center;"
+                                        >
+                                            패
+                                        </v-chip>
+                                        <v-chip
+                                            v-else-if="item.saves > 0"
+                                            color="green"
+                                            class="ma-1"
+                                            size="small"
+                                            variant="elevated"
+                                            style="border-radius: 50%; width: 20px; height: 20px; padding: 0; justify-content: center;"
+                                        >
+                                            세
+                                        </v-chip>
+                                        <v-chip
+                                            v-else-if="item.holds > 0"
+                                            color="gray"
+                                            class="ma-1"
+                                            size="small"
+                                            variant="elevated"
+                                            style="border-radius: 50%; width: 20px; height: 20px; padding: 0; justify-content: center;"
+                                        >
+                                            홀
+                                        </v-chip>
+                                        <v-chip
+                                            v-else-if="item.blown_saves > 0"
+                                            color="gray"
+                                            class="ma-1"
+                                            size="small"
+                                            variant="elevated"
+                                            style="border-radius: 50%; width: 20px; height: 20px; padding: 0; justify-content: center;"
+                                        >
+                                            블
+                                        </v-chip>
+                                    </div>
+                                </template>
+                            </v-data-table>
                         </v-card-text>
                         
                     </v-card>
@@ -1013,7 +1126,6 @@ import { formatDate } from '@/utils/common/dateUtils.js';
 import { encryptData, decryptData } from '@/utils/common/crypto.js';
 import BaseballStadium from '@/components/kbo/BaseballStadium.vue';
 import { useRouter, useRoute } from 'vue-router';
-import { consoleError } from 'vuetify/lib/util/console.mjs';
 
 const router = useRouter();
 const route = useRoute();
@@ -1105,7 +1217,7 @@ const fullPlayerStats = ref([]);
 
 // 전체 타자 스탯 필드
 const batterHeaders = [
-    { title: '이름', key: 'player_name', minWidth: 150, fixed: true, align: 'center' },
+    { title: '이름', key: 'player_name', fixed: true, align: 'center' },
     { title: '타석', key: 'plate_appearances', nowrap: true, align: 'center' },
     { title: '타수', key: 'at_bats', nowrap: true, align: 'center' },
     { title: '안타', key: 'hits', nowrap: true, align: 'center' },
@@ -1128,8 +1240,9 @@ const batterHeaders = [
 
 // 전체 투수 스탯 필드
 const pitcherHeaders = [
-    { title: '이름', key: 'player_name', minWidth: 120},
-    { title: '아웃수', key: 'outs_pitched', nowrap: true, align: 'center' },
+    { title: '이름', key: 'player_name', fixed: true,},
+    { title: '이닝', key: 'outs_pitched_display', nowrap: true, align: 'center' },
+    // { title: '아웃수', key: 'outs_pitched', nowrap: true, align: 'center' },
     { title: '상대한 타자 수', key: 'batters_faced', nowrap: true, align: 'center' },
     { title: '투구 수', key: 'pitches_thrown', nowrap: true, align: 'center' },
     { title: '피안타', key: 'hits_allowed', nowrap: true, align: 'center' },
@@ -3790,6 +3903,7 @@ const setGameOver = async () => {
 }
 
 const setWinningPitcher = async () => {
+    if(!winning_pitcher.value) return alert("승리 투수를 선택해주세요.", "error")
     await setPitcherGameStats({
         wins : 1
     }, winning_pitcher.value)
@@ -3797,6 +3911,7 @@ const setWinningPitcher = async () => {
 }
 
 const setLosingPitcher = async () => {
+    if(!losing_pitcher.value) return alert("패전 투수를 선택해주세요.", "error")
     await setPitcherGameStats({
         losses : 1
     }, losing_pitcher.value);
@@ -3804,6 +3919,7 @@ const setLosingPitcher = async () => {
 }
 
 const setSavePitcher = async () => {
+    if(!save_pitcher.value) return alert("세이브 투수를 선택해주세요.", "error")
     await setPitcherGameStats({
         saves : 1
     }, save_pitcher.value);
@@ -3811,6 +3927,7 @@ const setSavePitcher = async () => {
 }
 
 const setHoldPitcher = async () => {
+    if(!hold_pitcher.value || (hold_pitcher.value?.length??0) === 0) return alert("홀드 투수를 선택해주세요.", "error")
     await Promise.all(
         hold_pitcher.value.map(pitcher =>
             setPitcherGameStats({ holds: 1 }, pitcher)
@@ -3820,6 +3937,7 @@ const setHoldPitcher = async () => {
 };
 
 const setBlownSavePitcher = async () => {
+    if(!blown_save_pitcher.value || (blown_save_pitcher.value?.length??0) === 0) return alert("블론 세이브 투수를 선택해주세요.", "error")
     await Promise.all(
         blown_save_pitcher.value.map(pitcher =>
             setPitcherGameStats({ blown_saves: 1 }, pitcher)
@@ -3837,6 +3955,12 @@ onMounted(async ()=>{
 :deep(.selected .v-list-item__overlay){
     background-color: currentColor;
     opacity: var(--v-selected-opacity);
+}
+
+:deep(.no-cell-padding) th,
+:deep(.no-cell-padding) td {
+    padding-left: 5px !important;
+    padding-right: 5px !important;
 }
 
 .selected-lineup{

@@ -1447,7 +1447,21 @@ export const getKboGameCompletedInfo = async (req, res) => {
                 COALESCE(bs.caught_stealing, 0) AS caught_stealing,
                 COALESCE(bs.errors, 0) AS batter_errors,
                 -- 투수 스탯
-                COALESCE(ps.outs_pitched, 0) AS outs_pitched,
+                COALESCE(ps.outs_pitched, 0)::int AS outs_pitched,
+                FLOOR(COALESCE(ps.outs_pitched, 0) / 3)::int AS innings_full,
+                CASE COALESCE(ps.outs_pitched, 0) % 3
+                    WHEN 0 THEN ''
+                    WHEN 1 THEN '⅓'
+                    WHEN 2 THEN '⅔'
+                END AS partial_outs,
+                CONCAT(
+                    FLOOR(COALESCE(ps.outs_pitched, 0) / 3)::int, ' ',
+                    CASE COALESCE(ps.outs_pitched, 0) % 3
+                        WHEN 0 THEN ''
+                        WHEN 1 THEN '⅓'
+                        WHEN 2 THEN '⅔'
+                    END
+                ) AS outs_pitched_display,
                 COALESCE(ps.batters_faced, 0) AS batters_faced,
                 COALESCE(ps.pitches_thrown, 0) AS pitches_thrown,
                 COALESCE(ps.hits_allowed, 0) AS hits_allowed,
