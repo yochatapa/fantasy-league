@@ -62,8 +62,8 @@ export const verifyToken = async (req, res, next) => {
 
                 await client.query(
                     `INSERT INTO refresh_tokens (token, user_id, expires_at)
-                     VALUES ($1, $2, GREATEST($3, NOW()) + INTERVAL '14 days')`,
-                    [newRefreshToken, decodedRefresh.userId, refreshTokenExpiresAt]
+                     VALUES ($1, $2, NOW() + INTERVAL '14 days')`,
+                    [newRefreshToken, decodedRefresh.userId]
                 );
 
                 res.cookie('refreshToken', newRefreshToken, {
