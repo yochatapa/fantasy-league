@@ -5,6 +5,7 @@ import { sendSuccess, sendBadRequest, sendServerError, sendNoTokenRequest, sendI
 import path from 'path'; // 경로 처리 모듈
 import convertFileToBase64 from '../utils/convertFileToBase64.js'; // apiResponse에서 임포트
 import { decryptData } from '../utils/crypto.js';
+import { v4 as uuidv4 } from 'uuid';
 
 dotenv.config();
 
@@ -46,11 +47,10 @@ export const verifyToken = async (req, res, next) => {
             const remainingTime = refreshTokenExpiresAt - now;
 
             let newRefreshToken = refreshToken;
-
             // 남은 시간이 7일 이하일 경우 새 refreshToken 발급 및 갱신
             if (remainingTime <= 7 * 24 * 60 * 60 * 1000) {
                 newRefreshToken = jwt.sign(
-                    { userId: decodedRefresh.userId },
+                    { userId: decodedRefresh.userId, jti: uuidv4() },
                     process.env.JWT_SECRET,
                     { expiresIn: '14d' }
                 );

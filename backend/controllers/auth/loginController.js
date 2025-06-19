@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import convertFileToBase64 from '../../utils/convertFileToBase64.js'; // apiResponse에서 임포트
 import path from 'path'; // 경로 처리 모듈
+import { v4 as uuidv4 } from 'uuid';
 
 dotenv.config();
 
@@ -87,7 +88,7 @@ export const login = async (req, res) => {
             } else {
                 // 유효한 refreshToken이 없다면 새로 발급
                 refreshToken = jwt.sign(
-                    { userId: user.user_id },
+                    { userId: user.user_id, jti: uuidv4() },
                     process.env.JWT_SECRET,
                     { expiresIn: '14d' }
                 );
