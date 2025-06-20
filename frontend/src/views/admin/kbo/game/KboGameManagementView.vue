@@ -149,8 +149,8 @@
                                     <p><strong>경기일시:</strong> {{ selectedMatchup.game_date }} {{ selectedMatchup.game_time }}</p>
                                 </div>
                                 <div class="d-flex justify-center align-center mt-2" style="gap:8px;">
-                                    <v-chip link v-if="selectedMatchup.status === 'scheduled' && lineupList.filter(ll => ll.away.length > 0 && ll.home.length >0).length=== 10" color="primary" @click="updateGameStatus('playball')">
-                                        경기시작
+                                    <v-chip link v-if="selectedMatchup.status === 'scheduled' && lineupList.filter(ll => ll.away.length > 0 && ll.home.length >0).length=== 10" color="primary" @click="setGameStart();">
+                                        경기시작 
                                     </v-chip>
                                     <!-- <v-chip link v-else-if="selectedMatchup.status === 'playball'" color="primary" @click="updateGameStatus('completed')">
                                         경기종료
@@ -181,6 +181,14 @@
                                         @click="setCalledGame();"
                                     >
                                         콜드 게임
+                                    </v-chip>
+
+                                    <!-- 콜드 게임: 5이닝 이상 or 5회말 홈팀 리드 중 -->
+                                    <v-chip
+                                        color="error"
+                                        @click="updateGameScore();"
+                                    >
+                                        GAME END TEST
                                     </v-chip>
                                 </div>
                             </div>
@@ -1002,7 +1010,7 @@
                                         </v-chip>
                                         <v-chip
                                             v-else-if="item.blown_saves > 0"
-                                            color="gray"
+                                            color="brown"
                                             class="ma-1"
                                             size="small"
                                             variant="elevated"
@@ -1093,7 +1101,7 @@
                                         </v-chip>
                                         <v-chip
                                             v-else-if="item.blown_saves > 0"
-                                            color="gray"
+                                            color="brown"
                                             class="ma-1"
                                             size="small"
                                             variant="elevated"
@@ -1610,6 +1618,22 @@ const updateGameStats = async () => {
     }
 }
 
+const updateGameScore = async () => {
+    const gameId = selectedMatchup.value.game_id;
+    try {
+        const response = await commonFetch(`/api/admin/game/score/update`,{
+            method : "PUT",
+            body : {
+                gameId,
+                homeScore : gameCurrentInfo.value.home_score,
+                awayScore : gameCurrentInfo.value.away_score,
+            }
+        })
+    } catch (error) {
+        
+    }
+}
+
 const clearLineup = () => {
      lineup.value = {
         team_id: null,
@@ -1920,7 +1944,7 @@ const setCurrentGamedayInfo = async (type) => {
     }
 }
 
-const setBatterGameStats = async (stats, player_id) => {
+const setBatterGameStats = async (stats, player_id, seasonYn=false) => {
     try {
         const response = await commonFetch(`/api/admin/game/batter/stats`,{
             method : 'POST'
@@ -1935,6 +1959,7 @@ const setBatterGameStats = async (stats, player_id) => {
                 , inning_half : gameCurrentInfo.value.inning_half
                 , out : gameCurrentInfo.value.out
                 , batting_number : isAway.value?gameCurrentInfo.value.away_batting_number:gameCurrentInfo.value.home_batting_number
+                , seasonYn
             }
         })
     } catch (error) {
@@ -1942,7 +1967,7 @@ const setBatterGameStats = async (stats, player_id) => {
     }
 }
 
-const setPitcherGameStats = async (stats, player_id) => {
+const setPitcherGameStats = async (stats, player_id, seasonYn=false) => {
     try {
         const response = await commonFetch(`/api/admin/game/pitcher/stats`,{
             method : 'POST'
@@ -1956,6 +1981,7 @@ const setPitcherGameStats = async (stats, player_id) => {
                 , inning : gameCurrentInfo.value.inning
                 , inning_half : gameCurrentInfo.value.inning_half
                 , out : gameCurrentInfo.value.out
+                , seasonYn
             }
         })
     } catch (error) {
@@ -3900,13 +3926,14 @@ const setGameOver = async () => {
     await setCurrentGamedayInfo('lastInfo');
     await updateGameStatus('completed');
     await updateGameStats();
+    await updateGameScore();
 }
 
 const setWinningPitcher = async () => {
     if(!winning_pitcher.value) return alert("승리 투수를 선택해주세요.", "error")
     await setPitcherGameStats({
         wins : 1
-    }, winning_pitcher.value)
+    }, winning_pitcher.value, true)
     await getCompletedInfo();
 }
 
@@ -3914,7 +3941,7 @@ const setLosingPitcher = async () => {
     if(!losing_pitcher.value) return alert("패전 투수를 선택해주세요.", "error")
     await setPitcherGameStats({
         losses : 1
-    }, losing_pitcher.value);
+    }, losing_pitcher.value, true);
     await getCompletedInfo();
 }
 
@@ -3922,7 +3949,7 @@ const setSavePitcher = async () => {
     if(!save_pitcher.value) return alert("세이브 투수를 선택해주세요.", "error")
     await setPitcherGameStats({
         saves : 1
-    }, save_pitcher.value);
+    }, save_pitcher.value, true);
     await getCompletedInfo();
 }
 
@@ -3930,7 +3957,7 @@ const setHoldPitcher = async () => {
     if(!hold_pitcher.value || (hold_pitcher.value?.length??0) === 0) return alert("홀드 투수를 선택해주세요.", "error")
     await Promise.all(
         hold_pitcher.value.map(pitcher =>
-            setPitcherGameStats({ holds: 1 }, pitcher)
+            setPitcherGameStats({ holds: 1 }, pitcher, true)
         )
     );
     await getCompletedInfo();
@@ -3940,11 +3967,26 @@ const setBlownSavePitcher = async () => {
     if(!blown_save_pitcher.value || (blown_save_pitcher.value?.length??0) === 0) return alert("블론 세이브 투수를 선택해주세요.", "error")
     await Promise.all(
         blown_save_pitcher.value.map(pitcher =>
-            setPitcherGameStats({ blown_saves: 1 }, pitcher)
+            setPitcherGameStats({ blown_saves: 1 }, pitcher, true)
         )
     );
     await getCompletedInfo();
 };
+
+const setGameStart = async()=>{
+    const homePitcher = lineupList.value[0]?.['home']?.at(-1);
+    const awayPitcher = lineupList.value[0]?.['away']?.at(-1);
+
+    await updateGameStatus('playball');
+    
+    await setPitcherGameStats({
+        games_started : 1
+    }, getPlayerId(homePitcher), true);
+
+    await setPitcherGameStats({
+        games_started : 1
+    }, getPlayerId(awayPitcher), true);
+}
 
 onMounted(async ()=>{
     await updateMatchups(selectedDate.value);
