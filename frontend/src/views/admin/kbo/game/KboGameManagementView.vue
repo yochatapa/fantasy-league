@@ -936,7 +936,7 @@
                                 disable-sort
                             >
                                 <template #item.player_name="{ item }">
-                                    <div class="d-flex">
+                                    <div class="d-flex" style="white-space: nowrap;padding-right: 10px;">
                                         <div class="d-flex justify-center" style="width: 28px;">
                                             <v-icon v-if="item.replaced_by" color="primary">mdi-swap-horizontal</v-icon>
                                             <span v-else>{{ item.batting_order }}</span>
@@ -958,7 +958,7 @@
                                 disable-sort
                             >
                                 <template #item.player_name="{ item }">
-                                    <div class="d-flex align-center">
+                                    <div class="d-flex align-center" style="white-space: nowrap;padding-right: 10px;">
                                         {{ item.player_name }}
                                         <v-chip
                                             v-if="item.wins > 0"
@@ -1027,7 +1027,7 @@
                                 disable-sort
                             >
                                 <template #item.player_name="{ item }">
-                                    <div class="d-flex">
+                                    <div class="d-flex" style="white-space: nowrap;padding-right: 10px;">
                                         <div class="d-flex justify-center" style="width: 28px;">
                                             <v-icon v-if="item.replaced_by" color="primary">mdi-swap-horizontal</v-icon>
                                             <span v-else>{{ item.batting_order }}</span>
@@ -1049,7 +1049,7 @@
                                 disable-sort
                             >
                                 <template #item.player_name="{ item }">
-                                    <div class="d-flex align-center">
+                                    <div class="d-flex align-center" style="white-space: nowrap;padding-right: 10px;">
                                         {{ item.player_name }}
                                         <v-chip
                                             v-if="item.wins > 0"
@@ -1228,7 +1228,7 @@ const batterHeaders = [
     { title: '타점', key: 'rbi', nowrap: true, align: 'center' },
     { title: '득점', key: 'runs', nowrap: true, align: 'center' },
     { title: '볼넷', key: 'walks', nowrap: true, align: 'center' },
-    { title: '고의사구', key: 'intentional_walks', nowrap: true, align: 'center' },
+    { title: '고의사구', key: 'intentional_base_on_balls', nowrap: true, align: 'center' },
     { title: '삼진', key: 'batter_strikeouts', nowrap: true, align: 'center' },
     { title: '사구', key: 'hit_by_pitch', nowrap: true, align: 'center' },
     { title: '희생번트', key: 'sacrifice_bunts', nowrap: true, align: 'center' },
@@ -1459,7 +1459,7 @@ watch(
     () => [gameCurrentInfo.value.away_batting_number, gameCurrentInfo.value.home_batting_number],
     async () => {
         const info = gameCurrentInfo.value;
-        const status = selectedMatchup.value.status;
+        const status = selectedMatchup.value?.status;
 
         if (
             status === 'playball' &&
