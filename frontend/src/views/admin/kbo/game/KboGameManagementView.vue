@@ -48,7 +48,7 @@
                                             {{ matchup.away_team_name }} vs {{ matchup.home_team_name }}
                                         </v-list-item-title>
                                         <v-list-item-subtitle>
-                                            {{ matchup.game_date }} | {{ matchup.game_time }} | {{ STADIUMS.find(sdm => sdm.code === matchup.stadium)?.name ?? '' }}
+                                            {{ matchup.game_date }} | {{ matchup.game_time }} | {{ STADIUMS.find(sdm => sdm.code === matchup.stadium)?.name ?? '' }} | {{ gameTypeList?.find(ml => ml.code === matchup.game_type)?.name }}
                                         </v-list-item-subtitle>
                                     </div>
                                     <v-btn v-if="matchup.status === 'scheduled'" icon @click.stop="deleteMatchup(matchup.game_id)">
@@ -62,43 +62,58 @@
                         <!-- 경기 추가 폼 -->
                         <v-container>
                             <v-row>
-                                <v-col cols="6" class="py-0">
+                                <v-col cols="12" md="6" class="py-0">
                                     <v-select
                                         v-model="selectedAwayTeam"
-                                        :items="teamList.filter(team => team.id !== selectedHomeTeam && !gameList.find(game => game.away_team_id === team.id || game.home_team_id === team.id))"
+                                        :items="teamList.filter(team => team.id !== selectedHomeTeam && !gameList.find(game => (gameType !== 'dh2' && game.away_team_id === team.id) || (gameType !== 'dh2' && game.home_team_id === team.id)))"
                                         item-value="id"
                                         item-title="name"
                                         label="원정팀"
+                                        :required="true"
                                     />
                                 </v-col>
 
-                                <v-col cols="6" class="py-0">
+                                <v-col cols="12" md="6" class="py-0">
                                     <v-select
                                         v-model="selectedHomeTeam"
-                                        :items="teamList.filter(team => team.id !== selectedAwayTeam && !gameList.find(game => game.away_team_id === team.id || game.home_team_id === team.id))"
+                                        :items="teamList.filter(team => team.id !== selectedAwayTeam && !gameList.find(game => (gameType !== 'dh2' && game.away_team_id === team.id) || (gameType !== 'dh2' && game.home_team_id === team.id)))"
                                         item-value="id"
                                         item-title="name"
                                         label="홈팀"
+                                        :required="true"
                                     />
                                 </v-col>
 
-                                <v-col cols="6" class="py-0">
+                                <v-col cols="12" md="6" class="py-0">
                                     <v-select
                                         v-model="stadium"
                                         :items="STADIUMS"
                                         item-value="code"
                                         item-title="name"
                                         label="경기장"
+                                        :required="true"
                                     />
                                 </v-col>
 
-                                <v-col cols="6" class="py-0">
+                                <v-col cols="12" md="3" class="d-flex pt-1">
+                                    <v-btn-toggle
+                                        v-model="gameType"
+                                        divided
+                                        color="primary"
+                                        class="border"
+                                    >
+                                        <v-btn v-for="gt in gameTypeList" :value="gt.code">{{ gt.name }}</v-btn>
+                                    </v-btn-toggle>
+                                </v-col>
+
+                                <v-col cols="12" md="3" class="py-0 d-flex">
                                     <v-text-field
                                         v-model="gameTime"
                                         label="경기 시간"
                                         type="time"
+                                        :required="true"
                                     />
-                                </v-col>
+                                </v-col>                                
 
                                 <v-col cols="12">
                                     <v-btn
@@ -110,6 +125,8 @@
                                         경기 추가
                                     </v-btn>
                                 </v-col>
+
+                                
                             </v-row>
                         </v-container>
                     </div>
@@ -183,10 +200,18 @@
                                         콜드 게임
                                     </v-chip>
 
+                                    <v-chip
+                                        v-if="!['scheduled','completed','cancelled','calledGame'].includes(selectedMatchup.status)"
+                                        color="error"
+                                        @click="setSuspendedGame();"
+                                    >
+                                        서스펜디드
+                                    </v-chip>
+
                                     <!-- 콜드 게임: 5이닝 이상 or 5회말 홈팀 리드 중 -->
                                     <v-chip
                                         color="error"
-                                        @click="updateGameScore();"
+                                        @click="setGameOver();"
                                     >
                                         GAME END TEST
                                     </v-chip>
@@ -229,7 +254,6 @@
                                 <!-- 아래의 내용 영역 -->
                                 <v-card class="content-card mt-3" elevation="2">
                                     <div class="content-wrapper" ref="contentCard">
-                                        <!-- {{  console.log(JSON.stringify(gamedayInfo))??'' }} -->
                                         <div v-for="(inningInfo, topBottom) in gamedayInfo[currentInning]" class="w-100">
                                             <div>
                                                 <v-divider></v-divider>
@@ -1116,6 +1140,56 @@
                         
                     </v-card>
                 </v-col>
+                <v-col cols="12" md="8" v-if="selectedMatchup.status === 'suspended'">
+                    <v-card class="h-100">
+                        <v-card-title>서스펜디드 설정</v-card-title>
+                        <v-divider></v-divider>
+                        <v-card-text>
+                            <v-container>
+                                <!-- 팀 선택 -->
+                                <v-row>
+                                    <v-col cols="12" md="4" class="py-0">
+                                        <v-select
+                                            v-model="suspendedStadium"
+                                            :items="STADIUMS"
+                                            item-value="code"
+                                            item-title="name"
+                                            label="경기장"
+                                            :required="true"
+                                        />
+                                    </v-col>
+                                    <v-col cols="12" md="4" class="py-0">
+                                        <CommonDateInput
+                                            v-model="suspendedGameDate"
+                                            label="경기 일자"
+                                            :min="tomorrow"
+                                            :rules="[v => !!v || '경기일자를 입력해주세요.']"
+                                            :required="true"
+                                        />
+                                    </v-col>
+                                    <v-col cols="12" md="4" class="py-0 d-flex">
+                                        <v-text-field
+                                            v-model="suspendedGameTime"
+                                            label="경기 시간"
+                                            type="time"
+                                            :required="true"
+                                        />
+                                    </v-col>     
+                                    <v-col cols="12">
+                                        <v-btn
+                                            :disabled="!canAddSuspendedMatchup"
+                                            @click="addSuspendedMatchup"
+                                            color="primary"
+                                            block
+                                        >
+                                            서스펜디드 경기 추가
+                                        </v-btn>
+                                    </v-col>
+                                </v-row>
+                            </v-container>
+                        </v-card-text>
+                    </v-card>
+                </v-col>
             </v-row>
         </v-col>
         <v-col cols="12" v-else>
@@ -1134,6 +1208,7 @@ import { formatDate } from '@/utils/common/dateUtils.js';
 import { encryptData, decryptData } from '@/utils/common/crypto.js';
 import BaseballStadium from '@/components/kbo/BaseballStadium.vue';
 import { useRouter, useRoute } from 'vue-router';
+import CommonDateInput from '@/components/common/CommonDateInput.vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -1166,8 +1241,31 @@ const activeRoster = ref([])
 
 const selectedAwayTeam = ref(null);
 const selectedHomeTeam = ref(null);
-const stadium = ref('');
+const stadium = ref(null);
 const gameTime = ref('18:30');
+const gameType = ref('normal');
+
+const today = new Date().toISOString().split('T')[0].split('-').join('.'); //YYYY-MM-DD
+const tomorrow = ref(new Date(new Date(formattedDate.value.replace(/\./g, '-')).getTime() + 86400000).toISOString().split('T')[0].split('-').join('.'));
+
+const suspendedStadium = ref(null)
+const suspendedGameDate = ref(tomorrow.value)
+const suspendedGameTime = ref('18:30')
+
+const gameTypeList = [
+    {
+        code : 'normal',
+        name : '정규경기'
+    },
+    {
+        code : 'dh1',
+        name : 'DH1'
+    },
+    {
+        code : 'dh2',
+        name : 'DH2'
+    }
+]
 
 const canAddMatchup = computed(() => {
     return (
@@ -1175,9 +1273,18 @@ const canAddMatchup = computed(() => {
         selectedHomeTeam.value &&
         stadium.value &&
         gameTime.value &&
+        gameType.value &&
         selectedAwayTeam.value !== selectedHomeTeam.value
     );
 });
+
+const canAddSuspendedMatchup = computed(()=>{
+    return (
+        suspendedStadium.value &&
+        suspendedGameDate.value &&
+        suspendedGameTime.value
+    );
+})
 
 const contentCard = ref(null);
 
@@ -1242,7 +1349,7 @@ const batterHeaders = [
     { title: '희생번트', key: 'sacrifice_bunts', nowrap: true, align: 'center' },
     { title: '희생플라이', key: 'sacrifice_flies', nowrap: true, align: 'center' },
     { title: '도루', key: 'stolen_bases', nowrap: true, align: 'center' },
-    { title: '도루실패', key: 'caught_stealing', nowrap: true, align: 'center' },
+    { title: '도루실패', key: 'caught_stealings', nowrap: true, align: 'center' },
     { title: '실책', key: 'batter_errors', nowrap: true, align: 'center' }
 ];
 
@@ -1386,6 +1493,8 @@ watch(()=>selectedMatchup.value, (newVal) => {
 
 watch(()=>selectedDate.value, (newVal)=>{
     formattedDate.value = formatDate(newVal)
+    tomorrow.value = new Date(new Date(formattedDate.value.replace(/\./g, '-')).getTime() + 86400000).toISOString().split('T')[0].split('-').join('.')
+    suspendedGameDate.value = tomorrow.value
 })
 
 watch(()=>selectedHomeTeam.value, newVal => {
@@ -1512,7 +1621,8 @@ const addMatchup = async () => {
                 home_team_id: selectedHomeTeam.value,
                 stadium     : stadium.value,
                 game_date   : formattedDate.value,
-                game_time   : gameTime.value
+                game_time   : gameTime.value,
+                game_type   : gameType.value,
             }
         })
 
@@ -1521,7 +1631,38 @@ const addMatchup = async () => {
             selectedHomeTeam.value = null;
             stadium.value = '';
             gameTime.value = '18:30';
+            gameType.value = 'normal';
             await getGameList(formattedDate.value);
+        }
+    } catch (error) {
+        
+    }
+};
+
+const addSuspendedMatchup = async () => {try {
+        const response = await commonFetch("/api/admin/game/create/suspended",{
+            method : "POST"
+            , body : {
+                season_year         : formattedDate.value.split(".")[0],
+                away_team_id        : selectedMatchup.value.away_team_id,
+                home_team_id        : selectedMatchup.value.home_team_id,
+                suspended_game_id   : selectedMatchup.value.suspended_game_id??selectedMatchup.value.game_id,
+                stadium             : suspendedStadium.value,
+                game_date           : suspendedGameDate.value,
+                game_time           : suspendedGameTime.value,
+                game_type           : 'suspended',
+            }
+        })
+
+        if(response.success){
+            alert("서스펜디드 경기가 성공적으로 생성되었습니다.")
+            router.replace(`/admin/game/management?date=${suspendedGameDate.value}`)
+            selectedDate.value = new Date(suspendedGameDate.value)
+            await getGameList(suspendedGameDate.value);
+            suspendedStadium.value = null;
+            suspendedGameDate.value = tomorrow.value;
+            suspendedGameTime.value = '18:30';
+            isExpanded.value = true;
         }
     } catch (error) {
         
@@ -1580,7 +1721,31 @@ const deleteMatchup = async (game_id) => {
 
 const setCalledGame = async () => {
     await setGameOver();
-    updateGameStatus('calledGame');
+    await updateGameStatus('calledGame');
+}
+
+const setSuspendedGame = async () => {
+    alert("게임이 종료되었습니다.");
+    
+    const homePitcher = lineupList.value[0]?.['home']?.at(-1);
+    const awayPitcher = lineupList.value[0]?.['away']?.at(-1);
+
+    await setPitcherGameStats({
+        pitches_thrown : gameCurrentInfo.value.home_pitch_count,
+        outs_pitched : gameCurrentInfo.value.home_current_out,
+        batters_faced : gameCurrentInfo.value.away_current_batting_number
+    }, getPlayerId(homePitcher));
+
+    await setPitcherGameStats({
+        pitches_thrown : gameCurrentInfo.value.away_pitch_count,
+        outs_pitched : gameCurrentInfo.value.away_current_out,
+        batters_faced : gameCurrentInfo.value.home_current_batting_number
+    }, getPlayerId(awayPitcher));
+
+    await setCurrentGamedayInfo('suspended');
+    await setCurrentGamedayInfo('lastInfo');
+    await updateGameStatus('suspended');
+    await updateGameDailyStats();
 }
 
 const updateGameStatus = async (status) => {
@@ -1604,10 +1769,24 @@ const updateGameStatus = async (status) => {
     }
 }
 
-const updateGameStats = async () => {
+const updateGameSeasonStats = async () => {
     const gameId = selectedMatchup.value.game_id;
     try {
-        const response = await commonFetch(`/api/admin/game/stats/update`,{
+        const response = await commonFetch(`/api/admin/game/stats/update/season`,{
+            method : "PUT",
+            body : {
+                gameId
+            }
+        })
+    } catch (error) {
+        
+    }
+}
+
+const updateGameDailyStats = async () => {
+    const gameId = selectedMatchup.value.game_id;
+    try {
+        const response = await commonFetch(`/api/admin/game/stats/update/daily`,{
             method : "PUT",
             body : {
                 gameId
@@ -3171,7 +3350,7 @@ const setDoublePlay = async() => {
         gameCurrentInfo.value.home_batting_number++;
         gameCurrentInfo.value.home_current_batting_number++;
     }
-    console.log(curIsAway,JSON.stringify(gameCurrentInfo.value))
+    
     await setCurrentGamedayInfo('lastInfo');
 }
 
@@ -3648,7 +3827,6 @@ const setError = async () => {
 
     const errorList =   lineupList.value.filter(inning => {
                             const arr = inning[isAway.value?'home':'away'];
-                            console.log(arr,arr.length,getPlayerId(arr.at(-1)),errorPlayer.value)
                             return arr.length > 0 ? Number(getPlayerId(arr.at(-1))) === Number(errorPlayer.value) : false;
                         })
     
@@ -3897,7 +4075,7 @@ const setBalk = async () => {
     await setCurrentGamedayInfo('lastInfo');
 }
 
-const setGameOver = async () => {
+const setGameOver = async (dail) => {
     alert("게임이 종료되었습니다.");
     
     const homePitcher = lineupList.value[0]?.['home']?.at(-1);
@@ -3925,7 +4103,8 @@ const setGameOver = async () => {
     await setCurrentGamedayInfo('gameEnd');
     await setCurrentGamedayInfo('lastInfo');
     await updateGameStatus('completed');
-    await updateGameStats();
+    await updateGameDailyStats();
+    await updateGameSeasonStats();
     await updateGameScore();
 }
 

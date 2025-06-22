@@ -3,7 +3,7 @@ import { verifyToken, verifyAdmin}  from '../middleware/auth.js'
 import { getKboTeamList, createKboTeam, updateKboTeam, deleteKboTeam, getKboTeamDetail } from '../controllers/admin/kboTeamManagementController.js';
 import { getKboPlayerList, createKboPlayer, getKboPlayerDetail, updateKboPlayer, deleteKboPlayer } from '../controllers/admin/kboPlayerManagementController.js';
 import handleUpload from '../middleware/upload.js';
-import { getKboCurrentInfo, createKboCurrentInfo, createKboGame, createKboGameRoster, deleteKboGame, deleteKboGameRoster, getKboGameDetail, getKboGameList, updateKboGameStatus, createBatterGameStats, createPitcherGameStats, getKboCurrentBatterStats, updateKboGameStats, getKboGameCompletedInfo, updateKboGameScore } from '../controllers/admin/kboGameManagementController.js';
+import { getKboCurrentInfo, createKboCurrentInfo, createKboGame, createKboGameRoster, deleteKboGame, deleteKboGameRoster, getKboGameDetail, getKboGameList, updateKboGameStatus, createBatterGameStats, createPitcherGameStats, getKboCurrentBatterStats, getKboGameCompletedInfo, updateKboGameScore, updateKboGameSeasonStats, updateKboGameDailyStats, createKboSuspendedGame } from '../controllers/admin/kboGameManagementController.js';
 import { createTeamRoster, deactiveTeamRoster, deleteTeamRoster, getTeamRosterDetail, getTeamRosterList } from '../controllers/admin/kboRosterManagementController.js';
 
 const router = express.Router();
@@ -24,6 +24,7 @@ router.delete('/player/delete', verifyToken, verifyAdmin, deleteKboPlayer);
 
 // 게임 관리
 router.get('/game/list', verifyToken, verifyAdmin, getKboGameList);
+router.post('/game/create/suspended', verifyToken, verifyAdmin, createKboSuspendedGame);
 router.post('/game/create', verifyToken, verifyAdmin, createKboGame);
 router.delete('/game/delete', verifyToken, verifyAdmin, deleteKboGame);
 router.post('/game/current-info', verifyToken, verifyAdmin, createKboCurrentInfo);
@@ -32,7 +33,8 @@ router.get('/game/:gameId/batter/:playerId/current-stats', verifyToken, verifyAd
 router.get('/game/:gameId/completed-info', verifyToken, verifyAdmin, getKboGameCompletedInfo);
 router.get('/game/:gameId',verifyToken, verifyAdmin, getKboGameDetail);
 router.put('/game/status/update', verifyToken, verifyAdmin, updateKboGameStatus);
-router.put('/game/stats/update', verifyToken, verifyAdmin, updateKboGameStats);
+router.put('/game/stats/update/season', verifyToken, verifyAdmin, updateKboGameSeasonStats);
+router.put('/game/stats/update/daily', verifyToken, verifyAdmin, updateKboGameDailyStats);
 router.put('/game/score/update', verifyToken, verifyAdmin, updateKboGameScore);
 
 router.post('/game/batter/stats', verifyToken, verifyAdmin, createBatterGameStats);

@@ -136,8 +136,9 @@ export const STADIUMS = [
 
 export const GAME_STATUS = {
     "scheduled" : "경기 전",
-    "playball" : "경기 중",
+    "playball"  : "경기 중",
     "completed" : "경기 종료",
     "cancelled" : "노 게임",
-    "calledGame" : "콜드 게임",
+    "calledGame": "콜드 게임",
+    "suspended" : "서스펜디드 게임"
 }

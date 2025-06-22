@@ -58,17 +58,19 @@ export const getKboGameList = async (req, res) => {
                 stadium , 
                 TO_CHAR(kgm.game_date, 'YYYY.MM.DD') as game_date , 
                 TO_CHAR(kgm.game_time, 'HH24:MI') as game_time ,
-                kgm.status
-                , fta.sn as away_team_sn
-                , fta.original_name as away_team_original_name
-                , fta.size as away_team_size
-                , fta.path as away_team_path
-                , fta.mimetype as away_team_mimetype
-                , fth.sn as home_team_sn
-                , fth.original_name as home_team_original_name
-                , fth.size as home_team_size
-                , fth.path as home_team_path
-                , fth.mimetype as home_team_mimetype
+                kgm.game_type,
+                kgm.status,
+                kgm.suspended_game_id,
+                fta.sn as away_team_sn,
+                fta.original_name as away_team_original_name,
+                fta.size as away_team_size,
+                fta.path as away_team_path,
+                fta.mimetype as away_team_mimetype,
+                fth.sn as home_team_sn,
+                fth.original_name as home_team_original_name,
+                fth.size as home_team_size,
+                fth.path as home_team_path,
+                fth.mimetype as home_team_mimetype
             FROM kbo_game_master kgm
                 left join kbo_team_master ati on kgm.away_team_id = ati.id
                 left join kbo_team_master hti on kgm.home_team_id = hti.id
@@ -127,7 +129,7 @@ export const getKboGameList = async (req, res) => {
 
 export const createKboGame = async (req, res) => {
     const { 
-        season_year , away_team_id, home_team_id, stadium , game_date , game_time
+        season_year , away_team_id, home_team_id, stadium , game_date , game_time, game_type
     } = req.body;
 
     const accessToken = req.headers['authorization']?.split(' ')[1];
@@ -144,7 +146,7 @@ export const createKboGame = async (req, res) => {
     }
     
     // 필수값 검증
-    if (!season_year || !away_team_id || !home_team_id || !stadium || !game_date || !game_time) {
+    if (!season_year || !away_team_id || !home_team_id || !stadium || !game_date || !game_time || !game_type) {
         return sendBadRequest(res, "필수 입력값을 모두 입력해주세요.");
     }
 
@@ -154,13 +156,13 @@ export const createKboGame = async (req, res) => {
             const insertGameQuery = `
                 INSERT INTO kbo_game_master (
                     season_year , away_team_id, home_team_id, stadium , game_date 
-                    , game_time, status, created_at
+                    , game_time, game_type, status, created_at
                 ) VALUES ($1, $2, $3, $4, $5, 
-                 $6, 'scheduled', CURRENT_TIMESTAMP)
+                 $6, $7,'scheduled', CURRENT_TIMESTAMP)
                 RETURNING id
             `;
             const { rows } = await client.query(insertGameQuery, [
-                season_year , away_team_id, home_team_id, stadium , game_date , game_time
+                season_year , away_team_id, home_team_id, stadium , game_date , game_time, game_type
             ]);
 
             const gameId = rows[0].id;
@@ -172,6 +174,56 @@ export const createKboGame = async (req, res) => {
         });
     } catch (error) {
         return sendServerError(res, error, "게임 생성 중 오류가 발생했습니다. 다시 시도해주세요.");
+    }
+};
+
+export const createKboSuspendedGame = async (req, res) => {
+    const { 
+        season_year , away_team_id, home_team_id, stadium , game_date , game_time, game_type
+    } = req.body;
+
+    const accessToken = req.headers['authorization']?.split(' ')[1];
+
+    if (!accessToken) {
+        return sendBadRequest(res, '토큰이 제공되지 않았습니다.');
+    }
+
+    let user;
+    try {
+        user = jwt.verify(accessToken, process.env.JWT_SECRET);
+    } catch (err) {
+        return sendBadRequest(res, '유효하지 않은 토큰입니다.');
+    }
+    
+    // 필수값 검증
+    if (!season_year || !away_team_id || !home_team_id || !stadium || !game_date || !game_time || !game_type) {
+        return sendBadRequest(res, "필수 입력값을 모두 입력해주세요.");
+    }
+
+    try {
+        await withTransaction(async (client) => {
+            // 게임 마스터 테이블 저장
+            const insertGameQuery = `
+                INSERT INTO kbo_game_master (
+                    season_year , away_team_id, home_team_id, stadium , game_date 
+                    , game_time, game_type, status, created_at
+                ) VALUES ($1, $2, $3, $4, $5, 
+                 $6, $7,'scheduled', CURRENT_TIMESTAMP)
+                RETURNING id
+            `;
+            const { rows } = await client.query(insertGameQuery, [
+                season_year , away_team_id, home_team_id, stadium , game_date , game_time, game_type
+            ]);
+
+            const gameId = rows[0].id;
+
+            return sendSuccess(res, {
+                message: "서스펜디드 게임이 성공적으로 생성되었습니다.",
+                gameId
+            });
+        });
+    } catch (error) {
+        return sendServerError(res, error, "서스펜디드 게임 생성 중 오류가 발생했습니다. 다시 시도해주세요.");
     }
 };
 
@@ -231,17 +283,19 @@ export const getKboGameDetail = async (req, res) => {
                 stadium , 
                 TO_CHAR(kgm.game_date, 'YYYY.MM.DD') as game_date , 
                 TO_CHAR(kgm.game_time, 'HH24:MI') as game_time ,
-                kgm.status
-                , fta.sn as away_team_sn
-                , fta.original_name as away_team_original_name
-                , fta.size as away_team_size
-                , fta.path as away_team_path
-                , fta.mimetype as away_team_mimetype
-                , fth.sn as home_team_sn
-                , fth.original_name as home_team_original_name
-                , fth.size as home_team_size
-                , fth.path as home_team_path
-                , fth.mimetype as home_team_mimetype
+                kgm.game_type,
+                kgm.status,
+                kgm.suspended_game_id,
+                fta.sn as away_team_sn,
+                fta.original_name as away_team_original_name,
+                fta.size as away_team_size,
+                fta.path as away_team_path,
+                fta.mimetype as away_team_mimetype,
+                fth.sn as home_team_sn,
+                fth.original_name as home_team_original_name,
+                fth.size as home_team_size,
+                fth.path as home_team_path,
+                fth.mimetype as home_team_mimetype
             FROM kbo_game_master kgm
                 left join kbo_team_master ati on kgm.away_team_id = ati.id
                 left join kbo_team_master hti on kgm.home_team_id = hti.id
@@ -788,7 +842,7 @@ export const getKboCurrentInfo = async (req, res) => {
                         'walks', COALESCE(SUM(COALESCE(bgs.walks, 0)), 0),
                         'strikeouts', COALESCE(SUM(COALESCE(bgs.strikeouts, 0)), 0),
                         'stolen_bases', COALESCE(SUM(COALESCE(bgs.stolen_bases, 0)), 0),
-                        'caught_stealing', COALESCE(SUM(COALESCE(bgs.caught_stealing, 0)), 0)
+                        'caught_stealings', COALESCE(SUM(COALESCE(bgs.caught_stealings, 0)), 0)
                     ) AS stats
                     FROM batter_game_stats bgs
                     WHERE bgs.game_id = kgcs.game_id
@@ -1063,7 +1117,7 @@ export const getKboCurrentBatterStats = async (req,res) => {
                 COALESCE(SUM(COALESCE(bgs.walks, 0)), 0) AS walks,
                 COALESCE(SUM(COALESCE(bgs.strikeouts, 0)), 0) AS strikeouts,
                 COALESCE(SUM(COALESCE(bgs.stolen_bases, 0)), 0) AS stolen_bases,
-                COALESCE(SUM(COALESCE(bgs.caught_stealing, 0)), 0) AS caught_stealing
+                COALESCE(SUM(COALESCE(bgs.caught_stealings, 0)), 0) AS caught_stealings
             FROM
                 public.batter_game_stats bgs
             WHERE
@@ -1092,7 +1146,7 @@ export const getKboCurrentBatterStats = async (req,res) => {
                 walks: 0,
                 strikeouts: 0,
                 stolen_bases: 0,
-                caught_stealing: 0,
+                caught_stealings: 0,
             }];
         }
         
@@ -1105,7 +1159,7 @@ export const getKboCurrentBatterStats = async (req,res) => {
     }
 }
 
-export const updateKboGameStats = async (req, res) => {
+export const updateKboGameSeasonStats = async (req, res) => {
     const { gameId } = req.body;
     const accessToken = req.headers['authorization']?.split(' ')[1];
 
@@ -1143,9 +1197,9 @@ export const updateKboGameStats = async (req, res) => {
                     plate_appearances, at_bats, hits, singles, doubles, triples,
                     home_runs, runs_batted_in, runs, walks, intentional_walks,
                     strikeouts, hit_by_pitch, sacrifice_bunts, sacrifice_flies,
-                    stolen_bases, caught_stealing, grounded_into_double_play,
+                    stolen_bases, caught_stealings, grounded_into_double_play,
                     errors, left_on_base, flyouts, groundouts, linedrives,
-                    triple_play, caught_stealings, pickoffs,
+                    triple_play, pickoffs,
                     intentional_base_on_balls, fielders_choice, grand_slams,
                     solo_home_runs, two_run_home_runs, three_run_home_runs,
                     games_played  -- 추가
@@ -1169,7 +1223,7 @@ export const updateKboGameStats = async (req, res) => {
                     COALESCE(SUM(sacrifice_bunts), 0),
                     COALESCE(SUM(sacrifice_flies), 0),
                     COALESCE(SUM(stolen_bases), 0),
-                    COALESCE(SUM(caught_stealing), 0),
+                    COALESCE(SUM(caught_stealings), 0),
                     COALESCE(SUM(grounded_into_double_play), 0),
                     COALESCE(SUM(errors), 0),
                     COALESCE(SUM(left_on_base), 0),
@@ -1177,7 +1231,6 @@ export const updateKboGameStats = async (req, res) => {
                     COALESCE(SUM(groundouts), 0),
                     COALESCE(SUM(linedrives), 0),
                     COALESCE(SUM(triple_play), 0),
-                    COALESCE(SUM(caught_stealings), 0),
                     COALESCE(SUM(pickoffs), 0),
                     COALESCE(SUM(intentional_base_on_balls), 0),
                     COALESCE(SUM(fielders_choice), 0),
@@ -1207,7 +1260,7 @@ export const updateKboGameStats = async (req, res) => {
                     sacrifice_bunts = COALESCE(batter_season_stats.sacrifice_bunts, 0) + COALESCE(EXCLUDED.sacrifice_bunts, 0),
                     sacrifice_flies = COALESCE(batter_season_stats.sacrifice_flies, 0) + COALESCE(EXCLUDED.sacrifice_flies, 0),
                     stolen_bases = COALESCE(batter_season_stats.stolen_bases, 0) + COALESCE(EXCLUDED.stolen_bases, 0),
-                    caught_stealing = COALESCE(batter_season_stats.caught_stealing, 0) + COALESCE(EXCLUDED.caught_stealing, 0),
+                    caught_stealings = COALESCE(batter_season_stats.caught_stealings, 0) + COALESCE(EXCLUDED.caught_stealings, 0),
                     grounded_into_double_play = COALESCE(batter_season_stats.grounded_into_double_play, 0) + COALESCE(EXCLUDED.grounded_into_double_play, 0),
                     errors = COALESCE(batter_season_stats.errors, 0) + COALESCE(EXCLUDED.errors, 0),
                     left_on_base = COALESCE(batter_season_stats.left_on_base, 0) + COALESCE(EXCLUDED.left_on_base, 0),
@@ -1215,7 +1268,6 @@ export const updateKboGameStats = async (req, res) => {
                     groundouts = COALESCE(batter_season_stats.groundouts, 0) + COALESCE(EXCLUDED.groundouts, 0),
                     linedrives = COALESCE(batter_season_stats.linedrives, 0) + COALESCE(EXCLUDED.linedrives, 0),
                     triple_play = COALESCE(batter_season_stats.triple_play, 0) + COALESCE(EXCLUDED.triple_play, 0),
-                    caught_stealings = COALESCE(batter_season_stats.caught_stealings, 0) + COALESCE(EXCLUDED.caught_stealings, 0),
                     pickoffs = COALESCE(batter_season_stats.pickoffs, 0) + COALESCE(EXCLUDED.pickoffs, 0),
                     intentional_base_on_balls = COALESCE(batter_season_stats.intentional_base_on_balls, 0) + COALESCE(EXCLUDED.intentional_base_on_balls, 0),
                     fielders_choice = COALESCE(batter_season_stats.fielders_choice, 0) + COALESCE(EXCLUDED.fielders_choice, 0),
@@ -1226,7 +1278,6 @@ export const updateKboGameStats = async (req, res) => {
                     games_played = COALESCE(batter_season_stats.games_played, 0) + 1
                 ;
             `, [gameId]);
-
 
             // ⚾ 2. 투수 스탯 누적
             await client.query(`
@@ -1320,6 +1371,177 @@ export const updateKboGameStats = async (req, res) => {
         return sendServerError(res, error, "게임 상태 변경 중 오류가 발생했습니다. 다시 시도해주세요.");
     }
 };
+
+export const updateKboGameDailyStats = async (req, res) => {
+    const { gameId } = req.body;
+    const accessToken = req.headers['authorization']?.split(' ')[1];
+
+    if (!accessToken) {
+        return sendBadRequest(res, '토큰이 제공되지 않았습니다.');
+    }
+
+    let user;
+    try {
+        user = jwt.verify(accessToken, process.env.JWT_SECRET);
+    } catch (err) {
+        return sendBadRequest(res, '유효하지 않은 토큰입니다.');
+    }
+
+    if (!gameId) {
+        return sendBadRequest(res, "필수 입력값을 모두 입력해주세요.");
+    }
+
+    try {
+        await withTransaction(async (client) => {
+            const { rows: gameRows } = await client.query(
+                `SELECT season_year, game_date FROM kbo_game_master WHERE id = $1`,
+                [gameId]
+            );
+
+            if (gameRows.length === 0) {
+                throw new Error("해당 게임을 찾을 수 없습니다.");
+            }
+
+            const { season_year, game_date } = gameRows[0];
+
+            await client.query(`
+                INSERT INTO batter_daily_stats (
+                    season_year, game_date, player_id, team_id,
+                    plate_appearances, at_bats, hits, singles, doubles, triples,
+                    home_runs, runs_batted_in, runs, walks, intentional_walks,
+                    strikeouts, hit_by_pitch, sacrifice_bunts, sacrifice_flies,
+                    stolen_bases, caught_stealings, grounded_into_double_play,
+                    errors, left_on_base, flyouts, groundouts, linedrives,
+                    triple_play, pickoffs,
+                    intentional_base_on_balls, fielders_choice, grand_slams,
+                    solo_home_runs, two_run_home_runs, three_run_home_runs,
+                    games_played
+                )
+                SELECT
+                    $2, $3,
+                    player_id, team_id,
+                    COALESCE(SUM(plate_appearances), 0), COALESCE(SUM(at_bats), 0), COALESCE(SUM(hits), 0),
+                    COALESCE(SUM(singles), 0), COALESCE(SUM(doubles), 0), COALESCE(SUM(triples), 0),
+                    COALESCE(SUM(home_runs), 0), COALESCE(SUM(runs_batted_in), 0), COALESCE(SUM(runs), 0),
+                    COALESCE(SUM(walks), 0), COALESCE(SUM(intentional_walks), 0), COALESCE(SUM(strikeouts), 0),
+                    COALESCE(SUM(hit_by_pitch), 0), COALESCE(SUM(sacrifice_bunts), 0), COALESCE(SUM(sacrifice_flies), 0),
+                    COALESCE(SUM(stolen_bases), 0), COALESCE(SUM(caught_stealings), 0), COALESCE(SUM(grounded_into_double_play), 0),
+                    COALESCE(SUM(errors), 0), COALESCE(SUM(left_on_base), 0), COALESCE(SUM(flyouts), 0),
+                    COALESCE(SUM(groundouts), 0), COALESCE(SUM(linedrives), 0), COALESCE(SUM(triple_play), 0),
+                    COALESCE(SUM(pickoffs), 0), COALESCE(SUM(intentional_base_on_balls), 0),
+                    COALESCE(SUM(fielders_choice), 0), COALESCE(SUM(grand_slams), 0), COALESCE(SUM(solo_home_runs), 0),
+                    COALESCE(SUM(two_run_home_runs), 0), COALESCE(SUM(three_run_home_runs), 0),
+                    1
+                FROM batter_game_stats
+                WHERE game_id = $1
+                GROUP BY player_id, team_id
+                ON CONFLICT (season_year, player_id, team_id, game_date) DO UPDATE SET
+                    plate_appearances = batter_daily_stats.plate_appearances + EXCLUDED.plate_appearances,
+                    at_bats = batter_daily_stats.at_bats + EXCLUDED.at_bats,
+                    hits = batter_daily_stats.hits + EXCLUDED.hits,
+                    singles = batter_daily_stats.singles + EXCLUDED.singles,
+                    doubles = batter_daily_stats.doubles + EXCLUDED.doubles,
+                    triples = batter_daily_stats.triples + EXCLUDED.triples,
+                    home_runs = batter_daily_stats.home_runs + EXCLUDED.home_runs,
+                    runs_batted_in = batter_daily_stats.runs_batted_in + EXCLUDED.runs_batted_in,
+                    runs = batter_daily_stats.runs + EXCLUDED.runs,
+                    walks = batter_daily_stats.walks + EXCLUDED.walks,
+                    intentional_walks = batter_daily_stats.intentional_walks + EXCLUDED.intentional_walks,
+                    strikeouts = batter_daily_stats.strikeouts + EXCLUDED.strikeouts,
+                    hit_by_pitch = batter_daily_stats.hit_by_pitch + EXCLUDED.hit_by_pitch,
+                    sacrifice_bunts = batter_daily_stats.sacrifice_bunts + EXCLUDED.sacrifice_bunts,
+                    sacrifice_flies = batter_daily_stats.sacrifice_flies + EXCLUDED.sacrifice_flies,
+                    stolen_bases = batter_daily_stats.stolen_bases + EXCLUDED.stolen_bases,
+                    caught_stealings = batter_daily_stats.caught_stealings + EXCLUDED.caught_stealings,
+                    grounded_into_double_play = batter_daily_stats.grounded_into_double_play + EXCLUDED.grounded_into_double_play,
+                    errors = batter_daily_stats.errors + EXCLUDED.errors,
+                    left_on_base = batter_daily_stats.left_on_base + EXCLUDED.left_on_base,
+                    flyouts = batter_daily_stats.flyouts + EXCLUDED.flyouts,
+                    groundouts = batter_daily_stats.groundouts + EXCLUDED.groundouts,
+                    linedrives = batter_daily_stats.linedrives + EXCLUDED.linedrives,
+                    triple_play = batter_daily_stats.triple_play + EXCLUDED.triple_play,
+                    pickoffs = batter_daily_stats.pickoffs + EXCLUDED.pickoffs,
+                    intentional_base_on_balls = batter_daily_stats.intentional_base_on_balls + EXCLUDED.intentional_base_on_balls,
+                    fielders_choice = batter_daily_stats.fielders_choice + EXCLUDED.fielders_choice,
+                    grand_slams = batter_daily_stats.grand_slams + EXCLUDED.grand_slams,
+                    solo_home_runs = batter_daily_stats.solo_home_runs + EXCLUDED.solo_home_runs,
+                    two_run_home_runs = batter_daily_stats.two_run_home_runs + EXCLUDED.two_run_home_runs,
+                    three_run_home_runs = batter_daily_stats.three_run_home_runs + EXCLUDED.three_run_home_runs,
+                    games_played = batter_daily_stats.games_played + 1;
+            `, [gameId, season_year, game_date]);
+
+            await client.query(`
+                INSERT INTO pitcher_daily_stats (
+                    season_year, game_date, player_id, team_id,
+                    games_played, games_started, outs_pitched, batters_faced,
+                    pitches_thrown, hits_allowed, singles_allowed, doubles_allowed,
+                    triples_allowed, home_runs_allowed, runs_allowed, earned_runs,
+                    walks_allowed, intentional_walks_allowed, hit_batters, hit_by_pitch_allowed,
+                    intentional_base_on_balls, strikeouts, wild_pitches, balks,
+                    wins, losses, saves, holds, blown_saves,
+                    flyouts, groundouts, linedrives, grounded_into_double_play,
+                    triple_play, pickoffs
+                )
+                SELECT
+                    $2, $3,
+                    player_id, team_id,
+                    1,
+                    COALESCE(SUM(games_started), 0), COALESCE(SUM(outs_pitched), 0), COALESCE(SUM(batters_faced), 0),
+                    COALESCE(SUM(pitches_thrown), 0), COALESCE(SUM(hits_allowed), 0), COALESCE(SUM(singles_allowed), 0),
+                    COALESCE(SUM(doubles_allowed), 0), COALESCE(SUM(triples_allowed), 0), COALESCE(SUM(home_runs_allowed), 0),
+                    COALESCE(SUM(runs_allowed), 0), COALESCE(SUM(earned_runs), 0), COALESCE(SUM(walks_allowed), 0),
+                    COALESCE(SUM(intentional_walks_allowed), 0), COALESCE(SUM(hit_batters), 0), COALESCE(SUM(hit_by_pitch_allowed), 0),
+                    COALESCE(SUM(intentional_base_on_balls), 0), COALESCE(SUM(strikeouts), 0), COALESCE(SUM(wild_pitches), 0),
+                    COALESCE(SUM(balks), 0), COALESCE(SUM(wins), 0), COALESCE(SUM(losses), 0), COALESCE(SUM(saves), 0),
+                    COALESCE(SUM(holds), 0), COALESCE(SUM(blown_saves), 0), COALESCE(SUM(flyouts), 0), COALESCE(SUM(groundouts), 0),
+                    COALESCE(SUM(linedrives), 0), COALESCE(SUM(grounded_into_double_play), 0), COALESCE(SUM(triple_play), 0),
+                    COALESCE(SUM(pickoffs), 0)
+                FROM pitcher_game_stats
+                WHERE game_id = $1
+                GROUP BY player_id, team_id
+                ON CONFLICT (season_year, player_id, team_id, game_date) DO UPDATE SET
+                    games_played = pitcher_daily_stats.games_played + 1,
+                    games_started = pitcher_daily_stats.games_started + EXCLUDED.games_started,
+                    outs_pitched = pitcher_daily_stats.outs_pitched + EXCLUDED.outs_pitched,
+                    batters_faced = pitcher_daily_stats.batters_faced + EXCLUDED.batters_faced,
+                    pitches_thrown = pitcher_daily_stats.pitches_thrown + EXCLUDED.pitches_thrown,
+                    hits_allowed = pitcher_daily_stats.hits_allowed + EXCLUDED.hits_allowed,
+                    singles_allowed = pitcher_daily_stats.singles_allowed + EXCLUDED.singles_allowed,
+                    doubles_allowed = pitcher_daily_stats.doubles_allowed + EXCLUDED.doubles_allowed,
+                    triples_allowed = pitcher_daily_stats.triples_allowed + EXCLUDED.triples_allowed,
+                    home_runs_allowed = pitcher_daily_stats.home_runs_allowed + EXCLUDED.home_runs_allowed,
+                    runs_allowed = pitcher_daily_stats.runs_allowed + EXCLUDED.runs_allowed,
+                    earned_runs = pitcher_daily_stats.earned_runs + EXCLUDED.earned_runs,
+                    walks_allowed = pitcher_daily_stats.walks_allowed + EXCLUDED.walks_allowed,
+                    intentional_walks_allowed = pitcher_daily_stats.intentional_walks_allowed + EXCLUDED.intentional_walks_allowed,
+                    hit_batters = pitcher_daily_stats.hit_batters + EXCLUDED.hit_batters,
+                    hit_by_pitch_allowed = pitcher_daily_stats.hit_by_pitch_allowed + EXCLUDED.hit_by_pitch_allowed,
+                    intentional_base_on_balls = pitcher_daily_stats.intentional_base_on_balls + EXCLUDED.intentional_base_on_balls,
+                    strikeouts = pitcher_daily_stats.strikeouts + EXCLUDED.strikeouts,
+                    wild_pitches = pitcher_daily_stats.wild_pitches + EXCLUDED.wild_pitches,
+                    balks = pitcher_daily_stats.balks + EXCLUDED.balks,
+                    wins = pitcher_daily_stats.wins + EXCLUDED.wins,
+                    losses = pitcher_daily_stats.losses + EXCLUDED.losses,
+                    saves = pitcher_daily_stats.saves + EXCLUDED.saves,
+                    holds = pitcher_daily_stats.holds + EXCLUDED.holds,
+                    blown_saves = pitcher_daily_stats.blown_saves + EXCLUDED.blown_saves,
+                    flyouts = pitcher_daily_stats.flyouts + EXCLUDED.flyouts,
+                    groundouts = pitcher_daily_stats.groundouts + EXCLUDED.groundouts,
+                    linedrives = pitcher_daily_stats.linedrives + EXCLUDED.linedrives,
+                    grounded_into_double_play = pitcher_daily_stats.grounded_into_double_play + EXCLUDED.grounded_into_double_play,
+                    triple_play = pitcher_daily_stats.triple_play + EXCLUDED.triple_play,
+                    pickoffs = pitcher_daily_stats.pickoffs + EXCLUDED.pickoffs;
+            `, [gameId, season_year, game_date]);
+
+            return sendSuccess(res, {
+                message: "게임 통계를 일자 통계로 반영했습니다.",
+            });
+        });
+    } catch (error) {
+        return sendServerError(res, error, "일자 통계 반영 중 오류가 발생했습니다.");
+    }
+};
+
 
 export const updateKboGameScore = async (req, res) => {
     const { gameId, homeScore, awayScore } = req.body;
@@ -1495,7 +1717,7 @@ export const getKboGameCompletedInfo = async (req, res) => {
                     COALESCE(SUM(sacrifice_bunts), 0) AS sac_bunts,
                     COALESCE(SUM(sacrifice_flies), 0) AS sac_flies,
                     COALESCE(SUM(stolen_bases), 0) AS stolen_bases,
-                    COALESCE(SUM(caught_stealing), 0) AS caught_stealing,
+                    COALESCE(SUM(caught_stealings), 0) AS caught_stealings,
                     COALESCE(SUM(errors), 0) AS errors
                 FROM batter_game_stats
                 WHERE game_id = $1
@@ -1542,7 +1764,7 @@ export const getKboGameCompletedInfo = async (req, res) => {
                 COALESCE(bs.sac_bunts, 0) AS sacrifice_bunts,
                 COALESCE(bs.sac_flies, 0) AS sacrifice_flies,
                 COALESCE(bs.stolen_bases, 0) AS stolen_bases,
-                COALESCE(bs.caught_stealing, 0) AS caught_stealing,
+                COALESCE(bs.caught_stealings, 0) AS caught_stealings,
                 COALESCE(bs.errors, 0) AS batter_errors,
                 -- 투수 스탯
                 COALESCE(ps.outs_pitched, 0)::int AS outs_pitched,
