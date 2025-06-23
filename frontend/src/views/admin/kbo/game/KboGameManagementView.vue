@@ -102,7 +102,7 @@
                                         color="primary"
                                         class="border"
                                     >
-                                        <v-btn v-for="gt in gameTypeList" :value="gt.code">{{ gt.name }}</v-btn>
+                                        <v-btn v-for="gt in gameTypeList.filter(gtl => gtl.code !== 'suspended')" :value="gt.code">{{ gt.name }}</v-btn>
                                     </v-btn-toggle>
                                 </v-col>
 
