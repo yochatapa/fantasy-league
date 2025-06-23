@@ -179,7 +179,7 @@ export const createKboGame = async (req, res) => {
 
 export const createKboSuspendedGame = async (req, res) => {
     const { 
-        season_year , away_team_id, home_team_id, stadium , game_date , game_time, game_type
+        season_year , away_team_id, home_team_id, stadium , game_date , game_time, game_type, suspended_game_id
     } = req.body;
 
     const accessToken = req.headers['authorization']?.split(' ')[1];
@@ -202,24 +202,69 @@ export const createKboSuspendedGame = async (req, res) => {
 
     try {
         await withTransaction(async (client) => {
-            // 게임 마스터 테이블 저장
+            // 1. 게임 마스터 테이블 저장
             const insertGameQuery = `
                 INSERT INTO kbo_game_master (
-                    season_year , away_team_id, home_team_id, stadium , game_date 
-                    , game_time, game_type, status, created_at
-                ) VALUES ($1, $2, $3, $4, $5, 
-                 $6, $7,'scheduled', CURRENT_TIMESTAMP)
+                    season_year , away_team_id, home_team_id, stadium , game_date, 
+                    game_time, game_type, status, suspended_game_id, created_at
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'suspended', $8, CURRENT_TIMESTAMP)
                 RETURNING id
             `;
             const { rows } = await client.query(insertGameQuery, [
-                season_year , away_team_id, home_team_id, stadium , game_date , game_time, game_type
+                season_year, away_team_id, home_team_id, stadium, game_date, 
+                game_time, game_type, suspended_game_id
             ]);
+            const newGameId = rows[0].id;
 
-            const gameId = rows[0].id;
+            // 2. 기존 current_stats 복사
+            const copyStatsQuery = `
+                INSERT INTO kbo_game_current_stats (
+                    game_id, "type", inning, inning_half, strike, ball, "out",
+                    away_pitch_count, home_pitch_count, away_current_pitch_count, home_current_pitch_count,
+                    away_batting_number, home_batting_number, away_score, home_score,
+                    runner_1b, runner_2b, runner_3b,
+                    batter_roster_id, pitcher_roster_id,
+                    runner_1b_pitcher, runner_2b_pitcher, runner_3b_pitcher,
+                    is_available_stat, away_current_batting_number, home_current_batting_number,
+                    away_current_out, home_current_out,
+                    created_at, updated_at
+                )
+                SELECT 
+                    $1, "type", inning, inning_half, strike, ball, "out",
+                    away_pitch_count, home_pitch_count, away_current_pitch_count, home_current_pitch_count,
+                    away_batting_number, home_batting_number, away_score, home_score,
+                    runner_1b, runner_2b, runner_3b,
+                    batter_roster_id, pitcher_roster_id,
+                    runner_1b_pitcher, runner_2b_pitcher, runner_3b_pitcher,
+                    is_available_stat, away_current_batting_number, home_current_batting_number,
+                    away_current_out, home_current_out,
+                    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                FROM kbo_game_current_stats
+                WHERE game_id = $2
+            `;
+            await client.query(copyStatsQuery, [newGameId, suspended_game_id]);
+
+            // 3. 기존 게임 roster 복사
+            const copyRosterQuery = `
+                INSERT INTO kbo_game_roster (
+                    game_id, team_id, player_id, batting_order, "role",
+                    replaced_by, replaced_inning, replaced_out,
+                    created_at, updated_at,
+                    "position", replaced_position
+                )
+                SELECT 
+                    $1, team_id, player_id, batting_order, "role",
+                    replaced_by, replaced_inning, replaced_out,
+                    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP,
+                    "position", replaced_position
+                FROM kbo_game_roster
+                WHERE game_id = $2
+            `;
+            await client.query(copyRosterQuery, [newGameId, suspended_game_id]);
 
             return sendSuccess(res, {
                 message: "서스펜디드 게임이 성공적으로 생성되었습니다.",
-                gameId
+                gameId: newGameId
             });
         });
     } catch (error) {

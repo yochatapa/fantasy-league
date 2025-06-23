@@ -201,11 +201,19 @@
                                     </v-chip>
 
                                     <v-chip
-                                        v-if="!['scheduled','completed','cancelled','calledGame'].includes(selectedMatchup.status)"
+                                        v-if="!['scheduled','completed','cancelled','calledGame','suspended'].includes(selectedMatchup.status)"
                                         color="error"
                                         @click="setSuspendedGame();"
                                     >
                                         서스펜디드
+                                    </v-chip>
+                                    
+                                    <v-chip
+                                        v-if="selectedMatchup.status === 'suspended'"
+                                        color="error"
+                                        @click="updateGameStatus('playball')"
+                                    >
+                                        서스펜디드 재개
                                     </v-chip>
 
                                     <!-- 콜드 게임: 5이닝 이상 or 5회말 홈팀 리드 중 -->
@@ -1264,6 +1272,10 @@ const gameTypeList = [
     {
         code : 'dh2',
         name : 'DH2'
+    },
+    {
+        code : 'suspended',
+        name : '서스펜디드'
     }
 ]
 
