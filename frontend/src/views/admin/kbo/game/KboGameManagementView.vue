@@ -273,20 +273,20 @@
                                                     <br>
                                                     <v-divider></v-divider>
                                                     <br>
-                                                    <span>{{ outInfo[0]?.batter?.batting_order }}번 타자 : {{ getPlayerName(outInfo[0]?.batter) }}</span>
+                                                    <span>{{ outInfo?.at(-1)?.batter?.batting_order }}번 타자 : {{ getPlayerName(outInfo?.at(-1)?.batter) }}</span>
                                                     <br>
                                                     <span>
-                                                        {{ outInfo[0]?.batter?.stats?.plate_appearances }}타석 {{ outInfo[0]?.batter?.stats?.at_bats }}타수 {{ outInfo[0]?.batter?.stats?.hits }}안타 {{ outInfo[0]?.batter?.stats?.walks }}볼넷 {{ outInfo[0]?.batter?.stats?.strikeouts }}삼진
+                                                        {{ outInfo?.at(-1)?.batter?.stats?.plate_appearances }}타석 {{ outInfo?.at(-1)?.batter?.stats?.at_bats }}타수 {{ outInfo?.at(-1)?.batter?.stats?.hits }}안타 {{ outInfo?.at(-1)?.batter?.stats?.walks }}볼넷 {{ outInfo?.at(-1)?.batter?.stats?.strikeouts }}삼진
                                                     </span>
                                                     <br>
-                                                    <span v-if="outInfo[0]?.batter?.stats?.hits>0">(1루타 {{ outInfo[0]?.batter?.stats?.singles }}, 2루타 {{ outInfo[0]?.batter?.stats?.doubles }}, 3루타 {{ outInfo[0]?.batter?.stats?.triples }}, 홈런 {{ outInfo[0]?.batter?.stats?.home_runs }})</span>
-                                                    <br v-if="outInfo[0]?.batter?.stats?.hits>0">
+                                                    <span v-if="outInfo?.at(-1)?.batter?.stats?.hits>0">(1루타 {{ outInfo?.at(-1)?.batter?.stats?.singles }}, 2루타 {{ outInfo?.at(-1)?.batter?.stats?.doubles }}, 3루타 {{ outInfo?.at(-1)?.batter?.stats?.triples }}, 홈런 {{ outInfo?.at(-1)?.batter?.stats?.home_runs }})</span>
+                                                    <br v-if="outInfo?.at(-1)?.batter?.stats?.hits>0">
                                                     <span>
-                                                        {{ outInfo[0]?.batter?.stats?.rbis }}타점 {{ outInfo[0]?.batter?.stats?.runs }}득점 {{ outInfo[0]?.batter?.stats?.stolen_bases }}도루
+                                                        {{ outInfo?.at(-1)?.batter?.stats?.rbis }}타점 {{ outInfo?.at(-1)?.batter?.stats?.runs }}득점 {{ outInfo?.at(-1)?.batter?.stats?.stolen_bases }}도루
                                                     </span>
                                                     <br>
                                                     <br>
-                                                    <span>투수 : {{ getPlayerName(outInfo[0]?.pitcher) }}</span>
+                                                    <span>투수 : {{ getPlayerName(outInfo?.at(-1)?.pitcher) }}</span>
                                                 </div>
                                                 <br>
                                                 <div v-for="(ballInfo, index) in outInfo">
@@ -377,22 +377,22 @@
                                                         )
                                                     </div>
                                                     <div v-else-if="['hit'].includes(ballInfo.type)" class="text-primary">
-                                                        안타 ({{ getPlayerName(outInfo[0]?.batter) }})
+                                                        안타 ({{ getPlayerName(outInfo?.at(-1)?.batter) }})
                                                     </div>
                                                     <div v-else-if="['double'].includes(ballInfo.type)" class="text-primary">
-                                                        2루타 ({{ getPlayerName(outInfo[0]?.batter) }})
+                                                        2루타 ({{ getPlayerName(outInfo?.at(-1)?.batter) }})
                                                     </div>
                                                     <div v-else-if="['triple'].includes(ballInfo.type)" class="text-primary">
-                                                        3루타 ({{ getPlayerName(outInfo[0]?.batter) }})
+                                                        3루타 ({{ getPlayerName(outInfo?.at(-1)?.batter) }})
                                                     </div>
                                                     <div v-else-if="['homerun'].includes(ballInfo.type)" class="text-primary">
-                                                        홈런 ({{ getPlayerName(outInfo[0]?.batter) }})
+                                                        홈런 ({{ getPlayerName(outInfo?.at(-1)?.batter) }})
                                                     </div>
                                                     <div v-else-if="ballInfo.type.startsWith('runner')">
                                                         {{ ballInfo.type.split(':')[1]==='0'?'타자주자':ballInfo.type.split(':')[1]+'루' }} -> {{ ballInfo.type.split(':')[2]==='4'?"홈":ballInfo.type.split(':')[2]+'루' }} 진루 ({{ ballInfo.type.split(':')[1] === '0'?(ballInfo?.batter?.replaced_player_name??ballInfo?.batter?.player_name) :(ballInfo?.['runner_'+ballInfo.type.split(':')[1]+'b']?.replaced_player_name??ballInfo?.['runner_'+ballInfo.type.split(':')[1]+'b']?.player_name) }})
                                                     </div>
                                                     <div v-else-if="ballInfo.type.startsWith('score')" class="text-primary">
-                                                        {{ ballInfo.type.split(':')[1] === "4" ? getPlayerName(outInfo[0]?.batter) : getPlayerName(ballInfo['runner_'+ballInfo.type.split(':')[1]+'b']) }} 득점
+                                                        {{ ballInfo.type.split(':')[1] === "4" ? getPlayerName(outInfo?.at(-1)?.batter) : getPlayerName(ballInfo['runner_'+ballInfo.type.split(':')[1]+'b']) }} 득점
                                                     </div>
                                                     <div v-else-if="['rbi'].includes(ballInfo.type)">
                                                         {{ getPlayerName(ballInfo?.batter) }} 타점
@@ -407,10 +407,10 @@
                                                         {{ ballInfo.type.split(':')[1] === "4"?"홈":ballInfo.type.split(':')[1]+"루"}} 주자 견제사 ({{ getPlayerName(ballInfo['runner_'+ballInfo.type.split(':')[1]+'b']) }})
                                                     </div>
                                                     <div v-else-if="ballInfo.type.startsWith('sacrificeFly')" class="text-secondary">
-                                                        희생플라이 ({{ getPlayerName(outInfo[0]?.batter) }})
+                                                        희생플라이 ({{ getPlayerName(outInfo?.at(-1)?.batter) }})
                                                     </div>
                                                     <div v-else-if="ballInfo.type.startsWith('sacrificeBunt')" class="text-secondary">
-                                                        희생번트 ({{ getPlayerName(outInfo[0]?.batter) }})
+                                                        희생번트 ({{ getPlayerName(outInfo?.at(-1)?.batter) }})
                                                     </div>
                                                     <div v-else-if="ballInfo.type.startsWith('error')" class="text-secondary">
                                                         {{ POSITIONS.filter(position => position.code === ballInfo.type.split(':')[1])?.[0]?.name??'' }} 실책
