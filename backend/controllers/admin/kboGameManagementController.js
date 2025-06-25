@@ -1707,7 +1707,18 @@ export const getKboGameCompletedInfo = async (req, res) => {
         };
 
         const fullStatsQuery = `
-            WITH roster_base AS (
+            WITH base_game_id_cte AS (
+                SELECT 
+                    COALESCE(suspended_game_id, id) AS base_game_id
+                FROM kbo_game_master
+                WHERE id = $1
+            ),
+            related_game_ids_cte AS (
+                SELECT id AS game_id
+                FROM kbo_game_master
+                WHERE COALESCE(suspended_game_id, id) = (SELECT base_game_id FROM base_game_id_cte)
+            ),
+            roster_base AS (
                 SELECT DISTINCT ON (
                     CASE 
                         WHEN kgr.replaced_by IS NOT NULL THEN kgr.replaced_by 
@@ -1747,10 +1758,10 @@ export const getKboGameCompletedInfo = async (req, res) => {
                     END AS player_type
                 FROM kbo_game_roster kgr
                 JOIN kbo_game_master kgm ON kgr.game_id = kgm.id
+                JOIN related_game_ids_cte rgic ON kgr.game_id = rgic.game_id
                 LEFT JOIN kbo_team_master ktm ON kgr.team_id = ktm.id
                 LEFT JOIN kbo_player_master kp ON kgr.player_id = kp.id
                 LEFT JOIN kbo_player_master krp ON kgr.replaced_by = krp.id
-                WHERE kgr.game_id = $1
                 ORDER BY 
                     CASE 
                         WHEN kgr.replaced_by IS NOT NULL THEN kgr.replaced_by 
@@ -1781,7 +1792,7 @@ export const getKboGameCompletedInfo = async (req, res) => {
                     COALESCE(SUM(caught_stealings), 0) AS caught_stealings,
                     COALESCE(SUM(errors), 0) AS errors
                 FROM batter_game_stats
-                WHERE game_id = $1
+                WHERE game_id IN (SELECT game_id FROM related_game_ids_cte)
                 GROUP BY player_id
             ),
             pitcher_stats AS (
@@ -1803,7 +1814,7 @@ export const getKboGameCompletedInfo = async (req, res) => {
                     COALESCE(SUM(holds), 0) AS holds,
                     COALESCE(SUM(blown_saves), 0) AS blown_saves
                 FROM pitcher_game_stats
-                WHERE game_id = $1
+                WHERE game_id IN (SELECT game_id FROM related_game_ids_cte)
                 GROUP BY player_id
             )
             SELECT
@@ -1858,15 +1869,14 @@ export const getKboGameCompletedInfo = async (req, res) => {
                 COALESCE(ps.holds, 0) AS holds,
                 COALESCE(ps.blown_saves, 0) AS blown_saves
             FROM roster_base rb
-            LEFT JOIN batter_stats bs 
-                ON bs.player_id = rb.player_id
-            LEFT JOIN pitcher_stats ps 
-                ON ps.player_id = rb.player_id
+            LEFT JOIN batter_stats bs ON bs.player_id = rb.player_id
+            LEFT JOIN pitcher_stats ps ON ps.player_id = rb.player_id
             ORDER BY
                 rb.batting_order,
                 COALESCE(rb.replaced_inning, 0),
                 COALESCE(rb.replaced_out, 0),
-                rb.roster_id;   
+                rb.roster_id;
+
         `;
         const { rows: fullPlayerStats } = await query(fullStatsQuery, [gameId]);
 

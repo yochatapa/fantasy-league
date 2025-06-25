@@ -2136,32 +2136,35 @@ const setCurrentGamedayInfo = async (type) => {
     }
 }
 
-const setBatterGameStats = async (stats, player_id, seasonYn=false) => {
+const setBatterGameStats = async (stats, batter, seasonYn=false) => {
+    if(!!!batter) batter = currentBatter.value;
+
     try {
         const response = await commonFetch(`/api/admin/game/batter/stats`,{
             method : 'POST'
             , body : {
                 stats
                 , game_id : selectedMatchup.value.game_id
-                , player_id : player_id??getPlayerId(currentBatter.value)
-                , team_id : currentBatter.value.team_id
-                , opponent_team_id : currentPitcher.value.team_id
-                , batting_order : currentBatter.value.batting_order
+                , player_id : getPlayerId(batter)
+                , team_id : batter.team_id
+                , opponent_team_id : (batter.team_id===selectedMatchup.value.home_team_id?selectedMatchup.value.away_team_id:selectedMatchup.value.home_team_id)
+                , batting_order : batter.batting_order
                 , inning : gameCurrentInfo.value.inning
                 , inning_half : gameCurrentInfo.value.inning_half
                 , out : gameCurrentInfo.value.out
-                , batting_number : isAway.value?gameCurrentInfo.value.away_batting_number:gameCurrentInfo.value.home_batting_number
+                , batting_number : (batter.team_id===selectedMatchup.value.home_team_id?batter.home_batting_number:gameCurrentInfo.value.away_batting_number)
                 , seasonYn
             }
         })
     } catch (error) {
+        console.error(error)
         alert("타자 스탯 저장 중 오류가 발생했습니다.\n다시 시도해주세요.","error")
     }
 }
 
 const setPitcherGameStats = async (stats, pitcher, seasonYn=false) => {
     if(!!!pitcher) pitcher = currentPitcher.value;
-    console.log(pitcher, gameCurrentInfo.value)
+    
     try {
         const response = await commonFetch(`/api/admin/game/pitcher/stats`,{
             method : 'POST'
@@ -2513,7 +2516,7 @@ const setScore = async (scoreBase, rbiConfirmYn = true) => {
 
     await setBatterGameStats({
         runs : 1,
-    }, getPlayerId(runnerInfo));
+    }, runnerInfo);
 
     if(rbiConfirmYn){
         if(await confirm(`${getPlayerName(runnerInfo)}의 득점을 ${getPlayerName(currentBatter.value)}의 타점으로 등록하시겠습니까?`)){
@@ -3450,7 +3453,7 @@ const setStolenBaseToSecond = async () => {
     await setCurrentGamedayInfo('stolenBase:2');
     await setBatterGameStats({
         stolen_bases : 1,
-    },getPlayerId(gameCurrentInfo.value.runner_1b));
+    },gameCurrentInfo.value.runner_1b);
 
     gameCurrentInfo.value.runner_2b = { ...gameCurrentInfo.value.runner_1b };
     gameCurrentInfo.value.runner_1b = null;
@@ -3464,7 +3467,7 @@ const setStolenBaseToThird = async () => {
     await setCurrentGamedayInfo('stolenBase:3');
     await setBatterGameStats({
         stolen_bases : 1,
-    },getPlayerId(gameCurrentInfo.value.runner_2b));
+    },gameCurrentInfo.value.runner_2b);
 
     gameCurrentInfo.value.runner_3b = { ...gameCurrentInfo.value.runner_2b };
     gameCurrentInfo.value.runner_2b = null;
@@ -3476,7 +3479,7 @@ const setStolenBaseToHome = async () => {
     await setCurrentGamedayInfo('stolenBase:4');
     await setBatterGameStats({
         stolen_bases : 1,
-    },getPlayerId(gameCurrentInfo.value.runner_3b));
+    },gameCurrentInfo.value.runner_3b);
 
     await setScore(3,false);
 
@@ -3491,7 +3494,7 @@ const setCaughtStealingSecondBase = async () => {
     await setCurrentGamedayInfo('caughtStealing:2');
     await setBatterGameStats({
         caught_stealings : 1,
-    },getPlayerId(gameCurrentInfo.value.runner_1b));
+    },gameCurrentInfo.value.runner_1b);
 
     gameCurrentInfo.value.runner_1b = null;
 
@@ -3506,7 +3509,7 @@ const setCaughtStealingThirdBase = async () => {
     await setCurrentGamedayInfo('caughtStealing:3');
     await setBatterGameStats({
         caught_stealings : 1,
-    },getPlayerId(gameCurrentInfo.value.runner_2b));
+    },gameCurrentInfo.value.runner_2b);
 
     gameCurrentInfo.value.runner_2b = null;
 
@@ -3519,7 +3522,7 @@ const setCaughtStealingHomeBase = async () => {
     await setCurrentGamedayInfo('caughtStealing:4');
     await setBatterGameStats({
         caught_stealings : 1,
-    },getPlayerId(gameCurrentInfo.value.runner_3b));
+    },gameCurrentInfo.value.runner_3b);
 
     gameCurrentInfo.value.runner_3b = null;
 
@@ -3532,7 +3535,7 @@ const setPickoffFromFirst = async () => {
     await setCurrentGamedayInfo('pickoff:1');
     await setBatterGameStats({
         pickoffs : 1,
-    },getPlayerId(gameCurrentInfo.value.runner_1b));
+    },gameCurrentInfo.value.runner_1b);
 
     await setPitcherGameStats({
         pickoffs : 1,
@@ -3549,7 +3552,7 @@ const setPickoffFromSecond = async () => {
     await setCurrentGamedayInfo('pickoff:2');
     await setBatterGameStats({
         pickoffs : 1,
-    },getPlayerId(gameCurrentInfo.value.runner_2b));
+    },gameCurrentInfo.value.runner_2b);
 
     await setPitcherGameStats({
         pickoffs : 1,
@@ -3566,7 +3569,7 @@ const setPickoffFromThird = async () => {
     await setCurrentGamedayInfo('pickoff:3');
     await setBatterGameStats({
         pickoffs : 1,
-    },getPlayerId(gameCurrentInfo.value.runner_3b));
+    },gameCurrentInfo.value.runner_3b);
 
     await setPitcherGameStats({
         pickoffs : 1,
@@ -3854,7 +3857,7 @@ const setError = async () => {
 
     await setBatterGameStats({
         errors : 1,
-    },getPlayerId(errorInfo));
+    },errorInfo);
 
     await setCurrentGamedayInfo('lastInfo');
 
@@ -4058,11 +4061,9 @@ const setPassedBall = async () => {
 
     const catcherInfo = catcherList[catcherList.length - 1]
 
-    const catcherId = getPlayerId(catcherInfo)
-
     await setBatterGameStats({
         errors : 1,
-    },catcherId);
+    },catcherInfo);
 
     const current_ball = gameCurrentInfo.value.ball;
     if(isAway.value){
