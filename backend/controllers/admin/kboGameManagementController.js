@@ -970,7 +970,7 @@ const organizeGameInfo = (gameInfo) => {
 export const createBatterGameStats = async (req, res) => {
     const { 
         game_id, player_id, team_id, opponent_team_id, batting_order,
-        inning, inning_half, out, stats, batting_number, seasonYn
+        inning, inning_half, out, stats, batting_number, seasonYn, dailyYn
     } = req.body;
 
     const accessToken = req.headers['authorization']?.split(' ')[1];
@@ -1019,6 +1019,29 @@ export const createBatterGameStats = async (req, res) => {
                 inning, inning_half, out, batting_number
             ])
 
+            if (dailyYn) {
+                const { rows } = await client.query(
+                    `SELECT season_year, game_date FROM kbo_game_master WHERE id = $1`,
+                    [game_id]
+                );
+                if (rows.length === 0) throw new Error('게임 정보를 찾을 수 없습니다.');
+                const { season_year, game_date } = rows[0];
+
+                const updates = queryParams
+                    .map(col => `${col} = COALESCE(batter_daily_stats.${col}, 0) + EXCLUDED.${col}`)
+                    .join(', ');
+
+                const insertDailySql = `
+                    INSERT INTO batter_daily_stats
+                    (season_year, game_date, player_id, team_id, ${queryParams.join(",")})
+                    VALUES ($1, $2, $3, $4, ${queryParams.map((_, i) => `$${5 + i}`).join(",")})
+                    ON CONFLICT (season_year, player_id, team_id, game_date) DO UPDATE
+                    SET ${updates}, updated_at = now()
+                `;
+
+                await client.query(insertDailySql, [season_year, game_date, player_id, team_id, ...whereClauses]);
+            }
+
             if(seasonYn){
                 const { rows } = await client.query(
                     `SELECT season_year FROM kbo_game_master WHERE id = $1`,
@@ -1056,7 +1079,7 @@ export const createBatterGameStats = async (req, res) => {
 export const createPitcherGameStats = async (req, res) => {
     const { 
         game_id, player_id, team_id, opponent_team_id, batting_order,
-        inning, inning_half, out, stats, seasonYn
+        inning, inning_half, out, stats, seasonYn, dailyYn
     } = req.body;
 
     const accessToken = req.headers['authorization']?.split(' ')[1];
@@ -1104,6 +1127,30 @@ export const createPitcherGameStats = async (req, res) => {
                 game_id, player_id, team_id, opponent_team_id, batting_order,
                 inning, inning_half, out,
             ])
+
+            if (dailyYn) {
+                const { rows } = await client.query(
+                    `SELECT season_year, game_date FROM kbo_game_master WHERE id = $1`,
+                    [game_id]
+                );
+                if (rows.length === 0) throw new Error('게임 정보를 찾을 수 없습니다.');
+                const { season_year, game_date } = rows[0];
+
+                const updates = queryParams
+                    .map(col => `${col} = COALESCE(pitcher_daily_stats.${col}, 0) + EXCLUDED.${col}`)
+                    .join(', ');
+
+                const insertDailySql = `
+                    INSERT INTO pitcher_daily_stats
+                    (season_year, game_date, player_id, team_id, ${queryParams.join(",")})
+                    VALUES ($1, $2, $3, $4, ${queryParams.map((_, i) => `$${5 + i}`).join(",")})
+                    ON CONFLICT (season_year, player_id, team_id, game_date) DO UPDATE
+                    SET ${updates}, updated_at = now()
+                `;
+
+                await client.query(insertDailySql, [season_year, game_date, player_id, team_id, ...whereClauses]);
+            }
+
 
             if(seasonYn){
                 const { rows } = await client.query(

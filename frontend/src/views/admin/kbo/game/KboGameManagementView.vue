@@ -2136,7 +2136,7 @@ const setCurrentGamedayInfo = async (type) => {
     }
 }
 
-const setBatterGameStats = async (stats, batter, seasonYn=false) => {
+const setBatterGameStats = async (stats, batter, dailyYn=false, seasonYn=false) => {
     if(!!!batter) batter = currentBatter.value;
 
     try {
@@ -2154,6 +2154,7 @@ const setBatterGameStats = async (stats, batter, seasonYn=false) => {
                 , out : gameCurrentInfo.value.out
                 , batting_number : (batter.team_id===selectedMatchup.value.home_team_id?batter.home_batting_number:gameCurrentInfo.value.away_batting_number)
                 , seasonYn
+                , dailyYn
             }
         })
     } catch (error) {
@@ -2162,7 +2163,7 @@ const setBatterGameStats = async (stats, batter, seasonYn=false) => {
     }
 }
 
-const setPitcherGameStats = async (stats, pitcher, seasonYn=false) => {
+const setPitcherGameStats = async (stats, pitcher, dailyYn=false, seasonYn=false) => {
     if(!!!pitcher) pitcher = currentPitcher.value;
     
     try {
@@ -2179,6 +2180,7 @@ const setPitcherGameStats = async (stats, pitcher, seasonYn=false) => {
                 , inning_half : gameCurrentInfo.value.inning_half
                 , out : gameCurrentInfo.value.out
                 , seasonYn
+                , dailyYn
             }
         })
     } catch (error) {
@@ -4129,7 +4131,8 @@ const setWinningPitcher = async () => {
     if(!winning_pitcher.value) return alert("승리 투수를 선택해주세요.", "error")
     await setPitcherGameStats({
         wins : 1
-    }, lineupList.value.flatMap(item => [...item.away, ...item.home]).find(ll => getPlayerId(ll) === winning_pitcher.value), true)
+    }, lineupList.value.flatMap(item => [...item.away, ...item.home]).find(ll => getPlayerId(ll) === winning_pitcher.value)
+    , true, true)
     await getCompletedInfo();
 }
 
@@ -4137,7 +4140,8 @@ const setLosingPitcher = async () => {
     if(!losing_pitcher.value) return alert("패전 투수를 선택해주세요.", "error")
     await setPitcherGameStats({
         losses : 1
-    }, lineupList.value.flatMap(item => [...item.away, ...item.home]).find(ll => getPlayerId(ll) === losing_pitcher.value), true);
+    }, lineupList.value.flatMap(item => [...item.away, ...item.home]).find(ll => getPlayerId(ll) === losing_pitcher.value)
+    , true, true);
     await getCompletedInfo();
 }
 
@@ -4145,7 +4149,8 @@ const setSavePitcher = async () => {
     if(!save_pitcher.value) return alert("세이브 투수를 선택해주세요.", "error")
     await setPitcherGameStats({
         saves : 1
-    }, lineupList.value.flatMap(item => [...item.away, ...item.home]).find(ll => getPlayerId(ll) === save_pitcher.value), true);
+    }, lineupList.value.flatMap(item => [...item.away, ...item.home]).find(ll => getPlayerId(ll) === save_pitcher.value)
+    , true, true);
     await getCompletedInfo();
 }
 
@@ -4153,7 +4158,7 @@ const setHoldPitcher = async () => {
     if(!hold_pitcher.value || (hold_pitcher.value?.length??0) === 0) return alert("홀드 투수를 선택해주세요.", "error")
     await Promise.all(
         hold_pitcher.value.map(pitcher =>
-            setPitcherGameStats({ holds: 1 }, lineupList.value.flatMap(item => [...item.away, ...item.home]).find(ll => getPlayerId(ll) === pitcher), true)
+            setPitcherGameStats({ holds: 1 }, lineupList.value.flatMap(item => [...item.away, ...item.home]).find(ll => getPlayerId(ll) === pitcher), true, true)
         )
     );
     await getCompletedInfo();
@@ -4163,7 +4168,7 @@ const setBlownSavePitcher = async () => {
     if(!blown_save_pitcher.value || (blown_save_pitcher.value?.length??0) === 0) return alert("블론 세이브 투수를 선택해주세요.", "error")
     await Promise.all(
         blown_save_pitcher.value.map(pitcher =>
-            setPitcherGameStats({ blown_saves: 1 }, lineupList.value.flatMap(item => [...item.away, ...item.home]).find(ll => getPlayerId(ll) === pitcher), true)
+            setPitcherGameStats({ blown_saves: 1 }, lineupList.value.flatMap(item => [...item.away, ...item.home]).find(ll => getPlayerId(ll) === pitcher), true, true)
         )
     );
     await getCompletedInfo();
@@ -4177,11 +4182,11 @@ const setGameStart = async()=>{
     
     await setPitcherGameStats({
         games_started : 1
-    }, homePitcher, true);
+    }, homePitcher, true, true);
 
     await setPitcherGameStats({
         games_started : 1
-    }, awayPitcher, true);
+    }, awayPitcher, true, true);
 }
 
 onMounted(async ()=>{
