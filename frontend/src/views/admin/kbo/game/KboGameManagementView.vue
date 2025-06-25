@@ -297,7 +297,7 @@
                                                         <br>
                                                         {{ selectedMatchup.home_team_name }} : {{ gameCurrentInfo.home_score }}점
                                                     </div>
-
+                                                    
                                                     <div v-if="ballInfo.type.startsWith('changePitcher')">
                                                         투수 교체 ({{ getPlayerName(lineupList.flatMap(inning => inning[isAway ? 'home' : 'away'])?.find(pitcher => {return getPlayerId(pitcher)?.toString() === ballInfo.type.split(':')[1]})) }} ▶ {{ getPlayerName(lineupList.flatMap(inning => inning[isAway ? 'home' : 'away'])?.find(pitcher => {return getPlayerId(pitcher)?.toString() === ballInfo.type.split(':')[2]})) }})
                                                     </div>
@@ -1658,6 +1658,7 @@ const addSuspendedMatchup = async () => {try {
                 season_year         : formattedDate.value.split(".")[0],
                 away_team_id        : selectedMatchup.value.away_team_id,
                 home_team_id        : selectedMatchup.value.home_team_id,
+                game_id             : selectedMatchup.value.game_id,
                 suspended_game_id   : selectedMatchup.value.suspended_game_id??selectedMatchup.value.game_id,
                 stadium             : suspendedStadium.value,
                 game_date           : suspendedGameDate.value,
@@ -1746,13 +1747,13 @@ const setSuspendedGame = async () => {
         pitches_thrown : gameCurrentInfo.value.home_pitch_count,
         outs_pitched : gameCurrentInfo.value.home_current_out,
         batters_faced : gameCurrentInfo.value.away_current_batting_number
-    }, getPlayerId(homePitcher));
+    }, homePitcher);
 
     await setPitcherGameStats({
         pitches_thrown : gameCurrentInfo.value.away_pitch_count,
         outs_pitched : gameCurrentInfo.value.away_current_out,
         batters_faced : gameCurrentInfo.value.home_current_batting_number
-    }, getPlayerId(awayPitcher));
+    }, awayPitcher);
 
     await setCurrentGamedayInfo('suspended');
     await setCurrentGamedayInfo('lastInfo');
@@ -2158,17 +2159,19 @@ const setBatterGameStats = async (stats, player_id, seasonYn=false) => {
     }
 }
 
-const setPitcherGameStats = async (stats, player_id, seasonYn=false) => {
+const setPitcherGameStats = async (stats, pitcher, seasonYn=false) => {
+    if(!!!pitcher) pitcher = currentPitcher.value;
+    console.log(pitcher, gameCurrentInfo.value)
     try {
         const response = await commonFetch(`/api/admin/game/pitcher/stats`,{
             method : 'POST'
             , body : {
                 stats
                 , game_id : selectedMatchup.value.game_id
-                , player_id : player_id??getPlayerId(currentPitcher.value)
-                , team_id : currentPitcher.value.team_id
-                , opponent_team_id : currentBatter.value.team_id
-                , batting_order : currentBatter.value.batting_order
+                , player_id : getPlayerId(pitcher)
+                , team_id : pitcher.team_id
+                , opponent_team_id : (pitcher.team_id===selectedMatchup.value.home_team_id?selectedMatchup.value.away_team_id:selectedMatchup.value.home_team_id)
+                , batting_order : pitcher.batting_order
                 , inning : gameCurrentInfo.value.inning
                 , inning_half : gameCurrentInfo.value.inning_half
                 , out : gameCurrentInfo.value.out
@@ -2176,6 +2179,7 @@ const setPitcherGameStats = async (stats, player_id, seasonYn=false) => {
             }
         })
     } catch (error) {
+        console.error(error)
         alert("투수 스탯 저장 중 오류가 발생했습니다.\n다시 시도해주세요.","error")
     }
 }
@@ -4097,13 +4101,13 @@ const setGameOver = async (dail) => {
         pitches_thrown : gameCurrentInfo.value.home_pitch_count,
         outs_pitched : gameCurrentInfo.value.home_current_out,
         batters_faced : gameCurrentInfo.value.away_current_batting_number
-    }, getPlayerId(homePitcher));
+    }, homePitcher);
 
     await setPitcherGameStats({
         pitches_thrown : gameCurrentInfo.value.away_pitch_count,
         outs_pitched : gameCurrentInfo.value.away_current_out,
         batters_faced : gameCurrentInfo.value.home_current_batting_number
-    }, getPlayerId(awayPitcher));
+    }, awayPitcher);
     
     gameCurrentInfo.value.home_pitch_count = 0;
     gameCurrentInfo.value.away_current_batting_number = 0;
@@ -4124,7 +4128,7 @@ const setWinningPitcher = async () => {
     if(!winning_pitcher.value) return alert("승리 투수를 선택해주세요.", "error")
     await setPitcherGameStats({
         wins : 1
-    }, winning_pitcher.value, true)
+    }, lineupList.value.flatMap(item => [...item.away, ...item.home]).find(ll => getPlayerId(ll) === winning_pitcher.value), true)
     await getCompletedInfo();
 }
 
@@ -4132,7 +4136,7 @@ const setLosingPitcher = async () => {
     if(!losing_pitcher.value) return alert("패전 투수를 선택해주세요.", "error")
     await setPitcherGameStats({
         losses : 1
-    }, losing_pitcher.value, true);
+    }, lineupList.value.flatMap(item => [...item.away, ...item.home]).find(ll => getPlayerId(ll) === losing_pitcher.value), true);
     await getCompletedInfo();
 }
 
@@ -4140,7 +4144,7 @@ const setSavePitcher = async () => {
     if(!save_pitcher.value) return alert("세이브 투수를 선택해주세요.", "error")
     await setPitcherGameStats({
         saves : 1
-    }, save_pitcher.value, true);
+    }, lineupList.value.flatMap(item => [...item.away, ...item.home]).find(ll => getPlayerId(ll) === save_pitcher.value), true);
     await getCompletedInfo();
 }
 
@@ -4148,7 +4152,7 @@ const setHoldPitcher = async () => {
     if(!hold_pitcher.value || (hold_pitcher.value?.length??0) === 0) return alert("홀드 투수를 선택해주세요.", "error")
     await Promise.all(
         hold_pitcher.value.map(pitcher =>
-            setPitcherGameStats({ holds: 1 }, pitcher, true)
+            setPitcherGameStats({ holds: 1 }, lineupList.value.flatMap(item => [...item.away, ...item.home]).find(ll => getPlayerId(ll) === pitcher), true)
         )
     );
     await getCompletedInfo();
@@ -4158,7 +4162,7 @@ const setBlownSavePitcher = async () => {
     if(!blown_save_pitcher.value || (blown_save_pitcher.value?.length??0) === 0) return alert("블론 세이브 투수를 선택해주세요.", "error")
     await Promise.all(
         blown_save_pitcher.value.map(pitcher =>
-            setPitcherGameStats({ blown_saves: 1 }, pitcher, true)
+            setPitcherGameStats({ blown_saves: 1 }, lineupList.value.flatMap(item => [...item.away, ...item.home]).find(ll => getPlayerId(ll) === pitcher), true)
         )
     );
     await getCompletedInfo();
@@ -4172,11 +4176,11 @@ const setGameStart = async()=>{
     
     await setPitcherGameStats({
         games_started : 1
-    }, getPlayerId(homePitcher), true);
+    }, homePitcher, true);
 
     await setPitcherGameStats({
         games_started : 1
-    }, getPlayerId(awayPitcher), true);
+    }, awayPitcher, true);
 }
 
 onMounted(async ()=>{
