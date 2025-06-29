@@ -324,6 +324,16 @@ export const getKboGameDetail = async (req, res) => {
                     OR id = (SELECT suspended_game_id FROM kbo_game_master WHERE id = $1))
                 AND id != $1
             ),
+            last_suspended_game_id AS (
+                SELECT MAX(id) AS last_suspended_game_id
+                FROM kbo_game_master
+                WHERE (
+                    suspended_game_id = (SELECT suspended_game_id FROM kbo_game_master WHERE id = $1)
+                    OR id = (SELECT suspended_game_id FROM kbo_game_master WHERE id = $1)
+                    OR suspended_game_id = $1
+                    OR id = $1
+                )
+            ),
             latest_stats AS (
                 SELECT *
                 FROM kbo_game_current_stats
@@ -350,7 +360,6 @@ export const getKboGameDetail = async (req, res) => {
                         AND sub.batting_order = 0
                 )
             )
-
             SELECT
                 (ROW_NUMBER() OVER (ORDER BY kgm.season_year, kgm.game_date, kgm.game_time)) AS row_number,
                 kgm.id AS game_id,
@@ -388,7 +397,10 @@ export const getKboGameDetail = async (req, res) => {
                 fth.original_name AS home_team_original_name,
                 fth.size AS home_team_size,
                 fth.path AS home_team_path,
-                fth.mimetype AS home_team_mimetype
+                fth.mimetype AS home_team_mimetype,
+
+                -- Last Suspended Game ID (자기 자신 포함)
+                (SELECT last_suspended_game_id FROM last_suspended_game_id) AS last_suspended_game_id
 
             FROM kbo_game_master kgm
             LEFT JOIN kbo_team_master ati ON kgm.away_team_id = ati.id

@@ -173,7 +173,7 @@
                                         경기종료
                                     </v-chip> -->
                                     <v-chip
-                                        v-if="!['completed','cancelled','calledGame'].includes(selectedMatchup.status) 
+                                        v-if="!['completed','cancelled','calledGame','suspended'].includes(selectedMatchup.status) 
                                             && gameCurrentInfo.inning < 5"
                                         color="error"
                                         @click="updateGameStatus('cancelled')"
@@ -183,7 +183,7 @@
 
                                     <!-- 콜드 게임: 5이닝 이상 or 5회말 홈팀 리드 중 -->
                                     <v-chip
-                                        v-if="!['completed','cancelled','calledGame'].includes(selectedMatchup.status)
+                                        v-if="!['completed','cancelled','calledGame','suspended'].includes(selectedMatchup.status)
                                             && (
                                                 gameCurrentInfo.inning > 5 ||
                                                 (
@@ -207,13 +207,13 @@
                                     >
                                         서스펜디드
                                     </v-chip>
-                                    
+                                    {{ console.log(selectedMatchup.game_id, selectedMatchup.last_suspended_game_id)??'' }}
                                     <v-chip
-                                        v-if="selectedMatchup.status === 'suspended'"
+                                        v-if="selectedMatchup.status === 'suspended' && selectedMatchup.game_id === selectedMatchup.last_suspended_game_id"
                                         color="error"
                                         @click="updateGameStatus('playball')"
                                     >
-                                        서스펜디드 재개
+                                        서스펜디드 재개 
                                     </v-chip>
 
                                     <!-- 콜드 게임: 5이닝 이상 or 5회말 홈팀 리드 중 -->
@@ -1148,7 +1148,7 @@
                         
                     </v-card>
                 </v-col>
-                <v-col cols="12" md="8" v-if="selectedMatchup.status === 'suspended'">
+                <v-col cols="12" md="8" v-if="selectedMatchup.status === 'suspended' && selectedMatchup.game_id === selectedMatchup.last_suspended_game_id">
                     <v-card class="h-100">
                         <v-card-title>서스펜디드 설정</v-card-title>
                         <v-divider></v-divider>
