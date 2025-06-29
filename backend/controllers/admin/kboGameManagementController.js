@@ -1256,8 +1256,15 @@ export const getKboCurrentBatterStats = async (req,res) => {
 
     try {
         const currentBatterStatsQuery = `
+            WITH related_games AS (
+                SELECT id
+                FROM kbo_game_master
+                WHERE suspended_game_id = (SELECT suspended_game_id FROM kbo_game_master WHERE id = $1)
+                OR id = (SELECT suspended_game_id FROM kbo_game_master WHERE id = $1)
+                OR suspended_game_id = $1
+                OR id = $1
+            )
             SELECT
-                bgs.game_id,
                 bgs.player_id,
                 COALESCE(SUM(COALESCE(bgs.plate_appearances, 0)), 0) AS plate_appearances,
                 COALESCE(SUM(COALESCE(bgs.at_bats, 0)), 0) AS at_bats,
@@ -1274,12 +1281,12 @@ export const getKboCurrentBatterStats = async (req,res) => {
                 COALESCE(SUM(COALESCE(bgs.caught_stealings, 0)), 0) AS caught_stealings
             FROM
                 public.batter_game_stats bgs
+            JOIN
+                related_games rg ON bgs.game_id = rg.id
             WHERE
-                bgs.game_id = $1
-                AND bgs.player_id = $2
+                bgs.player_id = $2
             GROUP BY
-                bgs.game_id,
-                bgs.player_id;
+                bgs.player_id
         `
 
         let { rows : currentBatterStats } = await query(currentBatterStatsQuery,[gameId,playerId]);
