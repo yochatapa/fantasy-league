@@ -207,7 +207,7 @@
                                     >
                                         서스펜디드
                                     </v-chip>
-                                    {{ console.log(selectedMatchup.game_id, selectedMatchup.last_suspended_game_id)??'' }}
+                                    
                                     <v-chip
                                         v-if="selectedMatchup.status === 'suspended' && selectedMatchup.game_id === selectedMatchup.last_suspended_game_id"
                                         color="error"
