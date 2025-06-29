@@ -317,36 +317,86 @@ export const getKboGameDetail = async (req, res) => {
 
         // 조회 쿼리
         const { rows : kboGameDetailInfo } = await query(`
+            WITH latest_game_id AS (
+                SELECT MAX(id) AS resolved_game_id
+                FROM kbo_game_master
+                WHERE (suspended_game_id = (SELECT suspended_game_id FROM kbo_game_master WHERE id = $1)
+                    OR id = (SELECT suspended_game_id FROM kbo_game_master WHERE id = $1))
+                AND id != $1
+            ),
+            latest_stats AS (
+                SELECT *
+                FROM kbo_game_current_stats
+                WHERE game_id = (SELECT resolved_game_id FROM latest_game_id)
+                ORDER BY id DESC
+                LIMIT 1
+            ),
+            suspended_pitchers AS (
+                SELECT
+                    CASE
+                        WHEN kgr.team_id = kgm.home_team_id THEN 'home'
+                        ELSE 'away'
+                    END AS team_type,
+                    kgr.player_id
+                FROM kbo_game_roster kgr
+                JOIN latest_game_id lgi ON kgr.game_id = lgi.resolved_game_id
+                JOIN kbo_game_master kgm ON kgm.id = $1
+                WHERE kgr.batting_order = 0
+                AND kgr.id = (
+                    SELECT MAX(id)
+                    FROM kbo_game_roster sub
+                    WHERE sub.game_id = kgr.game_id
+                        AND sub.team_id = kgr.team_id
+                        AND sub.batting_order = 0
+                )
+            )
+
             SELECT
                 (ROW_NUMBER() OVER (ORDER BY kgm.season_year, kgm.game_date, kgm.game_time)) AS row_number,
-                kgm.id as game_id,
-                season_year , 
-                away_team_id, 
-                ati.name as away_team_name,
-                home_team_id, 
-                hti.name as home_team_name,
-                stadium , 
-                TO_CHAR(kgm.game_date, 'YYYY.MM.DD') as game_date , 
-                TO_CHAR(kgm.game_time, 'HH24:MI') as game_time ,
+                kgm.id AS game_id,
+                kgm.season_year,
+                kgm.away_team_id,
+                ati.name AS away_team_name,
+                kgm.home_team_id,
+                hti.name AS home_team_name,
+                kgm.stadium,
+                TO_CHAR(kgm.game_date, 'YYYY.MM.DD') AS game_date,
+                TO_CHAR(kgm.game_time, 'HH24:MI') AS game_time,
                 kgm.game_type,
                 kgm.status,
                 kgm.suspended_game_id,
-                fta.sn as away_team_sn,
-                fta.original_name as away_team_original_name,
-                fta.size as away_team_size,
-                fta.path as away_team_path,
-                fta.mimetype as away_team_mimetype,
-                fth.sn as home_team_sn,
-                fth.original_name as home_team_original_name,
-                fth.size as home_team_size,
-                fth.path as home_team_path,
-                fth.mimetype as home_team_mimetype
+
+                -- Suspended Pitcher IDs
+                COALESCE((SELECT player_id FROM suspended_pitchers WHERE team_type = 'home'),0) AS home_suspended_pitcher_id,
+                COALESCE((SELECT player_id FROM suspended_pitchers WHERE team_type = 'away'),0) AS away_suspended_pitcher_id,
+
+                -- Current Stats
+                COALESCE(ls.home_pitch_count, 0) AS home_pitch_count,
+                COALESCE(ls.home_current_out, 0) AS home_current_out,
+                COALESCE(ls.away_current_batting_number, 0) AS away_current_batting_number,
+                COALESCE(ls.away_pitch_count, 0) AS away_pitch_count,
+                COALESCE(ls.away_current_out, 0) AS away_current_out,
+                COALESCE(ls.home_current_batting_number, 0) AS home_current_batting_number,
+
+                -- Logos
+                fta.sn AS away_team_sn,
+                fta.original_name AS away_team_original_name,
+                fta.size AS away_team_size,
+                fta.path AS away_team_path,
+                fta.mimetype AS away_team_mimetype,
+                fth.sn AS home_team_sn,
+                fth.original_name AS home_team_original_name,
+                fth.size AS home_team_size,
+                fth.path AS home_team_path,
+                fth.mimetype AS home_team_mimetype
+
             FROM kbo_game_master kgm
-                left join kbo_team_master ati on kgm.away_team_id = ati.id
-                left join kbo_team_master hti on kgm.home_team_id = hti.id
-                left join file_table fta on fta.file_id = ati.logo_url::uuid and fta.sn = 1
-                left join file_table fth on fth.file_id = hti.logo_url::uuid and fth.sn = 1
-            WHERE kgm.id = $1
+            LEFT JOIN kbo_team_master ati ON kgm.away_team_id = ati.id
+            LEFT JOIN kbo_team_master hti ON kgm.home_team_id = hti.id
+            LEFT JOIN file_table fta ON fta.file_id = ati.logo_url::uuid AND fta.sn = 1
+            LEFT JOIN file_table fth ON fth.file_id = hti.logo_url::uuid AND fth.sn = 1
+            LEFT JOIN latest_stats ls ON TRUE
+            WHERE kgm.id = $1;
         `, [gameId]);
 
         let game = kboGameDetailInfo[0];
@@ -1344,7 +1394,7 @@ export const updateKboGameSeasonStats = async (req, res) => {
                     COALESCE(SUM(solo_home_runs), 0),
                     COALESCE(SUM(two_run_home_runs), 0),
                     COALESCE(SUM(three_run_home_runs), 0),
-                    COUNT(DISTINCT game_id)
+                    1
                 FROM batter_game_stats
                 WHERE game_id = ANY($1)
                 GROUP BY player_id, team_id
@@ -1381,7 +1431,7 @@ export const updateKboGameSeasonStats = async (req, res) => {
                     solo_home_runs = batter_season_stats.solo_home_runs + EXCLUDED.solo_home_runs,
                     two_run_home_runs = batter_season_stats.two_run_home_runs + EXCLUDED.two_run_home_runs,
                     three_run_home_runs = batter_season_stats.three_run_home_runs + EXCLUDED.three_run_home_runs,
-                    games_played = batter_season_stats.games_played + EXCLUDED.games_played;
+                    games_played = 1 + EXCLUDED.games_played;
                 `,
                 [relatedGameIds, seasonYear]
             );
@@ -1400,7 +1450,7 @@ export const updateKboGameSeasonStats = async (req, res) => {
                 )
                 SELECT
                     $2, player_id, team_id,
-                    COUNT(DISTINCT game_id),
+                    1,
                     COALESCE(SUM(games_started), 0),
                     COALESCE(SUM(outs_pitched), 0),
                     COALESCE(SUM(batters_faced), 0),
@@ -1436,7 +1486,7 @@ export const updateKboGameSeasonStats = async (req, res) => {
                 GROUP BY player_id, team_id
                 ON CONFLICT (season_year, player_id, team_id) DO UPDATE
                 SET
-                    games_played = pitcher_season_stats.games_played + EXCLUDED.games_played,
+                    games_played = 1 + EXCLUDED.games_played,
                     games_started = pitcher_season_stats.games_started + EXCLUDED.games_started,
                     outs_pitched = pitcher_season_stats.outs_pitched + EXCLUDED.outs_pitched,
                     batters_faced = pitcher_season_stats.batters_faced + EXCLUDED.batters_faced,
@@ -1592,21 +1642,22 @@ export const updateKboGameDailyStats = async (req, res) => {
                 )
                 SELECT
                     $2, $3,
-                    player_id, team_id,
+                    pgs.player_id, pgs.team_id,
                     1,
-                    COALESCE(SUM(games_started), 0), COALESCE(SUM(outs_pitched), 0), COALESCE(SUM(batters_faced), 0),
-                    COALESCE(SUM(pitches_thrown), 0), COALESCE(SUM(hits_allowed), 0), COALESCE(SUM(singles_allowed), 0),
-                    COALESCE(SUM(doubles_allowed), 0), COALESCE(SUM(triples_allowed), 0), COALESCE(SUM(home_runs_allowed), 0),
-                    COALESCE(SUM(runs_allowed), 0), COALESCE(SUM(earned_runs), 0), COALESCE(SUM(walks_allowed), 0),
-                    COALESCE(SUM(intentional_walks_allowed), 0), COALESCE(SUM(hit_batters), 0), COALESCE(SUM(hit_by_pitch_allowed), 0),
-                    COALESCE(SUM(intentional_base_on_balls), 0), COALESCE(SUM(strikeouts), 0), COALESCE(SUM(wild_pitches), 0),
-                    COALESCE(SUM(balks), 0), COALESCE(SUM(wins), 0), COALESCE(SUM(losses), 0), COALESCE(SUM(saves), 0),
-                    COALESCE(SUM(holds), 0), COALESCE(SUM(blown_saves), 0), COALESCE(SUM(flyouts), 0), COALESCE(SUM(groundouts), 0),
-                    COALESCE(SUM(linedrives), 0), COALESCE(SUM(grounded_into_double_play), 0), COALESCE(SUM(triple_play), 0),
-                    COALESCE(SUM(pickoffs), 0)
-                FROM pitcher_game_stats
-                WHERE game_id = $1
-                GROUP BY player_id, team_id
+                    COALESCE(SUM(pgs.games_started), 0), COALESCE(SUM(pgs.outs_pitched), 0), COALESCE(SUM(pgs.batters_faced), 0),
+                    COALESCE(SUM(pgs.pitches_thrown), 0), COALESCE(SUM(pgs.hits_allowed), 0), COALESCE(SUM(pgs.singles_allowed), 0),
+                    COALESCE(SUM(pgs.doubles_allowed), 0), COALESCE(SUM(pgs.triples_allowed), 0), COALESCE(SUM(pgs.home_runs_allowed), 0),
+                    COALESCE(SUM(pgs.runs_allowed), 0), COALESCE(SUM(pgs.earned_runs), 0), COALESCE(SUM(pgs.walks_allowed), 0),
+                    COALESCE(SUM(pgs.intentional_walks_allowed), 0), COALESCE(SUM(pgs.hit_batters), 0), COALESCE(SUM(pgs.hit_by_pitch_allowed), 0),
+                    COALESCE(SUM(pgs.intentional_base_on_balls), 0), COALESCE(SUM(pgs.strikeouts), 0), COALESCE(SUM(pgs.wild_pitches), 0),
+                    COALESCE(SUM(pgs.balks), 0), COALESCE(SUM(pgs.wins), 0), COALESCE(SUM(pgs.losses), 0), COALESCE(SUM(pgs.saves), 0),
+                    COALESCE(SUM(pgs.holds), 0), COALESCE(SUM(pgs.blown_saves), 0), COALESCE(SUM(pgs.flyouts), 0), COALESCE(SUM(pgs.groundouts), 0),
+                    COALESCE(SUM(pgs.linedrives), 0), COALESCE(SUM(pgs.grounded_into_double_play), 0), COALESCE(SUM(pgs.triple_play), 0),
+                    COALESCE(SUM(pgs.pickoffs), 0)
+                FROM pitcher_game_stats pgs
+                JOIN kbo_game_master kgm ON pgs.game_id = kgm.id
+                WHERE kgm.id = $1
+                GROUP BY pgs.player_id, pgs.team_id
                 ON CONFLICT (season_year, player_id, team_id, game_date) DO UPDATE SET
                     games_played = pitcher_daily_stats.games_played + 1,
                     games_started = pitcher_daily_stats.games_started + EXCLUDED.games_started,

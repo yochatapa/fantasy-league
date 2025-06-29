@@ -217,12 +217,12 @@
                                     </v-chip>
 
                                     <!-- 콜드 게임: 5이닝 이상 or 5회말 홈팀 리드 중 -->
-                                    <v-chip
+                                    <!--<v-chip
                                         color="error"
                                         @click="setGameOver();"
                                     >
                                         GAME END TEST
-                                    </v-chip>
+                                    </v-chip>-->
                                 </div>
                             </div>
                             <div v-else class="text-center">
@@ -1426,6 +1426,30 @@ const gameCurrentInfo = ref({
     is_available_stat : true
 });
 
+const gameStartInfo = ref({
+    inning : 1,
+    inning_half : 'top',
+    out : 0,
+    strike : 0,
+    ball : 0,
+    away_current_out : 0,
+    home_current_out : 0,
+    away_pitch_count : 0,
+    home_pitch_count : 0,
+    away_current_pitch_count : 0,
+    home_current_pitch_count : 0,
+    away_batting_number : 0,
+    away_current_batting_number : 0,
+    home_batting_number : 0,
+    home_current_batting_number : 0,
+    away_score : 0,
+    home_score : 0,
+    runner_1b : null,
+    runner_2b : null,
+    runner_3b : null,
+    is_available_stat : true
+});
+
 const isAway = computed(()=>gameCurrentInfo.value.inning_half === 'top');
 
 const currentBatter = computed(()=>{
@@ -1738,21 +1762,21 @@ const setCalledGame = async () => {
 }
 
 const setSuspendedGame = async () => {
-    alert("게임이 종료되었습니다.");
+    alert("서스펜디드로 인해 게임이 종료되었습니다.");
     
     const homePitcher = lineupList.value[0]?.['home']?.at(-1);
     const awayPitcher = lineupList.value[0]?.['away']?.at(-1);
 
     await setPitcherGameStats({
-        pitches_thrown : gameCurrentInfo.value.home_pitch_count,
-        outs_pitched : gameCurrentInfo.value.home_current_out,
-        batters_faced : gameCurrentInfo.value.away_current_batting_number
+        pitches_thrown : gameCurrentInfo.value.home_pitch_count - ((getPlayerId(homePitcher)!==selectedMatchup.value.home_suspended_pitcher_id)?0:selectedMatchup.value.home_pitch_count),
+        outs_pitched : gameCurrentInfo.value.home_current_out - ((getPlayerId(homePitcher)!==selectedMatchup.value.home_suspended_pitcher_id)?0:selectedMatchup.value.home_current_out),
+        batters_faced : gameCurrentInfo.value.away_current_batting_number - ((getPlayerId(homePitcher)!==selectedMatchup.value.home_suspended_pitcher_id)?0:selectedMatchup.value.away_current_batting_number)
     }, homePitcher);
 
     await setPitcherGameStats({
-        pitches_thrown : gameCurrentInfo.value.away_pitch_count,
-        outs_pitched : gameCurrentInfo.value.away_current_out,
-        batters_faced : gameCurrentInfo.value.home_current_batting_number
+        pitches_thrown : gameCurrentInfo.value.away_pitch_count - ((getPlayerId(awayPitcher)!==selectedMatchup.value.away_suspended_pitcher_id)?0:selectedMatchup.value.away_pitch_count),
+        outs_pitched : gameCurrentInfo.value.away_current_out - ((getPlayerId(awayPitcher)!==selectedMatchup.value.away_suspended_pitcher_id)?0:selectedMatchup.value.away_current_out),
+        batters_faced : gameCurrentInfo.value.home_current_batting_number - ((getPlayerId(awayPitcher)!==selectedMatchup.value.away_suspended_pitcher_id)?0:selectedMatchup.value.home_current_batting_number)
     }, awayPitcher);
 
     await setCurrentGamedayInfo('suspended');
@@ -1910,8 +1934,9 @@ const getGameDetailInfo = async (game_id) => {
             if(gameCurrentRes.success){                
                 gamedayInfo.value = gameCurrentRes.data.gamedayInfo;
                 if(gameCurrentRes.data.lastGameInfo){
-                    gameCurrentInfo.value = gameCurrentRes.data.lastGameInfo
-                    currentInning.value = gameCurrentRes.data.lastGameInfo.inning
+                    gameCurrentInfo.value = gameCurrentRes.data.lastGameInfo;
+                    gameStartInfo.value = gameCurrentRes.data.lastGameInfo;
+                    currentInning.value = gameCurrentRes.data.lastGameInfo.inning;
                 }
             }else{
                 throw new Error();
@@ -1995,9 +2020,9 @@ const saveRoster = async () => {
             if(lineup.value.batting_order === 0){
                 await setCurrentGamedayInfo('changePitcher:'+lineup.value.player_id+':'+lineup.value.replaced_by);
                 await setPitcherGameStats({
-                    pitches_thrown : isAway.value?gameCurrentInfo.value.home_pitch_count:gameCurrentInfo.value.away_pitch_count,
-                    outs_pitched : isAway.value?gameCurrentInfo.value.home_current_out:gameCurrentInfo.value.away_current_out,
-                    batters_faced : isAway.value?gameCurrentInfo.value.away_current_batting_number:gameCurrentInfo.value.home_current_batting_number
+                    pitches_thrown : isAway.value?gameCurrentInfo.value.home_pitch_count - ((getPlayerId(currentPitcher.value)!==selectedMatchup.value.home_suspended_pitcher_id)?0:selectedMatchup.value.home_pitch_count):gameCurrentInfo.value.away_pitch_count - ((getPlayerId(currentPitcher.value)!==selectedMatchup.value.away_suspended_pitcher_id)?0:selectedMatchup.value.away_pitch_count),
+                    outs_pitched : isAway.value?gameCurrentInfo.value.home_current_out - ((getPlayerId(currentPitcher.value)!==selectedMatchup.value.home_suspended_pitcher_id)?0:selectedMatchup.value.home_current_out):gameCurrentInfo.value.away_current_out - ((getPlayerId(currentPitcher.value)!==selectedMatchup.value.away_suspended_pitcher_id)?0:selectedMatchup.value.away_current_out),
+                    batters_faced : isAway.value?gameCurrentInfo.value.away_current_batting_number - ((getPlayerId(currentPitcher.value)!==selectedMatchup.value.home_suspended_pitcher_id)?0:selectedMatchup.value.away_current_batting_number):gameCurrentInfo.value.home_current_batting_number - ((getPlayerId(currentPitcher.value)!==selectedMatchup.value.away_suspended_pitcher_id)?0:selectedMatchup.value.home_current_batting_number)
                 });
                 
                 if(isAway.value){
@@ -4101,15 +4126,15 @@ const setGameOver = async (dail) => {
     const awayPitcher = lineupList.value[0]?.['away']?.at(-1);
 
     await setPitcherGameStats({
-        pitches_thrown : gameCurrentInfo.value.home_pitch_count,
-        outs_pitched : gameCurrentInfo.value.home_current_out,
-        batters_faced : gameCurrentInfo.value.away_current_batting_number
+        pitches_thrown : gameCurrentInfo.value.home_pitch_count - ((getPlayerId(homePitcher)!==selectedMatchup.value.home_suspended_pitcher_id)?0:selectedMatchup.value.home_pitch_count),
+        outs_pitched : gameCurrentInfo.value.home_current_out - ((getPlayerId(homePitcher)!==selectedMatchup.value.home_suspended_pitcher_id)?0:selectedMatchup.value.home_current_out),
+        batters_faced : gameCurrentInfo.value.away_current_batting_number - ((getPlayerId(homePitcher)!==selectedMatchup.value.home_suspended_pitcher_id)?0:selectedMatchup.value.away_current_batting_number)
     }, homePitcher);
 
     await setPitcherGameStats({
-        pitches_thrown : gameCurrentInfo.value.away_pitch_count,
-        outs_pitched : gameCurrentInfo.value.away_current_out,
-        batters_faced : gameCurrentInfo.value.home_current_batting_number
+        pitches_thrown : gameCurrentInfo.value.away_pitch_count - ((getPlayerId(awayPitcher)!==selectedMatchup.value.away_suspended_pitcher_id)?0:selectedMatchup.value.away_pitch_count),
+        outs_pitched : gameCurrentInfo.value.away_current_out - ((getPlayerId(awayPitcher)!==selectedMatchup.value.away_suspended_pitcher_id)?0:selectedMatchup.value.away_current_out),
+        batters_faced : gameCurrentInfo.value.home_current_batting_number - ((getPlayerId(awayPitcher)!==selectedMatchup.value.away_suspended_pitcher_id)?0:selectedMatchup.value.home_current_batting_number)
     }, awayPitcher);
     
     gameCurrentInfo.value.home_pitch_count = 0;
