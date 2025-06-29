@@ -14,7 +14,7 @@ export const verifyToken = async (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const accessToken = authHeader?.split(' ')[1];
     const refreshToken = req.cookies.refreshToken;
-
+    
     if (accessToken) {
         try {
             const decoded = jwt.verify(accessToken, process.env.JWT_SECRET);
@@ -37,7 +37,7 @@ export const verifyToken = async (req, res, next) => {
                 `SELECT * FROM refresh_tokens WHERE token = $1 AND user_id = $2 AND expires_at > NOW() LIMIT 1`,
                 [refreshToken, decodedRefresh.userId]
             );
-
+            
             if (result.rows.length === 0) {
                 return sendInvalidTokenRequest(res);
             }
@@ -45,7 +45,6 @@ export const verifyToken = async (req, res, next) => {
             const refreshTokenExpiresAt = new Date(result.rows[0].expires_at);
             const now = new Date();
             const remainingTime = refreshTokenExpiresAt - now;
-
             let newRefreshToken = refreshToken;
             // 남은 시간이 7일 이하일 경우 새 refreshToken 발급 및 갱신
             if (remainingTime <= 7 * 24 * 60 * 60 * 1000) {
@@ -55,10 +54,10 @@ export const verifyToken = async (req, res, next) => {
                     { expiresIn: '14d' }
                 );
 
-                await client.query(
+                /*await client.query(
                     `UPDATE refresh_tokens SET expires_at = NOW() WHERE token = $1`,
                     [refreshToken]
-                );
+                );*/
 
                 await client.query(
                     `INSERT INTO refresh_tokens (token, user_id, expires_at)
