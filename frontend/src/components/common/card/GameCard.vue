@@ -21,7 +21,7 @@
                 <span class="font-weight-medium game-team-name text-truncate">{{ game.away_team }}</span>
                 
             </v-col>
-            <v-col cols="2" class="d-flex">
+            <v-col cols="2" class="d-flex align-center justify-center">
                 <h2 class="font-weight-bold">vs</h2>
             </v-col>
             <v-col
