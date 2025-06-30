@@ -13,7 +13,7 @@ router.get('/team/:teamId', getKboTeamDetail);
 router.get('/top/:limit/batter', getTopBatters);
 router.get('/top/:limit/pitcher', getTopPitchers);
 
-router.get('/games/schedule', getKboGameSchedules);
+router.get('/games/schedule/:date', getKboGameSchedules);
 
 router.get('/player/list', getKboPlayerList);
 router.get('/player/:playerId', getKboPlayerDetail);

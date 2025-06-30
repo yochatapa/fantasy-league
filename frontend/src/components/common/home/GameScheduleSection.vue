@@ -22,7 +22,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import GameCard from '@/components/common/card/GameCard.vue'
 import { Swiper, SwiperSlide } from 'swiper/vue'
 import { Navigation } from 'swiper/modules';
@@ -34,9 +34,11 @@ import 'swiper/css/navigation'
 const gameVisible = ref(false);
 const gameSchedule = ref([])
 
+const today = new Date().toISOString().split('T')[0].split('-').join('.'); //YYYY-MM-DD
+
 onMounted(async () => {
     try {
-        const res = await commonFetch('/api/kbo/games/schedule')
+        const res = await commonFetch(`/api/kbo/games/schedule/${today}`)
         if(res.success){
             gameSchedule.value = res.data.gameSchedules
             if(gameSchedule.value?.length > 0) gameVisible.value = true;
@@ -53,19 +55,23 @@ const swiperNavigationOptions = {
     prevEl: '.swiper-button-prev.game',
 };
 
-const breakpoints = {
-    // 화면 크기에 따라 슬라이드 개수를 조정
+const slidesToShow = computed(() => Math.min(gameSchedule.value.length, 5))
+
+const breakpoints = computed(() => ({
     320: {
-        slidesPerView: 1,  // 작은 화면에서는 1개씩
+        slidesPerView: Math.min(slidesToShow.value, 1),
     },
     600: {
-        slidesPerView: 2,  // 중간 화면에서는 2개씩
+        slidesPerView: Math.min(slidesToShow.value, 2),
     },
-    900: {
-        slidesPerView: 3,  // 큰 화면에서는 3개씩
+    800: {
+        slidesPerView: Math.min(slidesToShow.value, 3),
+    },
+    1000: {
+        slidesPerView: Math.min(slidesToShow.value, 4),
     },
     1200: {
-        slidesPerView: 4,  // 더 큰 화면에서는 4개씩
+        slidesPerView: Math.min(slidesToShow.value, 5),
     },
-}
+}));
 </script>
