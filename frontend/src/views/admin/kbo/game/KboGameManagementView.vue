@@ -1253,7 +1253,6 @@ const stadium = ref(null);
 const gameTime = ref('18:30');
 const gameType = ref('normal');
 
-const today = new Date().toISOString().split('T')[0].split('-').join('.'); //YYYY-MM-DD
 const tomorrow = ref(new Date(new Date(formattedDate.value.replace(/\./g, '-')).getTime() + 86400000).toISOString().split('T')[0].split('-').join('.'));
 
 const suspendedStadium = ref(null)

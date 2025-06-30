@@ -27,6 +27,7 @@ import GameCard from '@/components/common/card/GameCard.vue'
 import { Swiper, SwiperSlide } from 'swiper/vue'
 import { Navigation } from 'swiper/modules';
 import { commonFetch } from '@/utils/common/commonFetch';
+import { formatDate } from '@/utils/common/dateUtils.js';
 import 'swiper/css'
 import 'swiper/css/pagination'
 import 'swiper/css/navigation'
@@ -34,7 +35,7 @@ import 'swiper/css/navigation'
 const gameVisible = ref(false);
 const gameSchedule = ref([])
 
-const today = new Date().toISOString().split('T')[0].split('-').join('.'); //YYYY-MM-DD
+const today = formatDate(new Date());
 
 onMounted(async () => {
     try {
