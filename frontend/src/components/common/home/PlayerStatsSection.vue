@@ -1,10 +1,10 @@
 <template>
     <v-row>
-        <v-col cols="12">
+        <v-col cols="12" v-if="batterVisible">
             <h3 class="font-weight-bold mb-2">타자 TOP 5</h3>
         </v-col>
 
-        <v-col cols="12" class="d-flex position-relative justify-center">
+        <v-col cols="12" class="d-flex position-relative justify-center" v-if="batterVisible">
             <swiper 
                 :breakpoints="breakpoints"
                 :space-between="20" 
@@ -19,11 +19,11 @@
             <div class="swiper-button-prev batter"></div>
         </v-col>
 
-        <v-col cols="12" class="mt-6">
+        <v-col cols="12" class="mt-6" v-if="pitcherVisible">
             <h3 class="font-weight-bold mb-2">투수 TOP 5</h3>
         </v-col>
 
-        <v-col cols="12" class="d-flex position-relative justify-center">
+        <v-col cols="12" class="d-flex position-relative justify-center" v-if="pitcherVisible">
             <swiper 
                 :breakpoints="breakpoints"
                 :space-between="20" 
@@ -54,8 +54,10 @@ onMounted(async ()=>{
     await fetchTopStats();
 })
 
+const batterVisible = ref(false);
+const pitcherVisible = ref(false);
 const batterStats = ref([])
-const pitcherStats = ref([])
+const pitcherStats = ref([]);
 
 const fetchTopStats = async () => {
     try {
@@ -66,12 +68,14 @@ const fetchTopStats = async () => {
 
         if (batterRes.success) {
             batterStats.value = batterRes.data
+            if(batterStats.value.length > 0) batterVisible.value = true;
         } else {
             throw new Error('batter 실패')
         }
 
         if (pitcherRes.success) {
             pitcherStats.value = pitcherRes.data
+            if(pitcherStats.value.length > 0) pitcherVisible.value = true;
         } else {
             throw new Error('pitcher 실패')
         }

@@ -1,10 +1,10 @@
 <template>
     <v-row>
-        <v-col cols="12">
+        <v-col cols="12" v-if="gameVisible">
             <h3 class="font-weight-bold mb-2">경기 일정</h3>
         </v-col>
 
-        <v-col cols="12" class="d-flex position-relative justify-center">
+        <v-col cols="12" class="d-flex position-relative justify-center" v-if="gameVisible">
             <swiper 
                 :breakpoints="breakpoints" 
                 :space-between="20" 
@@ -22,71 +22,36 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import GameCard from '@/components/common/card/GameCard.vue'
+import { Swiper, SwiperSlide } from 'swiper/vue'
+import { Navigation } from 'swiper/modules';
+import { commonFetch } from '@/utils/common/commonFetch';
+import 'swiper/css'
+import 'swiper/css/pagination'
+import 'swiper/css/navigation'
 
-const gameSchedule = ref([
-    {
-        homeTeam: '키움',
-        awayTeam: 'LG',
-        gameTime: '2025-04-26T18:00:00',
-        homeTeamIcon: 'https://via.placeholder.com/30x30?text=키움',
-        awayTeamIcon: 'https://via.placeholder.com/30x30?text=LG',
-        homeScore: 3,
-        awayScore: 5,
-        location: '고척 스카이돔',
-        status: 'scheduled',
-        currentInning: null,
-    },
-    {
-        homeTeam: '삼성',
-        awayTeam: 'KIA',
-        gameTime: '2025-04-26T19:00:00',
-        homeTeamIcon: 'https://via.placeholder.com/30x30?text=삼성',
-        awayTeamIcon: 'https://via.placeholder.com/30x30?text=KIA',
-        homeScore: 4,
-        awayScore: 2,
-        location: '대구 삼성 라이온즈 파크',
-        status: 'ongoing',
-        currentInning: 5,
-    },
-    {
-        homeTeam: '롯데',
-        awayTeam: 'SSG',
-        gameTime: '2025-04-27T14:00:00',
-        homeTeamIcon: 'https://via.placeholder.com/30x30?text=롯데',
-        awayTeamIcon: 'https://via.placeholder.com/30x30?text=SSG',
-        homeScore: 7,
-        awayScore: 6,
-        location: '사직야구장',
-        status: 'finished',
-        currentInning: null,
-    },
-    {
-        homeTeam: '롯데',
-        awayTeam: 'SSG',
-        gameTime: '2025-04-27T14:00:00',
-        homeTeamIcon: 'https://via.placeholder.com/30x30?text=롯데',
-        awayTeamIcon: 'https://via.placeholder.com/30x30?text=SSG',
-        homeScore: 7,
-        awayScore: 6,
-        location: '사직야구장',
-        status: 'finished',
-        currentInning: null,
-    },
-    {
-        homeTeam: '롯데',
-        awayTeam: 'SSG',
-        gameTime: '2025-04-27T14:00:00',
-        homeTeamIcon: 'https://via.placeholder.com/30x30?text=롯데',
-        awayTeamIcon: 'https://via.placeholder.com/30x30?text=SSG',
-        homeScore: 7,
-        awayScore: 6,
-        location: '사직야구장',
-        status: 'finished',
-        currentInning: null,
-    },
-])
+const gameVisible = ref(false);
+const gameSchedule = ref([])
+
+onMounted(async () => {
+    try {
+        const res = await commonFetch('/api/kbo/games/schedule')
+        if(res.success){
+            gameSchedule.value = res.data.gameSchedules
+            if(gameSchedule.value?.length > 0) gameVisible.value = true;
+        }else throw new Error();
+    } catch (e) {
+        console.error('경기 일정 데이터를 불러오지 못했습니다:', e)
+    }
+})
+
+const modules = [Navigation];
+
+const swiperNavigationOptions = {
+    nextEl: '.swiper-button-next.game',
+    prevEl: '.swiper-button-prev.game',
+};
 
 const breakpoints = {
     // 화면 크기에 따라 슬라이드 개수를 조정
@@ -103,19 +68,4 @@ const breakpoints = {
         slidesPerView: 4,  // 더 큰 화면에서는 4개씩
     },
 }
-</script>
-
-<script>
-import { Swiper, SwiperSlide } from 'swiper/vue'
-import { Navigation } from 'swiper/modules';
-import 'swiper/css'
-import 'swiper/css/pagination'
-import 'swiper/css/navigation'
-
-const modules = [Navigation];
-
-const swiperNavigationOptions = {
-    nextEl: '.swiper-button-next.game',
-    prevEl: '.swiper-button-prev.game',
-};
 </script>
