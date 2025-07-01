@@ -2703,11 +2703,11 @@ const setScore = async (scoreBase, rbiConfirmYn = true) => {
             await setPitcherGameStats({
                 earned_runs : 1,
                 runs_allowed : 1,
-            });
+            },runnerInfo?.pitcher);
         }else{
             await setPitcherGameStats({
                 runs_allowed : 1,
-            });
+            },runnerInfo?.pitcher);
         }
     }
 }
