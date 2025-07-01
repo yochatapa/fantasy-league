@@ -149,8 +149,8 @@ const runner_1b = ref({ name: '1루주자', position: '1R', x: 342, y: 340 });
 const runner_2b = ref({ name: '2루주자', position: '2R', x: 250, y: 250 });
 const runner_3b = ref({ name: '3루주자', position: '3R', x: 148, y: 340 });
 const batter = ref({
-    "R" : { name: '타자', position: 'B', x: 200, y: 435 },
-    "L" : { name: '타자', position: 'B', x: 300, y: 435 }
+    "R" : { name: '타자', position: 'B', x: 220, y: 435 },
+    "L" : { name: '타자', position: 'B', x: 280, y: 435 }
 });
 
 const getPlayerPosition = (player, defenseYn=true) => {
