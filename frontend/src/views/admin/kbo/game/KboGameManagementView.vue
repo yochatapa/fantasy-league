@@ -145,24 +145,23 @@
                                 <div class="d-flex justify-center align-center"> 
                                     <p class="text-h6"><strong>{{ GAME_STATUS[selectedMatchup.status] }}</strong> </p>
                                 </div>
-                                <div class="game-header d-flex justify-space-between align-center">
-                                    <div class="d-flex justify-center align-center w-100">
-                                        <img :src="selectedMatchup.away_team_path" alt="Away Team Logo" class="team-logo" />
-                                        <span class="text-h6 font-weight-bold">{{ selectedMatchup.away_team_name }}</span>    
+                                <div class="game-header d-flex justify-space-between align-center mb-3">
+                                    <div class="d-flex justify-center align-center w-100 flex-column">
+                                        <img :src="selectedMatchup.away_team_path" alt="Away Team Logo" class="team-logo mb-1" />
+                                        <span class="text-h6 font-weight-bold team-name text-center">{{ selectedMatchup.away_team_name }}</span>    
                                     </div>
                                     <div class="d-flex justify-center align-center">
                                         <span class="text-h4 font-weight-bold">{{ gameCurrentInfo.away_score }}</span>
-                                        <span class="vs mx-8">VS</span>
+                                        <span class="vs text-h4 font-weight-bold mx-2">:</span>
                                         <span class="text-h4 font-weight-bold">{{ gameCurrentInfo.home_score }}</span>
                                     </div>
-                                    <div class="d-flex justify-center align-center w-100">
-                                        
-                                        <span class="text-h6 font-weight-bold">{{ selectedMatchup.home_team_name }}</span>
-                                        <img :src="selectedMatchup.home_team_path" alt="Home Team Logo" class="team-logo" />
+                                    <div class="d-flex justify-center align-center w-100 flex-column">
+                                        <img :src="selectedMatchup.home_team_path" alt="Home Team Logo" class="team-logo mb-1" />
+                                        <span class="text-h6 font-weight-bold team-name text-center">{{ selectedMatchup.home_team_name }}</span>
                                     </div>
                                 </div>
-                                <div class="d-flex justify-center flex-column align-center mt-2">
-                                    <p><strong>경기장:</strong> {{ STADIUMS.find(sdm => sdm.code === selectedMatchup.stadium)?.name??'' }}</p>
+                                <div class="d-flex justify-center flex-column align-center mb-3">
+                                    <p class="mb-1"><strong>경기장:</strong> {{ STADIUMS.find(sdm => sdm.code === selectedMatchup.stadium)?.name??'' }}</p>
                                     <p><strong>경기일시:</strong> {{ selectedMatchup.game_date }} {{ selectedMatchup.game_time }}</p>
                                 </div>
                                 <div class="d-flex justify-center align-center mt-2" style="gap:8px;">
@@ -580,31 +579,6 @@
                                     </div>
                                 </v-col>
                             </v-row>
-                            <!-- <v-tabs v-model="activeTab">
-                                <v-tab value="0" v-if="selectedMatchup.status === 'playball'">타자 기록 등록</v-tab>
-                                <v-tab value="1" v-if="selectedMatchup.status === 'playball'">투수 기록 등록</v-tab>
-                            </v-tabs>
-
-                            <v-window v-model="activeTab">
-                                <v-window-item value="1" v-if="selectedMatchup.status === 'playball'">
-                                    <v-container>
-                                        <v-row>
-                                            <v-col cols="12">
-                                                <p>타자 기록 화면이 여기에 표시됩니다.</p>
-                                            </v-col>
-                                        </v-row>
-                                    </v-container>
-                                </v-window-item>
-                                <v-window-item value="2" v-if="selectedMatchup.status === 'playball'">
-                                    <v-container>
-                                        <v-row>
-                                            <v-col cols="12">
-                                                <p>투수 기록 화면이 여기에 표시됩니다.</p>
-                                            </v-col>
-                                        </v-row>
-                                    </v-container>
-                                </v-window-item>
-                            </v-window> -->
                         </v-card-text>
                     </v-card>
                 </v-col>
@@ -717,31 +691,6 @@
                                     </div>
                                 </v-col>
                             </v-row>
-                            <!-- <v-tabs v-model="activeTab">
-                                <v-tab value="0" v-if="selectedMatchup.status === 'playball'">타자 기록 등록</v-tab>
-                                <v-tab value="1" v-if="selectedMatchup.status === 'playball'">투수 기록 등록</v-tab>
-                            </v-tabs>
-
-                            <v-window v-model="activeTab">
-                                <v-window-item value="1" v-if="selectedMatchup.status === 'playball'">
-                                    <v-container>
-                                        <v-row>
-                                            <v-col cols="12">
-                                                <p>타자 기록 화면이 여기에 표시됩니다.</p>
-                                            </v-col>
-                                        </v-row>
-                                    </v-container>
-                                </v-window-item>
-                                <v-window-item value="2" v-if="selectedMatchup.status === 'playball'">
-                                    <v-container>
-                                        <v-row>
-                                            <v-col cols="12">
-                                                <p>투수 기록 화면이 여기에 표시됩니다.</p>
-                                            </v-col>
-                                        </v-row>
-                                    </v-container>
-                                </v-window-item>
-                            </v-window> -->
                         </v-card-text>
                     </v-card>
                 </v-col>
@@ -4255,5 +4204,9 @@ onMounted(async ()=>{
     overflow-y: auto;
     overflow-x: hidden;
     max-height: 100%;
+}
+
+.team-name {
+    word-break: keep-all;
 }
 </style>

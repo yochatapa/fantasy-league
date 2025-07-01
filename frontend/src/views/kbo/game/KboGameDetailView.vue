@@ -1,8 +1,8 @@
 <template>
     <!-- 상단 달력 -->
-    <v-row class="mb-4">
+    <v-row class="mb-4" v-if="selectedMatchup">
         <v-col cols="12" class="d-flex justify-space-between align-center">
-            <span class="text-h6 font-weight-bold">KBO 경기 관리</span>
+            <span class="text-h6 font-weight-bold">KBO 경기 정보</span>
         </v-col>
     </v-row>
     
@@ -19,34 +19,30 @@
                                 <div class="d-flex justify-center align-center"> 
                                     <p class="text-h6"><strong>{{ GAME_STATUS[selectedMatchup.status] }}</strong> </p>
                                 </div>
-                                <div class="game-header d-flex justify-space-between align-center">
-                                    <div class="d-flex justify-center align-center w-100">
-                                        <img :src="selectedMatchup.away_team_path" alt="Away Team Logo" class="team-logo" />
-                                        <span class="text-h6 font-weight-bold">{{ selectedMatchup.away_team_name }}</span>    
+                                <div class="game-header d-flex justify-space-between align-center mb-3">
+                                    <div class="d-flex justify-center align-center w-100 flex-column">
+                                        <img :src="selectedMatchup.away_team_path" alt="Away Team Logo" class="team-logo mb-1" />
+                                        <span class="text-h6 font-weight-bold team-name text-center">{{ selectedMatchup.away_team_name }}</span>    
                                     </div>
                                     <div class="d-flex justify-center align-center">
                                         <span class="text-h4 font-weight-bold">{{ gameCurrentInfo.away_score }}</span>
-                                        <span class="vs mx-8">VS</span>
+                                        <span class="vs text-h4 font-weight-bold mx-2">:</span>
                                         <span class="text-h4 font-weight-bold">{{ gameCurrentInfo.home_score }}</span>
                                     </div>
-                                    <div class="d-flex justify-center align-center w-100">
-                                        
-                                        <span class="text-h6 font-weight-bold">{{ selectedMatchup.home_team_name }}</span>
-                                        <img :src="selectedMatchup.home_team_path" alt="Home Team Logo" class="team-logo" />
+                                    <div class="d-flex justify-center align-center w-100 flex-column">
+                                        <img :src="selectedMatchup.home_team_path" alt="Home Team Logo" class="team-logo mb-1" />
+                                        <span class="text-h6 font-weight-bold team-name text-center">{{ selectedMatchup.home_team_name }}</span>
                                     </div>
                                 </div>
-                                <div class="d-flex justify-center flex-column align-center mt-2">
-                                    <p><strong>경기장:</strong> {{ STADIUMS.find(sdm => sdm.code === selectedMatchup.stadium)?.name??'' }}</p>
+                                <div class="d-flex justify-center flex-column align-center">
+                                    <p class="mb-1"><strong>경기장:</strong> {{ STADIUMS.find(sdm => sdm.code === selectedMatchup.stadium)?.name??'' }}</p>
                                     <p><strong>경기일시:</strong> {{ selectedMatchup.game_date }} {{ selectedMatchup.game_time }}</p>
                                 </div>
-                            </div>
-                            <div v-else class="text-center">
-                                <span class="text-h6">선택된 경기가 없습니다.</span>
                             </div>
                         </v-card-text>
                     </v-card>
                 </v-col>
-                <v-col cols="12" md="6">
+                <v-col cols="12" md="6" v-if="lineupYn && selectedMatchup.status !== 'scheduled'">
                     <v-card class="h-100">
                         <v-card-title>경기 중계</v-card-title>
                         <v-divider></v-divider>
@@ -240,7 +236,7 @@
                         </v-card-text>
                     </v-card>
                 </v-col>
-                <v-col cols="12" md="6">
+                <v-col cols="12" :md="selectedMatchup.status === 'scheduled'?12:6" v-if="lineupYn">
                     <v-card class="h-100">
                         <v-card-title>라인업</v-card-title>
                         <v-divider></v-divider>
@@ -485,11 +481,6 @@
                 </v-col>
             </v-row>
         </v-col>
-        <v-col cols="12" v-else>
-            <v-card class="h-100 d-flex justify-center align-center">
-                <v-card-title>선택된 경기가 없습니다.</v-card-title>
-            </v-card>
-        </v-col>
     </v-row>
 </template>
 
@@ -559,24 +550,7 @@ const suspendedStadium = ref(null)
 const suspendedGameDate = ref(tomorrow.value)
 const suspendedGameTime = ref('18:30')
 
-const gameTypeList = [
-    {
-        code : 'normal',
-        name : '정규경기'
-    },
-    {
-        code : 'dh1',
-        name : 'DH1'
-    },
-    {
-        code : 'dh2',
-        name : 'DH2'
-    },
-    {
-        code : 'suspended',
-        name : '서스펜디드'
-    }
-]
+const lineupYn = computed(()=>lineupList.value.filter(ll => ll.away.length > 0 && ll.home.length >0).length=== 10);
 
 const canAddMatchup = computed(() => {
     return (
@@ -1266,5 +1240,9 @@ onMounted(async ()=>{
     overflow-y: auto;
     overflow-x: hidden;
     max-height: 100%;
+}
+
+.team-name {
+    word-break: keep-all;
 }
 </style>
