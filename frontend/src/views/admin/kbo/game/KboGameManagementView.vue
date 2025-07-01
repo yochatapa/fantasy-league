@@ -1434,8 +1434,8 @@ const pitcherHeaders = [
     { title: '이름', key: 'player_name', fixed: true,},
     { title: '이닝', key: 'outs_pitched_display', nowrap: true, align: 'center' },
     // { title: '아웃수', key: 'outs_pitched', nowrap: true, align: 'center' },
-    { title: '상대한 타자 수', key: 'batters_faced', nowrap: true, align: 'center' },
-    { title: '투구 수', key: 'pitches_thrown', nowrap: true, align: 'center' },
+    { title: '상대타자', key: 'batters_faced', nowrap: true, align: 'center' },
+    { title: '투구수', key: 'pitches_thrown', nowrap: true, align: 'center' },
     { title: '피안타', key: 'hits_allowed', nowrap: true, align: 'center' },
     { title: '피홈런', key: 'home_runs_allowed', nowrap: true, align: 'center' },
     { title: '실점', key: 'runs_allowed', nowrap: true, align: 'center' },
@@ -1447,7 +1447,7 @@ const pitcherHeaders = [
     { title: '패', key: 'losses', nowrap: true, align: 'center' },
     { title: '세이브', key: 'saves', nowrap: true, align: 'center' },
     { title: '홀드', key: 'holds', nowrap: true, align: 'center' },
-    { title: '블론세이브', key: 'blown_saves', nowrap: true, align: 'center' }
+    { title: '블론', key: 'blown_saves', nowrap: true, align: 'center' }
 ];
 
 // 필터링된 데이터
@@ -3781,6 +3781,15 @@ const setSacrificeFly = async () => {
     });
 
     await setScore(3,false);
+
+    if(isAway.value){
+        gameCurrentInfo.value.home_pitch_count++;
+        gameCurrentInfo.value.home_current_pitch_count++;
+    }
+    else{
+        gameCurrentInfo.value.away_pitch_count++;
+        gameCurrentInfo.value.away_current_pitch_count++;
+    }
 
     await setOut();
 
