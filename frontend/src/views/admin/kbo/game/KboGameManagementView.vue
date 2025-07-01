@@ -148,21 +148,124 @@
                                 <div class="game-header d-flex justify-space-between align-center mb-3">
                                     <div class="d-flex justify-center align-center w-100 flex-column">
                                         <img :src="selectedMatchup.away_team_path" alt="Away Team Logo" class="team-logo mb-1" />
-                                        <span class="text-h6 font-weight-bold team-name text-center">{{ selectedMatchup.away_team_name }}</span>    
+                                        <span :class="[
+                                            'font-weight-bold',
+                                            'team-name',
+                                            'text-center',
+                                            { 'text-h6': !isMobile }
+                                        ]">{{ selectedMatchup.away_team_name }}</span>    
                                     </div>
                                     <div class="d-flex justify-center align-center">
-                                        <span class="text-h4 font-weight-bold">{{ gameCurrentInfo.away_score }}</span>
-                                        <span class="vs text-h4 font-weight-bold mx-2">:</span>
-                                        <span class="text-h4 font-weight-bold">{{ gameCurrentInfo.home_score }}</span>
+                                        <span :class="[
+                                            isMobile ? 'text-h5' : 'text-h4',
+                                            'font-weight-bold'
+                                        ]">{{ gameCurrentInfo.away_score }}</span>
+                                        <span :class="[
+                                            isMobile ? 'text-h5' : 'text-h4',
+                                            'font-weight-bold',
+                                            'mx-2',
+                                            'vs'
+                                        ]">:</span>
+                                        <span :class="[
+                                            isMobile ? 'text-h5' : 'text-h4',
+                                            'font-weight-bold'
+                                        ]">{{ gameCurrentInfo.home_score }}</span>
                                     </div>
                                     <div class="d-flex justify-center align-center w-100 flex-column">
                                         <img :src="selectedMatchup.home_team_path" alt="Home Team Logo" class="team-logo mb-1" />
-                                        <span class="text-h6 font-weight-bold team-name text-center">{{ selectedMatchup.home_team_name }}</span>
+                                        <span :class="[
+                                            'font-weight-bold',
+                                            'team-name',
+                                            'text-center',
+                                            { 'text-h6': !isMobile }
+                                        ]">{{ selectedMatchup.home_team_name }}</span>
                                     </div>
                                 </div>
                                 <div class="d-flex justify-center flex-column align-center mb-3">
                                     <p class="mb-1"><strong>경기장:</strong> {{ STADIUMS.find(sdm => sdm.code === selectedMatchup.stadium)?.name??'' }}</p>
                                     <p><strong>경기일시:</strong> {{ selectedMatchup.game_date }} {{ selectedMatchup.game_time }}</p>
+                                </div>
+                                <div>
+                                    <v-table class="no-cell-padding">
+                                        <thead>
+                                            <tr>
+                                                <th class="text-center" :style="{ width : isMobile?'':'150px' }">팀</th>
+                                                <th
+                                                    class="text-center"
+                                                    v-for="inning in Math.max(inningStats.maxInning || 9, 9)"
+                                                    :key="'inning-' + inning"
+                                                >
+                                                    {{ inning }}
+                                                </th>
+                                                <th
+                                                    class="text-center"
+                                                    v-for="label in ['R', 'H', 'E', 'B']"
+                                                    :key="'label-' + label"
+                                                >
+                                                    {{ label }}
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- Away team row -->
+                                            <tr>
+                                                <td>
+                                                    <div class="d-flex align-center justify-center">
+                                                        <img
+                                                            :src="selectedMatchup.away_team_path"
+                                                            alt="Away Team Logo"
+                                                            class="team-logo"
+                                                            style="height:2rem"
+                                                            
+                                                        />
+                                                        <span class="font-weight-bold team-name text-center" v-if="!isMobile">
+                                                            {{ selectedMatchup.away_team_name }}
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                                <td
+                                                    class="text-center"
+                                                    v-for="(inning, index) in Math.max(inningStats.maxInning || 9, 9)"
+                                                    :key="'away-inning-' + index"
+                                                >
+                                                    {{ inningStats.away?.[index]?.runs ?? (index<gameCurrentInfo.inning?'0':'') }}
+                                                </td>
+                                                <td class="text-center">{{ inningStats.summary?.away?.R }}</td>
+                                                <td class="text-center">{{ inningStats.summary?.away?.H }}</td>
+                                                <td class="text-center">{{ inningStats.summary?.away?.E }}</td>
+                                                <td class="text-center">{{ inningStats.summary?.away?.B }}</td>
+                                            </tr>
+
+                                            <!-- Home team row -->
+                                            <tr>
+                                                <td>
+                                                    <div class="d-flex align-center justify-center">
+                                                        <img
+                                                            :src="selectedMatchup.home_team_path"
+                                                            alt="Home Team Logo"
+                                                            class="team-logo"
+                                                            style="height:2rem"
+                                                            
+                                                        />
+                                                        <span class="font-weight-bold team-name text-center" v-if="!isMobile">
+                                                            {{ selectedMatchup.home_team_name }}
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                                <td
+                                                    class="text-center"
+                                                    v-for="(inning, index) in Math.max(inningStats.maxInning || 9, 9)"
+                                                    :key="'home-inning-' + index"
+                                                >   
+                                                    {{ inningStats.home?.[index]?.runs ?? ((index==gameCurrentInfo.inning-1 && gameCurrentInfo.inning_half === 'bottom') || index<gameCurrentInfo.inning-1?'0':'') }}
+                                                </td>
+                                                <td class="text-center">{{ inningStats.summary?.home?.R }}</td>
+                                                <td class="text-center">{{ inningStats.summary?.home?.H }}</td>
+                                                <td class="text-center">{{ inningStats.summary?.home?.E }}</td>
+                                                <td class="text-center">{{ inningStats.summary?.home?.B }}</td>
+                                            </tr>
+                                        </tbody>
+                                    </v-table>
                                 </div>
                                 <div class="d-flex justify-center align-center mt-2" style="gap:8px;">
                                     <v-chip link v-if="selectedMatchup.status === 'scheduled' && lineupList.filter(ll => ll.away.length > 0 && ll.home.length >0).length=== 10" color="primary" @click="setGameStart();">
@@ -206,7 +309,6 @@
                                     >
                                         서스펜디드
                                     </v-chip>
-                                    
                                     <v-chip
                                         v-if="selectedMatchup.status === 'suspended' && selectedMatchup.game_id === selectedMatchup.last_suspended_game_id"
                                         color="error"
@@ -1159,6 +1261,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, nextTick } from 'vue';
+import { useDisplay } from 'vuetify';
 import { STADIUMS, POSITIONS, GAME_STATUS } from '@/utils/code/code.js';
 import { commonFetch, getNewFormData } from '@/utils/common/commonFetch';
 import { formatDate } from '@/utils/common/dateUtils.js';
@@ -1169,6 +1272,9 @@ import CommonDateInput from '@/components/common/CommonDateInput.vue';
 
 const router = useRouter();
 const route = useRoute();
+
+const { mobile } = useDisplay();
+const isMobile = computed(() => mobile.value);
 
 const selectedDate = ref(route.query.date?new Date(route.query.date):new Date());
 const formattedDate = ref(route.query.date??formatDate(selectedDate.value));
@@ -1226,6 +1332,16 @@ const gameTypeList = [
         name : '서스펜디드'
     }
 ]
+
+const inningStats = ref({
+    home: [],
+    away: [],
+    summary: {
+        home: { R: 0, H: 0, E: 0, B: 0 },
+        away: { R: 0, H: 0, E: 0, B: 0 }
+    },
+    maxInning: 9
+});
 
 const canAddMatchup = computed(() => {
     return (
@@ -1546,13 +1662,26 @@ watch(gamedayInfo, () => {
 
 watch(()=>currentBatter.value, async (newVal) => {
     if(!!newVal.game_id && !!getPlayerId(newVal)){
-        const response = await commonFetch(`/api/admin/game/${newVal.game_id}/batter/${getPlayerId(newVal)}/current-stats`,{
-            method : "GET"
-        })
+        const [currentInfoRes, inningInfoRes] = await Promise.all([
+                commonFetch(`/api/admin/game/${newVal.game_id}/batter/${getPlayerId(newVal)}/current-stats`),
+                commonFetch(`/api/admin/game/inning-info/${newVal.game_id}`)
+            ]);
 
-        if(response.success && response?.data?.currentBatterStats?.[0]){
-            currentBatter.value.stats = response?.data?.currentBatterStats?.[0]
+        if(currentInfoRes.success && currentInfoRes?.data?.currentBatterStats?.[0]){
+            currentBatter.value.stats = currentInfoRes?.data?.currentBatterStats?.[0]
         }else currentBatter.value.stats = {};
+
+        if(inningInfoRes.success && inningInfoRes?.data?.inningInfo){
+            inningStats.value = inningInfoRes.data?.inningInfo
+        }else inningStats.value = {
+            home: [],
+            away: [],
+            summary: {
+                home: { R: 0, H: 0, E: 0, B: 0 },
+                away: { R: 0, H: 0, E: 0, B: 0 }
+            },
+            maxInning: 9
+        }
     }
 })
 
@@ -1841,6 +1970,16 @@ const clearLineup = () => {
     errorPlayer.value = null;
 
     currentInning.value = 1;
+
+    inningStats.value = {
+        home: [],
+        away: [],
+        summary: {
+            home: { R: 0, H: 0, E: 0, B: 0 },
+            away: { R: 0, H: 0, E: 0, B: 0 }
+        },
+        maxInning: 9
+    }
 }
 
 const getPlayerName = target => {
@@ -2109,6 +2248,29 @@ const setCurrentGamedayInfo = async (type) => {
     }
 }
 
+const setInningGameStats = async (teamId, stats = {}) => {
+    try {
+        const response = await commonFetch(`/api/admin/game/inning/stats`, {
+            method: 'POST',
+            body: {
+                game_id: selectedMatchup.value.game_id,
+                team_id: teamId,
+                inning: gameCurrentInfo.value.inning,
+                inning_half: gameCurrentInfo.value.inning_half,
+                runs: stats.runs ?? 0,
+                hits: stats.hits ?? 0,
+                errors: stats.errors ?? 0,
+                base_on_balls: stats.base_on_balls ?? 0,
+                strikeouts: stats.strikeouts ?? 0
+            }
+        });
+        return response;
+    } catch (error) {
+        console.error(error);
+        alert("이닝 기록 저장 중 오류가 발생했습니다.\n다시 시도해주세요.", "error");
+    }
+};
+
 const setBatterGameStats = async (stats, batter, dailyYn=false, seasonYn=false) => {
     if(!!!batter) batter = currentBatter.value;
 
@@ -2203,6 +2365,19 @@ const setOut = async (battingNumberYn=true, confirmYn=true) => {
         gameCurrentInfo.value.runner_2b = null;
         gameCurrentInfo.value.runner_3b = null;
 
+        if(!gameCurrentInfo.value.is_available_stat){
+            if(isAway.value){
+                gameCurrentInfo.value.away_batting_number++;
+                gameCurrentInfo.value.away_current_batting_number++;
+            }
+            else{
+                gameCurrentInfo.value.home_batting_number++;
+                gameCurrentInfo.value.home_current_batting_number++;
+            }
+        }
+
+        gameCurrentInfo.value.is_available_stat = true;
+        
         if(
             gameCurrentInfo.value.inning >= 9
             && (
@@ -2278,6 +2453,9 @@ const setStrike = async () => {
             plate_appearances : 1,
             strikeouts : 1,
         });
+        await setInningGameStats(isAway.value?selectedMatchup.value.away_team_id:selectedMatchup.value.home_team_id,{
+            strikeouts : 1
+        })
         await setPitcherGameStats({
             strikeouts : 1,
         });
@@ -2310,6 +2488,9 @@ const setSwingAndMiss = async () => {
             plate_appearances : 1,
             strikeouts : 1,
         });
+        await setInningGameStats(isAway.value?selectedMatchup.value.away_team_id:selectedMatchup.value.home_team_id,{
+            strikeouts : 1
+        })
         await setPitcherGameStats({
             strikeouts : 1,
         });
@@ -2341,6 +2522,9 @@ const setPitchclockStrike = async () => {
             plate_appearances : 1,
             strikeouts : 1,
         });
+        await setInningGameStats(isAway.value?selectedMatchup.value.away_team_id:selectedMatchup.value.home_team_id,{
+            strikeouts : 1
+        })
         await setPitcherGameStats({
             strikeouts : 1,
         });
@@ -2370,6 +2554,9 @@ const setBall = async () => {
         gameCurrentInfo.value.strike = 0;
         gameCurrentInfo.value.ball = 0;
         await setBaseOnBalls(true);
+        await setInningGameStats(isAway.value?selectedMatchup.value.away_team_id:selectedMatchup.value.home_team_id,{
+            base_on_balls : 1
+        })
         await setBatterGameStats({
             plate_appearances : 1,
             walks : 1,
@@ -2408,6 +2595,9 @@ const setPitchclockBall = async () => {
         gameCurrentInfo.value.strike = 0;
         gameCurrentInfo.value.ball = 0;
         await setBaseOnBalls(false);
+        await setInningGameStats(isAway.value?selectedMatchup.value.away_team_id:selectedMatchup.value.home_team_id,{
+            base_on_balls : 1
+        })
         await setBatterGameStats({
             plate_appearances : 1,
             walks : 1,
@@ -2486,8 +2676,12 @@ const setScore = async (scoreBase, rbiConfirmYn = true) => {
 
     await setCurrentGamedayInfo('score:'+scoreBase);
     
-    if(gameCurrentInfo.value.inning_half === "top") gameCurrentInfo.value.away_score++;
+    if(isAway.value) gameCurrentInfo.value.away_score++;
     else gameCurrentInfo.value.home_score++;
+
+    await setInningGameStats(isAway.value?selectedMatchup.value.away_team_id:selectedMatchup.value.home_team_id,{
+        runs : 1
+    })
 
     await setBatterGameStats({
         runs : 1,
@@ -2589,6 +2783,10 @@ const setHit = async()=>{
     }
 
     await setCurrentGamedayInfo('hit');
+
+    await setInningGameStats(isAway.value?selectedMatchup.value.away_team_id:selectedMatchup.value.home_team_id,{
+        hits : 1
+    })
 
     await setBatterGameStats({
         plate_appearances : 1,
@@ -2697,6 +2895,10 @@ const setDouble = async () => {
 
     await setCurrentGamedayInfo('double');
 
+    await setInningGameStats(isAway.value?selectedMatchup.value.away_team_id:selectedMatchup.value.home_team_id,{
+        hits : 1
+    })
+
     await setBatterGameStats({
         plate_appearances : 1,
         at_bats : 1,
@@ -2759,6 +2961,10 @@ const setTriple = async () => {
     }
 
     await setCurrentGamedayInfo('triple');
+
+    await setInningGameStats(isAway.value?selectedMatchup.value.away_team_id:selectedMatchup.value.home_team_id,{
+        hits : 1
+    })
 
     await setBatterGameStats({
         plate_appearances : 1,
@@ -2828,6 +3034,10 @@ const setHomerun = async () => {
     await setScore(4,false)
 
     await setCurrentGamedayInfo('homerun');
+
+    await setInningGameStats(isAway.value?selectedMatchup.value.away_team_id:selectedMatchup.value.home_team_id,{
+        hits : 1
+    })
 
     await setBatterGameStats({
         plate_appearances : 1,
@@ -3733,6 +3943,10 @@ const setHitByPitch = async () => {
 
 const setIntentionalBaseOnBalls = async () => {
     await setCurrentGamedayInfo('intentionalBaseOnBalls');
+
+    await setInningGameStats(isAway.value?selectedMatchup.value.away_team_id:selectedMatchup.value.home_team_id,{
+        base_on_balls : 1
+    })
     
     await setBatterGameStats({
         plate_appearances : 1,
@@ -3829,6 +4043,10 @@ const setError = async () => {
     if(!errorInfo) return alert("실책한 선수 정보가 잘못되었습니다.\n다시 시도해주세요.", "error")
 
     await setCurrentGamedayInfo(`error:${getPlayerPosition(errorInfo)}`);
+
+    await setInningGameStats(isAway.value?selectedMatchup.value.away_team_id:selectedMatchup.value.home_team_id,{
+        errors : 1
+    })
 
     await setBatterGameStats({
         errors : 1,
@@ -4036,6 +4254,10 @@ const setPassedBall = async () => {
 
     const catcherInfo = catcherList[catcherList.length - 1]
 
+    await setInningGameStats(isAway.value?selectedMatchup.value.away_team_id:selectedMatchup.value.home_team_id,{
+        errors : 1
+    })
+
     await setBatterGameStats({
         errors : 1,
     },catcherInfo);
@@ -4173,10 +4395,18 @@ onMounted(async ()=>{
     opacity: var(--v-selected-opacity);
 }
 
+:deep(.border-right){
+    border-right: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+
+:deep(.border-left){
+    border-left: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+
 :deep(.no-cell-padding) th,
 :deep(.no-cell-padding) td {
-    padding-left: 5px !important;
-    padding-right: 5px !important;
+    padding-left: 3px !important;
+    padding-right: 3px !important;
 }
 
 .selected-lineup{

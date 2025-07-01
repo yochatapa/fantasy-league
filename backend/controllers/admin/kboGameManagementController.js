@@ -692,6 +692,92 @@ export const createKboCurrentInfo = async(req,res) => {
     }
 }
 
+export const getKboGameInningStats = async (req, res) => {
+    const { gameId } = req.params;
+
+    if (!gameId) {
+        return sendBadRequest(res, "게임 ID가 누락되었습니다.");
+    }
+
+    try {
+        // 홈/어웨이 팀 ID 가져오기
+        const teamQuery = `
+            SELECT home_team_id, away_team_id
+            FROM kbo_game_master
+            WHERE id = $1
+        `;
+        const { rows: teamRows } = await query(teamQuery, [gameId]);
+        if (teamRows.length === 0) {
+            return sendBadRequest(res, "해당 게임이 존재하지 않습니다.");
+        }
+        const { home_team_id, away_team_id } = teamRows[0];
+
+        // 이닝별 통계 가져오기 (홈/어웨이)
+        const statsQuery = `
+            SELECT
+                team_id,
+                inning,
+                SUM(runs) AS runs,
+                SUM(hits) AS hits,
+                SUM(errors) AS errors,
+                SUM(base_on_balls) AS base_on_balls
+            FROM kbo_game_inning_stats
+            WHERE game_id = $1
+            GROUP BY team_id, inning
+            ORDER BY team_id, inning ASC;
+        `;
+        const { rows: statRows } = await query(statsQuery, [gameId]);
+
+        // 데이터 정리
+        const result = {
+            home: [],
+            away: [],
+            maxInning: 9,
+            summary: {
+                home: { R: 0, H: 0, E: 0, B: 0 },
+                away: { R: 0, H: 0, E: 0, B: 0 }
+            }
+        };
+
+        statRows.forEach(row => {
+            const target = row.team_id === home_team_id ? result.home : result.away;
+
+            // 이닝별 데이터 push (index = inning - 1)
+            target[row.inning - 1] = {
+                inning: row.inning,
+                runs: row.runs,
+                hits: row.hits,
+                errors: row.errors,
+                base_on_balls: row.base_on_balls,
+            };
+
+            // 요약 데이터 누적
+            const summary = row.team_id === home_team_id ? result.summary.home : result.summary.away;
+            summary.R += Number(row.runs) ?? 0;
+            summary.H += Number(row.hits) ?? 0;
+            summary.E += Number(row.errors) ?? 0;
+            summary.B += Number(row.base_on_balls) ?? 0;
+
+            if (row.inning > result.maxInning) {
+                result.maxInning = row.inning;
+            }
+        });
+
+        // 배열 길이를 이닝 수에 맞게 고정 (빈 이닝은 undefined로 남음)
+        result.home.length = result.maxInning;
+        result.away.length = result.maxInning;
+
+        return sendSuccess(res, {
+            message: '이닝별 스탯 조회 성공',
+            inningInfo: result
+        });
+
+    } catch (error) {
+        console.error("이닝별 스탯 조회 실패:", error);
+        return sendServerError(res, error, '이닝별 경기 기록을 조회하는 중 오류가 발생했습니다.');
+    }
+};
+
 export const getKboCurrentInfo = async (req, res) => {
     let { gameId } = req.params;
 
@@ -977,7 +1063,7 @@ export const getKboCurrentInfo = async (req, res) => {
         const gamedayInfo = organizeGameInfo(gameInfo)
 
         return sendSuccess(res, {
-            message: '게임 정보가 조회되었습니다.',
+            message: '게임 현재 정보가 조회되었습니다.',
             gamedayInfo,
             gameInfo,
             lastGameInfo : gameInfo[gameInfo.length-1]
@@ -1027,6 +1113,61 @@ const organizeGameInfo = (gameInfo) => {
     });
 
     return organizedInfo;
+};
+
+export const createGameInningStats = async (req, res) => {
+    const {
+        game_id, inning, inning_half, team_id,
+        runs = 0, hits = 0, errors = 0,
+        base_on_balls = 0, strikeouts = 0
+    } = req.body;
+
+    const accessToken = req.headers['authorization']?.split(' ')[1];
+
+    if (!accessToken) {
+        return sendBadRequest(res, '토큰이 제공되지 않았습니다.');
+    }
+
+    let user;
+    try {
+        user = jwt.verify(accessToken, process.env.JWT_SECRET);
+    } catch (err) {
+        return sendBadRequest(res, '유효하지 않은 토큰입니다.');
+    }
+
+    // 필수 값 확인
+    if (
+        !game_id || !team_id ||
+        inning === undefined || inning === null ||
+        !inning_half
+    ) {
+        return sendBadRequest(res, '필수 입력값을 모두 입력해주세요.');
+    }
+
+    try {
+        await withTransaction(async (client) => {
+            const insertQuery = `
+                INSERT INTO kbo_game_inning_stats (
+                    game_id, inning, inning_half, team_id,
+                    runs, hits, errors, base_on_balls, strikeouts, updated_at
+                ) VALUES (
+                    $1, $2, $3, $4,
+                    $5, $6, $7, $8, $9, CURRENT_TIMESTAMP
+                )
+            `;
+
+            await client.query(insertQuery, [
+                game_id, inning, inning_half, team_id,
+                runs, hits, errors, base_on_balls, strikeouts
+            ]);
+        });
+
+        return sendSuccess(res, {
+            message: '이닝별 경기 기록이 성공적으로 저장되었습니다.'
+        });
+    } catch (error) {
+        return sendServerError(res, error, '이닝별 기록 저장 중 오류가 발생했습니다. 다시 시도해주세요.');
+    }
 };
 
 export const createBatterGameStats = async (req, res) => {
