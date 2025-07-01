@@ -70,7 +70,7 @@ export const getTeamRosterList = async (req, res) => {
                 ft.mimetype
             FROM kbo_team_roster ktr
             LEFT JOIN kbo_team_master ktm ON ktm.id = ktr.team_id
-            LEFT JOIN kbo_player_master kpm ON kpm.id = ktr.player_id
+            INNER JOIN kbo_player_master kpm ON kpm.id = ktr.player_id
             LEFT JOIN file_table ft ON ft.file_id = kpm.main_profile_image::uuid AND ft.sn = 1
             LEFT JOIN kbo_player_season kps ON ktr.player_id = kps.player_id and kps.year = ktr.season_year
             ${whereClause}
@@ -199,8 +199,8 @@ export const getTeamRosterDetail = async (req, res) => {
                 ft.path,
                 ft.mimetype
             FROM kbo_team_roster ktr
-                LEFT JOIN kbo_team_master ktm ON ktm.id = ktr.team_id
-                LEFT JOIN kbo_player_master kpm ON kpm.id = ktr.player_id
+                INNER JOIN kbo_team_master ktm ON ktm.id = ktr.team_id
+                INNER JOIN kbo_player_master kpm ON kpm.id = ktr.player_id
                 LEFT JOIN file_table ft ON ft.file_id = kpm.main_profile_image::uuid AND ft.sn = 1
                 LEFT JOIN kbo_player_season kps ON ktr.player_id = kps.player_id and kps.year = ktr.season_year
             WHERE ktr.team_id = $1
