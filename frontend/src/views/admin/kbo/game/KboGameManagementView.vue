@@ -2287,7 +2287,7 @@ const setBatterGameStats = async (stats, batter, dailyYn=false, seasonYn=false) 
                 , inning : gameCurrentInfo.value.inning
                 , inning_half : gameCurrentInfo.value.inning_half
                 , out : gameCurrentInfo.value.out
-                , batting_number : (batter.team_id===selectedMatchup.value.home_team_id?batter.home_batting_number:gameCurrentInfo.value.away_batting_number)
+                , batting_number : (batter.team_id===selectedMatchup.value.home_team_id?gameCurrentInfo.value.home_batting_number:gameCurrentInfo.value.away_batting_number)
                 , seasonYn
                 , dailyYn
             }
@@ -4316,12 +4316,12 @@ const setGameOver = async (dail) => {
         batters_faced : gameCurrentInfo.value.home_current_batting_number - ((getPlayerId(awayPitcher)!==selectedMatchup.value.away_suspended_pitcher_id)?0:selectedMatchup.value.home_current_batting_number)
     }, awayPitcher);
     
-    gameCurrentInfo.value.home_pitch_count = 0;
-    gameCurrentInfo.value.away_current_batting_number = 0;
-    gameCurrentInfo.value.home_current_out = 0;
-    gameCurrentInfo.value.away_pitch_count = 0;
-    gameCurrentInfo.value.home_current_batting_number = 0;
-    gameCurrentInfo.value.away_current_out = 0;
+    // gameCurrentInfo.value.home_pitch_count = 0;
+    // gameCurrentInfo.value.away_current_batting_number = 0;
+    // gameCurrentInfo.value.home_current_out = 0;
+    // gameCurrentInfo.value.away_pitch_count = 0;
+    // gameCurrentInfo.value.home_current_batting_number = 0;
+    // gameCurrentInfo.value.away_current_out = 0;
 
     await setCurrentGamedayInfo('gameEnd');
     await setCurrentGamedayInfo('lastInfo');
