@@ -12,7 +12,7 @@
                 :navigation="swiperNavigationOptions"
                 class="custom-swiper">
                 <swiper-slide v-for="(game, i) in gameSchedule" :key="i">
-                    <GameCard :game="game"/>
+                    <GameCard :game="game" @click="goToGameDetail(game.id)"/>
                 </swiper-slide>
             </swiper>
             <div class="swiper-button-next game"></div>
@@ -28,6 +28,8 @@ import { Swiper, SwiperSlide } from 'swiper/vue'
 import { Navigation } from 'swiper/modules';
 import { commonFetch } from '@/utils/common/commonFetch';
 import { formatDate } from '@/utils/common/dateUtils.js';
+import { useRoute, useRouter } from 'vue-router';
+import { encryptData } from '@/utils/common/crypto';
 import 'swiper/css'
 import 'swiper/css/pagination'
 import 'swiper/css/navigation'
@@ -36,6 +38,8 @@ const gameVisible = ref(false);
 const gameSchedule = ref([])
 
 const today = formatDate(new Date());
+
+const router = useRouter();
 
 onMounted(async () => {
     try {
@@ -48,6 +52,10 @@ onMounted(async () => {
         console.error('경기 일정 데이터를 불러오지 못했습니다:', e)
     }
 })
+
+const goToGameDetail = game_id => {
+    router.push(`/kbo/game/detail/${encodeURIComponent(encryptData(game_id))}`)
+}
 
 const modules = [Navigation];
 

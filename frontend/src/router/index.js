@@ -18,6 +18,8 @@ import KboPlayerManagementView from '@/views/admin/kbo/player/KboPlayerManagemen
 import KboPlayerAddView from '@/views/admin/kbo/player/KboPlayerAddView.vue'
 import KboGameManagementView from '@/views/admin/kbo/game/KboGameManagementView.vue'
 import KboRosterManagementView from '@/views/admin/kbo/team/KboRosterManagementView.vue'
+
+import KboGameDetailView from '@/views/kbo/game/KboGameDetailView.vue'
 // import KboGameAddView from '@/views/admin/kbo/game/KboGameAddView.vue'
 
 const router = createRouter({
@@ -41,6 +43,12 @@ const router = createRouter({
                     path: 'signup',
                     name: 'signup',
                     component: SignupView,
+                },
+                {
+                    path: '/kbo/game/detail/:encryptedGameId',
+                    name: 'KboGameDetailView',
+                    component: KboGameDetailView,
+                    props: true,
                 },
                 {
                     path: 'league/start',
