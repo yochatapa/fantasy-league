@@ -84,7 +84,7 @@
 
 <script setup>
 import { ref, computed, nextTick } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import validation from '@/utils/common/validation'
 import { commonFetch } from '@/utils/common/commonFetch';
 import { useUserStore } from '@/stores/userStore'
@@ -111,6 +111,7 @@ const passwordRules = computed(() => [
 const email = ref('');
 const password = ref('');
 const router = useRouter();
+const route = useRoute();
 
 const login = async () => {
     if (!email.value) {
@@ -163,7 +164,12 @@ const login = async () => {
                 console.log('로그인 성공');
                 localStorage.setItem('token', response.data.token);
                 userStore.setUser(response.data.user)
-                router.push('/');
+                if(!!!route.query.type) router.push('/');
+                else{
+                    if(route.query.type === "league-join" && !!route.query.code){
+                        router.push(`/league/join?inviteCode=${route.query.code}`);
+                    }else router.push('/');
+                }
             } else {
                 console.error('로그인 실패:', response);
 

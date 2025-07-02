@@ -4,4 +4,5 @@ export const PUBLIC_ROUTES = [
     , '/signup'
     , '/league/join'
     , '/kbo/game/detail'
+    , '/league/join'
 ]

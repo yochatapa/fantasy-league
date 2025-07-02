@@ -79,7 +79,7 @@ const router = createRouter({
                     name: 'LeagueJoin',
                     component: LeagueJoinView,
                     meta : {
-                        requiresAuth : true
+                        requiresAuth : false
                     }
                 },
                 {
