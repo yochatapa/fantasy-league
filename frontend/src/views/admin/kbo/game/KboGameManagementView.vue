@@ -228,7 +228,7 @@
                                                     v-for="(inning, index) in Math.max(inningStats.maxInning || 9, 9)"
                                                     :key="'away-inning-' + index"
                                                 >
-                                                    {{ inningStats.away?.[index]?.runs ?? (index<gameCurrentInfo.inning?'0':'') }}
+                                                    {{ inningStats.away?.[index]?.runs ?? (index<gameCurrentInfo.inning && selectedMatchup.status !== 'scheduled'?'0':'') }}
                                                 </td>
                                                 <td class="text-center">{{ inningStats.summary?.away?.R }}</td>
                                                 <td class="text-center">{{ inningStats.summary?.away?.H }}</td>

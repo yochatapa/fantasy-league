@@ -22,21 +22,124 @@
                                 <div class="game-header d-flex justify-space-between align-center mb-3">
                                     <div class="d-flex justify-center align-center w-100 flex-column">
                                         <img :src="selectedMatchup.away_team_path" alt="Away Team Logo" class="team-logo mb-1" />
-                                        <span class="text-h6 font-weight-bold team-name text-center">{{ selectedMatchup.away_team_name }}</span>    
+                                        <span :class="[
+                                            'font-weight-bold',
+                                            'team-name',
+                                            'text-center',
+                                            { 'text-h6': !isMobile }
+                                        ]">{{ selectedMatchup.away_team_name }}</span>    
                                     </div>
                                     <div class="d-flex justify-center align-center">
-                                        <span class="text-h4 font-weight-bold">{{ gameCurrentInfo.away_score }}</span>
-                                        <span class="vs text-h4 font-weight-bold mx-2">:</span>
-                                        <span class="text-h4 font-weight-bold">{{ gameCurrentInfo.home_score }}</span>
+                                        <span :class="[
+                                            isMobile ? 'text-h5' : 'text-h4',
+                                            'font-weight-bold'
+                                        ]">{{ gameCurrentInfo.away_score }}</span>
+                                        <span :class="[
+                                            isMobile ? 'text-h5' : 'text-h4',
+                                            'font-weight-bold',
+                                            'mx-2',
+                                            'vs'
+                                        ]">:</span>
+                                        <span :class="[
+                                            isMobile ? 'text-h5' : 'text-h4',
+                                            'font-weight-bold'
+                                        ]">{{ gameCurrentInfo.home_score }}</span>
                                     </div>
                                     <div class="d-flex justify-center align-center w-100 flex-column">
                                         <img :src="selectedMatchup.home_team_path" alt="Home Team Logo" class="team-logo mb-1" />
-                                        <span class="text-h6 font-weight-bold team-name text-center">{{ selectedMatchup.home_team_name }}</span>
+                                        <span :class="[
+                                            'font-weight-bold',
+                                            'team-name',
+                                            'text-center',
+                                            { 'text-h6': !isMobile }
+                                        ]">{{ selectedMatchup.home_team_name }}</span>
                                     </div>
                                 </div>
-                                <div class="d-flex justify-center flex-column align-center">
+                                <div class="d-flex justify-center flex-column align-center mb-3">
                                     <p class="mb-1"><strong>경기장:</strong> {{ STADIUMS.find(sdm => sdm.code === selectedMatchup.stadium)?.name??'' }}</p>
                                     <p><strong>경기일시:</strong> {{ selectedMatchup.game_date }} {{ selectedMatchup.game_time }}</p>
+                                </div>
+                                <div>
+                                    <v-table class="no-cell-padding">
+                                        <thead>
+                                            <tr>
+                                                <th class="text-center" :style="{ width : isMobile?'':'150px' }">팀</th>
+                                                <th
+                                                    class="text-center"
+                                                    v-for="inning in Math.max(inningStats.maxInning || 9, 9)"
+                                                    :key="'inning-' + inning"
+                                                >
+                                                    {{ inning }}
+                                                </th>
+                                                <th
+                                                    class="text-center"
+                                                    v-for="label in ['R', 'H', 'E', 'B']"
+                                                    :key="'label-' + label"
+                                                >
+                                                    {{ label }}
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- Away team row -->
+                                            <tr>
+                                                <td>
+                                                    <div class="d-flex align-center justify-center">
+                                                        <img
+                                                            :src="selectedMatchup.away_team_path"
+                                                            alt="Away Team Logo"
+                                                            class="team-logo"
+                                                            style="height:2rem"
+                                                            
+                                                        />
+                                                        <span class="font-weight-bold team-name text-center" v-if="!isMobile">
+                                                            {{ selectedMatchup.away_team_name }}
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                                <td
+                                                    class="text-center"
+                                                    v-for="(inning, index) in Math.max(inningStats.maxInning || 9, 9)"
+                                                    :key="'away-inning-' + index"
+                                                >
+                                                    {{ inningStats.away?.[index]?.runs ?? (index<gameCurrentInfo.inning && selectedMatchup.status !== 'scheduled'?'0':'') }}
+                                                </td>
+                                                <td class="text-center">{{ inningStats.summary?.away?.R }}</td>
+                                                <td class="text-center">{{ inningStats.summary?.away?.H }}</td>
+                                                <td class="text-center">{{ inningStats.summary?.away?.E }}</td>
+                                                <td class="text-center">{{ inningStats.summary?.away?.B }}</td>
+                                            </tr>
+
+                                            <!-- Home team row -->
+                                            <tr>
+                                                <td>
+                                                    <div class="d-flex align-center justify-center">
+                                                        <img
+                                                            :src="selectedMatchup.home_team_path"
+                                                            alt="Home Team Logo"
+                                                            class="team-logo"
+                                                            style="height:2rem"
+                                                            
+                                                        />
+                                                        <span class="font-weight-bold team-name text-center" v-if="!isMobile">
+                                                            {{ selectedMatchup.home_team_name }}
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                                <td
+                                                    class="text-center"
+                                                    v-for="(inning, index) in Math.max(inningStats.maxInning || 9, 9)"
+                                                    :key="'home-inning-' + index"
+                                                >   
+                                                    {{ inningStats.home?.[index]?.runs ?? ((index==gameCurrentInfo.inning-1 && gameCurrentInfo.inning_half === 'bottom') || index<gameCurrentInfo.inning-1?'0':'') }}
+                                                </td>
+                                                <td class="text-center">{{ inningStats.summary?.home?.R }}</td>
+                                                <td class="text-center">{{ inningStats.summary?.home?.H }}</td>
+                                                <td class="text-center">{{ inningStats.summary?.home?.E }}</td>
+                                                <td class="text-center">{{ inningStats.summary?.home?.B }}</td>
+                                            </tr>
+                                        </tbody>
+                                    </v-table>
                                 </div>
                             </div>
                         </v-card-text>
@@ -236,7 +339,7 @@
                         </v-card-text>
                     </v-card>
                 </v-col>
-                <v-col cols="12" :md="selectedMatchup.status === 'scheduled'?12:6" v-if="lineupYn">
+                <v-col cols="12" :md="selectedMatchup.status === 'scheduled' && lineupList.filter(ll => ll.away.length > 0 && ll.home.length >0).length < 10?12:6" v-if="lineupYn && lineupList.filter(ll => ll.away.length > 0 && ll.home.length >0).length === 10">
                     <v-card class="h-100">
                         <v-card-title>라인업</v-card-title>
                         <v-divider></v-divider>
@@ -492,10 +595,12 @@ import { formatDate } from '@/utils/common/dateUtils.js';
 import { encryptData, decryptData } from '@/utils/common/crypto.js';
 import BaseballStadium from '@/components/kbo/BaseballStadium.vue';
 import { useRouter, useRoute } from 'vue-router';
-import CommonDateInput from '@/components/common/CommonDateInput.vue';
+import { useDisplay } from 'vuetify';
 
 const router = useRouter();
 const route = useRoute();
+const { mobile } = useDisplay();
+const isMobile = computed(() => mobile.value);
 
 const props = defineProps({
     encryptedGameId: String
@@ -570,6 +675,16 @@ const canAddSuspendedMatchup = computed(()=>{
         suspendedGameTime.value
     );
 })
+
+const inningStats = ref({
+    home: [],
+    away: [],
+    summary: {
+        home: { R: 0, H: 0, E: 0, B: 0 },
+        away: { R: 0, H: 0, E: 0, B: 0 }
+    },
+    maxInning: 9
+});
 
 const contentCard = ref(null);
 
@@ -852,13 +967,26 @@ watch(gamedayInfo, () => {
 
 watch(()=>currentBatter.value, async (newVal) => {
     if(!!newVal.game_id && !!getPlayerId(newVal)){
-        const response = await commonFetch(`/api/admin/game/${newVal.game_id}/batter/${getPlayerId(newVal)}/current-stats`,{
-            method : "GET"
-        })
+        const [currentInfoRes, inningInfoRes] = await Promise.all([
+                commonFetch(`/api/admin/game/${newVal.game_id}/batter/${getPlayerId(newVal)}/current-stats`),
+                commonFetch(`/api/admin/game/inning-info/${newVal.game_id}`)
+            ]);
 
-        if(response.success && response?.data?.currentBatterStats?.[0]){
-            currentBatter.value.stats = response?.data?.currentBatterStats?.[0]
+        if(currentInfoRes.success && currentInfoRes?.data?.currentBatterStats?.[0]){
+            currentBatter.value.stats = currentInfoRes?.data?.currentBatterStats?.[0]
         }else currentBatter.value.stats = {};
+
+        if(inningInfoRes.success && inningInfoRes?.data?.inningInfo){
+            inningStats.value = inningInfoRes.data?.inningInfo
+        }else inningStats.value = {
+            home: [],
+            away: [],
+            summary: {
+                home: { R: 0, H: 0, E: 0, B: 0 },
+                away: { R: 0, H: 0, E: 0, B: 0 }
+            },
+            maxInning: 9
+        }
     }
 })
 
@@ -987,6 +1115,16 @@ const clearLineup = () => {
     errorPlayer.value = null;
 
     currentInning.value = 1;
+
+    inningStats.value = {
+        home: [],
+        away: [],
+        summary: {
+            home: { R: 0, H: 0, E: 0, B: 0 },
+            away: { R: 0, H: 0, E: 0, B: 0 }
+        },
+        maxInning: 9
+    }
 }
 
 const getPlayerName = target => {
@@ -1213,6 +1351,20 @@ onMounted(async ()=>{
 :deep(.no-cell-padding) td {
     padding-left: 5px !important;
     padding-right: 5px !important;
+}
+
+:deep(.border-right){
+    border-right: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+
+:deep(.border-left){
+    border-left: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+
+:deep(.no-cell-padding) th,
+:deep(.no-cell-padding) td {
+    padding-left: 3px !important;
+    padding-right: 3px !important;
 }
 
 .selected-lineup{
