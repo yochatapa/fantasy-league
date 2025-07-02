@@ -51,7 +51,7 @@
 
         <!-- 상태 -->
         <div class="text-caption text-center text-grey-darken-1 mb-2" v-if="game.status==='playball'">
-            {{ game.inning }}회 {{ game.inning_half==="top"?'초':'말' }}
+            {{ game.inning??1 }}회 {{ game.inning_half==="bottom"?'말':'초' }}
         </div>
 
         <!-- 시간 및 장소 -->
