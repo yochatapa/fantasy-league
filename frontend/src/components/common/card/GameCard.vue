@@ -9,8 +9,11 @@
         >
             <v-col
                 cols="5"
-                class="d-flex flex-column align-center my-2 justify-center"
+                class="d-flex flex-column align-center my-2 justify-center position-relative"
             >
+                <span class="my-team left" v-if="game.favorite_team_id === game.away_team_id">
+                    <v-icon color="yellow">mdi-star</v-icon>
+                </span>
                 <v-img
                     :src="game.away_team_path"
                     alt="Away Team"
@@ -26,8 +29,11 @@
             </v-col>
             <v-col
                 cols="5"
-                class="d-flex flex-column align-center my-2 justify-center"
+                class="d-flex flex-column align-center my-2 justify-center position-relative"
             >
+                <span class="my-team right" v-if="game.favorite_team_id === game.home_team_id">
+                    <v-icon color="yellow">mdi-star</v-icon>
+                </span>
                 <v-img
                     :src="game.home_team_path"
                     alt="Home Team"
@@ -86,5 +92,18 @@ const formatDate = (dateString) => {
 .game-team-name {
     font-size: .8rem;
     white-space: nowrap; /* 텍스트 줄바꿈 방지 */
+}
+
+.my-team {
+    position: absolute;
+    top: -.5rem;
+}
+
+.my-team.left {
+    left: .5rem;
+}
+
+.my-team.right {
+    right: .5rem;
 }
 </style>

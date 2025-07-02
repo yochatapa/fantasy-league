@@ -29,6 +29,7 @@ export const useUserStore = defineStore('user', {
                     this.isAdmin = false;
                     localStorage.removeItem('token');
                     router.push("/")
+                    location.reload();
                 } else {
                     alert("로그아웃 처리 중 문제가 발생했습니다.\n잠시 후 다시 시도해 주세요.")
                 }

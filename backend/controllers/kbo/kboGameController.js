@@ -9,6 +9,13 @@ export const getKboGameSchedules = async (req, res) => {
     const date = req.params.date
 
     try {
+        let user, userInfo;
+        if(accessToken){
+            user = jwt.verify(accessToken, process.env.JWT_SECRET);
+
+            userInfo = await query(`SELECT favorite_team FROM user_master WHERE user_id = $1`,[user.userId]);
+        }
+        
         const { rows } = await query(`
             SELECT
                 kgm.id,
@@ -25,8 +32,18 @@ export const getKboGameSchedules = async (req, res) => {
                 fth.path AS home_team_path,
                 fth.mimetype AS home_team_mimetype,
                 fta.path AS away_team_path,
-                fta.mimetype AS away_team_mimetype
-            FROM kbo_game_master kgm
+                fta.mimetype AS away_team_mimetype,
+                kgm.home_team_id,
+                kgm.away_team_id,
+                `+
+                (userInfo?.rows?.length>0?`
+                    CASE 
+                        WHEN kgm.home_team_id = ${userInfo.rows[0].favorite_team} THEN kgm.home_team_id
+                        WHEN kgm.away_team_id = ${userInfo.rows[0].favorite_team} THEN kgm.away_team_id
+                        ELSE 0
+                    END as favorite_team_id`:`'' as favorite_team_id`)
+                +
+            ` FROM kbo_game_master kgm
             LEFT JOIN kbo_team_master hti ON kgm.home_team_id = hti.id
             LEFT JOIN kbo_team_master ati ON kgm.away_team_id = ati.id
             LEFT JOIN file_table fth ON fth.file_id = hti.logo_url::uuid AND fth.sn = 1
@@ -45,7 +62,19 @@ export const getKboGameSchedules = async (req, res) => {
 
             WHERE kgm.game_date = $1
             ORDER BY
-            CASE
+            `+
+            (userInfo?.rows?.length>0?`
+                CASE 
+                    WHEN 
+                        (   
+                            kgm.home_team_id = ${userInfo.rows[0].favorite_team} 
+                            OR
+                            kgm.away_team_id = ${userInfo.rows[0].favorite_team} 
+                        )
+                        THEN 1
+                    ELSE 2
+                END ASC, `:'')
+            +`CASE
                 WHEN kgm.status = 'playball' THEN 1
                 WHEN kgm.status = 'completed' THEN 2
                 WHEN kgm.status = 'scheduled' THEN 3
