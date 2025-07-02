@@ -1039,7 +1039,7 @@ export const getKboCurrentInfo = async (req, res) => {
                     ) AS stats
                     FROM batter_game_stats bgs
                     WHERE bgs.game_id = kgcs.game_id
-                    AND bgs.player_id = kgrbt.player_id
+                    AND bgs.player_id = COALESCE(kgrbt.replaced_by,kgrbt.player_id)
                     AND bgs.batting_number <
                         CASE 
                             WHEN kgcs.inning_half = 'top' THEN kgcs.away_batting_number
