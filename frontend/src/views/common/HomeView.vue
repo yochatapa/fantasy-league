@@ -6,15 +6,15 @@
             </v-col>
 
             <v-col cols="12">
+                <GameScheduleSection />
+            </v-col>
+            
+            <v-col cols="12">
                 <KboNewsSection />
             </v-col>
 
             <v-col cols="12">
                 <PlayerStatsSection />
-            </v-col>
-
-            <v-col cols="12">
-                <GameScheduleSection />
             </v-col>
 
             <v-col cols="12">

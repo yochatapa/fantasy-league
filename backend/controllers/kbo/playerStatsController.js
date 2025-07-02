@@ -46,7 +46,10 @@ export const getTopBatters = async (req, res) => {
             })
         }
 
-        return sendSuccess(res, result)
+        return sendSuccess(res, {
+            message: '타자 TOP 통계가 조회되었습니다.',
+            topPlayers : result
+        })
 
     } catch (error) {
         return sendServerError(res, error, '타자 TOP 통계 조회 중 오류가 발생했습니다.')
@@ -98,7 +101,10 @@ export const getTopPitchers = async (req, res) => {
             })
         }
 
-        return sendSuccess(res, result)
+        return sendSuccess(res, {
+            message: '투수 TOP 통계가 조회되었습니다.',
+            topPlayers : result
+        })
 
     } catch (error) {
         return sendServerError(res, error, '투수 TOP 통계 조회 중 오류가 발생했습니다.')

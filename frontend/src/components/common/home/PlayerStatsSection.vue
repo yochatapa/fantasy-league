@@ -67,15 +67,15 @@ const fetchTopStats = async () => {
         ])
 
         if (batterRes.success) {
-            batterStats.value = batterRes.data
-            if(batterStats.value.length > 0) batterVisible.value = true;
+            batterStats.value = batterRes.data?.topPlayers
+            if(batterStats.value?.length > 0) batterVisible.value = true;
         } else {
             throw new Error('batter 실패')
         }
 
         if (pitcherRes.success) {
-            pitcherStats.value = pitcherRes.data
-            if(pitcherStats.value.length > 0) pitcherVisible.value = true;
+            pitcherStats.value = pitcherRes.data?.topPlayers
+            if(pitcherStats.value?.length > 0) pitcherVisible.value = true;
         } else {
             throw new Error('pitcher 실패')
         }
