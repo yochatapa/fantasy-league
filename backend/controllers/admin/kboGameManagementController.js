@@ -1190,7 +1190,7 @@ export const createBatterGameStats = async (req, res) => {
     }
 
     if(!game_id || !player_id || !team_id || !opponent_team_id || (batting_order===null || batting_order===undefined)
-        || (inning===null || inning===undefined) || !inning_half || (out===null || out===undefined) || !stats){
+        || (inning===null || inning===undefined) || !inning_half || (out===null || out===undefined) || !stats || (batting_number===null || batting_number===undefined)){
         return sendBadRequest(res, '필수 입력값을 모두 입력해주세요.');
     }
 
@@ -1208,12 +1208,12 @@ export const createBatterGameStats = async (req, res) => {
                 INSERT INTO batter_game_stats
                 (
                     game_id, player_id, team_id, opponent_team_id, batting_order,
-                    inning, inning_half, out, created_at, ${queryParams.join(",")}, batting_number
+                    inning, inning_half, out, created_at, batting_number, ${queryParams.join(",")}
                 )
                 VALUES 
                 (
                     $1, $2, $3, $4, $5,
-                    $6, $7, $8, CURRENT_TIMESTAMP, ${whereClauses.join(",")}, $9
+                    $6, $7, $8, CURRENT_TIMESTAMP, $9, ${whereClauses.join(",")}
                 )
             `;
 
