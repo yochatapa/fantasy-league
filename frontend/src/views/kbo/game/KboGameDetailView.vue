@@ -145,6 +145,221 @@
                         </v-card-text>
                     </v-card>
                 </v-col>
+                <v-col cols="12" v-if="selectedMatchup.status === 'completed'">
+                    <v-card>
+                        <v-card-title>선수 기록</v-card-title>
+                        <v-divider></v-divider>
+                        <v-card-text>
+                            <div class="d-flex">
+                                <img
+                                    :src="selectedMatchup.away_team_path"
+                                    alt="Away Team Logo"
+                                    class="team-logo"
+                                    style="height:2rem"
+                                    
+                                />
+                                <h2 class="font-weight-bold team-name text-center" v-if="!isMobile">
+                                    {{ selectedMatchup.away_team_name }}
+                                </h2>
+                            </div>
+                            <v-col cols="12">
+                                <span class="text-h6">타자 스탯</span>
+                            </v-col>
+                            <v-data-table
+                                :headers="batterHeaders"
+                                :items="awayBatters"
+                                class="mb-6 no-cell-padding"
+                                hide-default-footer
+                                :items-per-page="-1"
+                                disable-sort
+                            >
+                                <template #item.player_name="{ item }">
+                                    <div class="d-flex" style="white-space: nowrap;padding-right: 10px;">
+                                        <div class="d-flex justify-center" style="width: 28px;">
+                                            <v-icon v-if="item.replaced_by" color="primary">mdi-swap-horizontal</v-icon>
+                                            <span v-else>{{ item.batting_order }}</span>
+                                        </div>
+                                        {{ item.player_name }}
+                                    </div>
+                                </template>
+                            </v-data-table>
+
+                            <v-col cols="12">
+                                <span class="text-h6">투수 스탯</span>
+                            </v-col>
+                            <v-data-table
+                                :headers="pitcherHeaders"
+                                :items="awayPitchers"
+                                class="no-cell-padding"
+                                hide-default-footer
+                                :items-per-page="-1"
+                                disable-sort
+                            >
+                                <template #item.player_name="{ item }">
+                                    <div class="d-flex align-center" style="white-space: nowrap;padding-right: 10px;">
+                                        {{ item.player_name }}
+                                        <v-chip
+                                            v-if="item.wins > 0"
+                                            color="primary"
+                                            class="ma-1"
+                                            size="small"
+                                            variant="elevated"
+                                            style="border-radius: 50%; width: 20px; height: 20px; padding: 0; justify-content: center;"
+                                        >
+                                            승
+                                        </v-chip>
+                                        <v-chip
+                                            v-else-if="item.losses > 0"
+                                            color="error"
+                                            class="ma-1"
+                                            size="small"
+                                            variant="elevated"
+                                            style="border-radius: 50%; width: 20px; height: 20px; padding: 0; justify-content: center;"
+                                        >
+                                            패
+                                        </v-chip>
+                                        <v-chip
+                                            v-else-if="item.saves > 0"
+                                            color="green"
+                                            class="ma-1"
+                                            size="small"
+                                            variant="elevated"
+                                            style="border-radius: 50%; width: 20px; height: 20px; padding: 0; justify-content: center;"
+                                        >
+                                            세
+                                        </v-chip>
+                                        <v-chip
+                                            v-else-if="item.holds > 0"
+                                            color="gray"
+                                            class="ma-1"
+                                            size="small"
+                                            variant="elevated"
+                                            style="border-radius: 50%; width: 20px; height: 20px; padding: 0; justify-content: center;"
+                                        >
+                                            홀
+                                        </v-chip>
+                                        <v-chip
+                                            v-else-if="item.blown_saves > 0"
+                                            color="brown"
+                                            class="ma-1"
+                                            size="small"
+                                            variant="elevated"
+                                            style="border-radius: 50%; width: 20px; height: 20px; padding: 0; justify-content: center;"
+                                        >
+                                            블
+                                        </v-chip>
+                                    </div>
+                                </template>
+                            </v-data-table>
+                            
+                            <v-divider class="mb-8"></v-divider>
+
+                            <div class="d-flex">
+                                <img
+                                    :src="selectedMatchup.home_team_path"
+                                    alt="Home Team Logo"
+                                    class="team-logo"
+                                    style="height:2rem"
+                                    
+                                />
+                                <h2 class="font-weight-bold team-name text-center" v-if="!isMobile">
+                                    {{ selectedMatchup.home_team_name }}
+                                </h2>
+                            </div>
+                            <v-col cols="12">
+                                <span class="text-h6">타자 스탯</span>
+                            </v-col>
+                            <v-data-table
+                                :headers="batterHeaders"
+                                :items="homeBatters"
+                                class="mb-6 no-cell-padding"
+                                hide-default-footer
+                                :items-per-page="-1"
+                                disable-sort
+                            >
+                                <template #item.player_name="{ item }">
+                                    <div class="d-flex" style="white-space: nowrap;padding-right: 10px;">
+                                        <div class="d-flex justify-center" style="width: 28px;">
+                                            <v-icon v-if="item.replaced_by" color="primary">mdi-swap-horizontal</v-icon>
+                                            <span v-else>{{ item.batting_order }}</span>
+                                        </div>
+                                        {{ item.player_name }}
+                                    </div>
+                                </template>
+                            </v-data-table>
+
+                            <v-col cols="12">
+                                <span class="text-h6">투수 스탯</span>
+                            </v-col>
+                            <v-data-table
+                                :headers="pitcherHeaders"
+                                :items="homePitchers"
+                                class="mb-12 no-cell-padding"
+                                hide-default-footer
+                                :items-per-page="-1"
+                                disable-sort
+                            >
+                                <template #item.player_name="{ item }">
+                                    <div class="d-flex align-center" style="white-space: nowrap;padding-right: 10px;">
+                                        {{ item.player_name }}
+                                        <v-chip
+                                            v-if="item.wins > 0"
+                                            color="primary"
+                                            class="ma-1"
+                                            size="small"
+                                            variant="elevated"
+                                            style="border-radius: 50%; width: 20px; height: 20px; padding: 0; justify-content: center;"
+                                        >
+                                            승
+                                        </v-chip>
+                                        <v-chip
+                                            v-else-if="item.losses > 0"
+                                            color="error"
+                                            class="ma-1"
+                                            size="small"
+                                            variant="elevated"
+                                            style="border-radius: 50%; width: 20px; height: 20px; padding: 0; justify-content: center;"
+                                        >
+                                            패
+                                        </v-chip>
+                                        <v-chip
+                                            v-else-if="item.saves > 0"
+                                            color="green"
+                                            class="ma-1"
+                                            size="small"
+                                            variant="elevated"
+                                            style="border-radius: 50%; width: 20px; height: 20px; padding: 0; justify-content: center;"
+                                        >
+                                            세
+                                        </v-chip>
+                                        <v-chip
+                                            v-else-if="item.holds > 0"
+                                            color="gray"
+                                            class="ma-1"
+                                            size="small"
+                                            variant="elevated"
+                                            style="border-radius: 50%; width: 20px; height: 20px; padding: 0; justify-content: center;"
+                                        >
+                                            홀
+                                        </v-chip>
+                                        <v-chip
+                                            v-else-if="item.blown_saves > 0"
+                                            color="brown"
+                                            class="ma-1"
+                                            size="small"
+                                            variant="elevated"
+                                            style="border-radius: 50%; width: 20px; height: 20px; padding: 0; justify-content: center;"
+                                        >
+                                            블
+                                        </v-chip>
+                                    </div>
+                                </template>
+                            </v-data-table>
+                            
+                        </v-card-text>
+                        
+                    </v-card>
+                </v-col>
                 <v-col cols="12" md="6" v-if="lineupYn && selectedMatchup.status !== 'scheduled'">
                     <v-card class="h-100">
                         <v-card-title>경기 중계</v-card-title>
@@ -213,19 +428,19 @@
                                                     </div>
                                                     
                                                     <div v-if="ballInfo.type.startsWith('changePitcher')">
-                                                        투수 교체 ({{ getPlayerName(lineupList.flatMap(inning => inning[isAway ? 'home' : 'away'])?.find(pitcher => {return getPlayerId(pitcher)?.toString() === ballInfo.type.split(':')[1]})) }} ▶ {{ getPlayerName(lineupList.flatMap(inning => inning[isAway ? 'home' : 'away'])?.find(pitcher => {return getPlayerId(pitcher)?.toString() === ballInfo.type.split(':')[2]})) }})
+                                                        투수 교체 ({{ getPlayerName(lineupList.flatMap(inning => [...inning.home,  ...inning.away])?.find(pitcher => {return getPlayerId(pitcher)?.toString() === ballInfo.type.split(':')[1]})) }} ▶ {{ getPlayerName(lineupList.flatMap(inning => [...inning.home,  ...inning.away])?.find(pitcher => {return getPlayerId(pitcher)?.toString() === ballInfo.type.split(':')[2]})) }})
                                                     </div>
                                                     <div v-else-if="ballInfo.type.startsWith('changeBatter')">
-                                                        타자 교체 ({{ getPlayerName(lineupList.flatMap(inning => inning[isAway ? 'away' : 'home'])?.find(batter => {return getPlayerId(batter)?.toString() === ballInfo.type.split(':')[1]})) }} ▶ {{ getPlayerName(lineupList.flatMap(inning => inning[isAway ? 'away' : 'home'])?.find(batter => {return getPlayerId(batter)?.toString() === ballInfo.type.split(':')[2]})) }})
+                                                        타자 교체 ({{ getPlayerName(lineupList.flatMap(inning => [...inning.home,  ...inning.away])?.find(batter => {return getPlayerId(batter)?.toString() === ballInfo.type.split(':')[1]})) }} ▶ {{ getPlayerName(lineupList.flatMap(inning => [...inning.home,  ...inning.away])?.find(batter => {return getPlayerId(batter)?.toString() === ballInfo.type.split(':')[2]})) }})
                                                     </div>
                                                     <div v-else-if="ballInfo.type.startsWith('changeRunner')">
-                                                        {{ ballInfo.type.split(':')[1] }}루 주자 교체 ({{ getPlayerName(lineupList.flatMap(inning => inning[isAway ? 'away' : 'home'])?.find(batter => {return getPlayerId(batter)?.toString() === ballInfo.type.split(':')[2]})) }} ▶ {{ getPlayerName(lineupList.flatMap(inning => inning[isAway ? 'away' : 'home'])?.find(batter => {return getPlayerId(batter)?.toString() === ballInfo.type.split(':')[3]})) }})
+                                                        {{ ballInfo.type.split(':')[1] }}루 주자 교체 ({{ getPlayerName(lineupList.flatMap(inning => [...inning.home,  ...inning.away])?.find(batter => {return getPlayerId(batter)?.toString() === ballInfo.type.split(':')[2]})) }} ▶ {{ getPlayerName(lineupList.flatMap(inning => [...inning.home,  ...inning.away])?.find(batter => {return getPlayerId(batter)?.toString() === ballInfo.type.split(':')[3]})) }})
                                                     </div>
                                                     <div v-else-if="ballInfo.type.startsWith('changePlayer')">
-                                                        선수 교체 ({{ getPlayerName(lineupList.flatMap(inning => inning[isAway ? 'away' : 'home'])?.find(batter => {return getPlayerId(batter)?.toString() === ballInfo.type.split(':')[1]})) }} ▶ {{ getPlayerName(lineupList.flatMap(inning => inning[isAway ? 'away' : 'home'])?.find(batter => {return getPlayerId(batter)?.toString() === ballInfo.type.split(':')[2]})) }})
+                                                        선수 교체 ({{ getPlayerName(lineupList.flatMap(inning => [...inning.home,  ...inning.away])?.find(batter => {return getPlayerId(batter)?.toString() === ballInfo.type.split(':')[1]})) }} ▶ {{ getPlayerName(lineupList.flatMap(inning => [...inning.home,  ...inning.away])?.find(batter => {return getPlayerId(batter)?.toString() === ballInfo.type.split(':')[2]})) }})
                                                     </div>
                                                     <div v-else-if="ballInfo.type.startsWith('changeDefense')">
-                                                        수비 교체 ({{ ballInfo.type.split(':')[1] }} {{ lineupList.flatMap(inning => inning[isAway ? 'home' : 'away'])?.filter(batter => batter.player_id?.toString() === ballInfo.type.split(':')[2])?.at(-1)?.player_name }} ▶ {{ ballInfo.type.split(':')[3] }} {{ lineupList.flatMap(inning => inning[isAway ? 'home' : 'away'])?.filter(batter => batter.replaced_by?.toString() === ballInfo.type.split(':')[4])?.at(-1)?.replaced_player_name }})
+                                                        수비 교체 ({{ ballInfo.type.split(':')[1] }} {{ lineupList.flatMap(inning => [...inning.home,  ...inning.away])?.filter(batter => batter.player_id?.toString() === ballInfo.type.split(':')[2])?.at(-1)?.player_name }} ▶ {{ ballInfo.type.split(':')[3] }} {{ lineupList.flatMap(inning => [...inning.home,  ...inning.away])?.filter(batter => batter.replaced_by?.toString() === ballInfo.type.split(':')[4])?.at(-1)?.replaced_player_name }})
                                                     </div>
                                                     
                                                     <div v-if="['flyout','groundout','linedrive','doubleplay','tripleplay','hitting','sacrificeFly','sacrificeBunt'].includes(ballInfo.type)">
@@ -392,196 +607,6 @@
                         </v-card-text>
                     </v-card>
                 </v-col>
-                <v-col cols="12" v-if="selectedMatchup.status === 'completed'">
-                    <v-card>
-                        <v-card-title>선수 기록</v-card-title>
-                        <v-divider></v-divider>
-                        <v-card-text>
-                            <h2>홈 팀</h2>
-                            <v-col cols="12">
-                                <span class="text-h6">타자 스탯</span>
-                            </v-col>
-                            <v-data-table
-                                :headers="batterHeaders"
-                                :items="homeBatters"
-                                class="mb-6 no-cell-padding"
-                                hide-default-footer
-                                :items-per-page="-1"
-                                disable-sort
-                            >
-                                <template #item.player_name="{ item }">
-                                    <div class="d-flex" style="white-space: nowrap;padding-right: 10px;">
-                                        <div class="d-flex justify-center" style="width: 28px;">
-                                            <v-icon v-if="item.replaced_by" color="primary">mdi-swap-horizontal</v-icon>
-                                            <span v-else>{{ item.batting_order }}</span>
-                                        </div>
-                                        {{ item.player_name }}
-                                    </div>
-                                </template>
-                            </v-data-table>
-
-                            <v-col cols="12">
-                                <span class="text-h6">투수 스탯</span>
-                            </v-col>
-                            <v-data-table
-                                :headers="pitcherHeaders"
-                                :items="homePitchers"
-                                class="mb-12 no-cell-padding"
-                                hide-default-footer
-                                :items-per-page="-1"
-                                disable-sort
-                            >
-                                <template #item.player_name="{ item }">
-                                    <div class="d-flex align-center" style="white-space: nowrap;padding-right: 10px;">
-                                        {{ item.player_name }}
-                                        <v-chip
-                                            v-if="item.wins > 0"
-                                            color="primary"
-                                            class="ma-1"
-                                            size="small"
-                                            variant="elevated"
-                                            style="border-radius: 50%; width: 20px; height: 20px; padding: 0; justify-content: center;"
-                                        >
-                                            승
-                                        </v-chip>
-                                        <v-chip
-                                            v-else-if="item.losses > 0"
-                                            color="error"
-                                            class="ma-1"
-                                            size="small"
-                                            variant="elevated"
-                                            style="border-radius: 50%; width: 20px; height: 20px; padding: 0; justify-content: center;"
-                                        >
-                                            패
-                                        </v-chip>
-                                        <v-chip
-                                            v-else-if="item.saves > 0"
-                                            color="green"
-                                            class="ma-1"
-                                            size="small"
-                                            variant="elevated"
-                                            style="border-radius: 50%; width: 20px; height: 20px; padding: 0; justify-content: center;"
-                                        >
-                                            세
-                                        </v-chip>
-                                        <v-chip
-                                            v-else-if="item.holds > 0"
-                                            color="gray"
-                                            class="ma-1"
-                                            size="small"
-                                            variant="elevated"
-                                            style="border-radius: 50%; width: 20px; height: 20px; padding: 0; justify-content: center;"
-                                        >
-                                            홀
-                                        </v-chip>
-                                        <v-chip
-                                            v-else-if="item.blown_saves > 0"
-                                            color="brown"
-                                            class="ma-1"
-                                            size="small"
-                                            variant="elevated"
-                                            style="border-radius: 50%; width: 20px; height: 20px; padding: 0; justify-content: center;"
-                                        >
-                                            블
-                                        </v-chip>
-                                    </div>
-                                </template>
-                            </v-data-table>
-                            <v-divider class="mb-8"></v-divider>
-                            <h2>원정팀</h2>
-                            <v-col cols="12">
-                                <span class="text-h6">타자 스탯</span>
-                            </v-col>
-                            <v-data-table
-                                :headers="batterHeaders"
-                                :items="awayBatters"
-                                class="mb-6 no-cell-padding"
-                                hide-default-footer
-                                :items-per-page="-1"
-                                disable-sort
-                            >
-                                <template #item.player_name="{ item }">
-                                    <div class="d-flex" style="white-space: nowrap;padding-right: 10px;">
-                                        <div class="d-flex justify-center" style="width: 28px;">
-                                            <v-icon v-if="item.replaced_by" color="primary">mdi-swap-horizontal</v-icon>
-                                            <span v-else>{{ item.batting_order }}</span>
-                                        </div>
-                                        {{ item.player_name }}
-                                    </div>
-                                </template>
-                            </v-data-table>
-
-                            <v-col cols="12">
-                                <span class="text-h6">투수 스탯</span>
-                            </v-col>
-                            <v-data-table
-                                :headers="pitcherHeaders"
-                                :items="awayPitchers"
-                                class="no-cell-padding"
-                                hide-default-footer
-                                :items-per-page="-1"
-                                disable-sort
-                            >
-                                <template #item.player_name="{ item }">
-                                    <div class="d-flex align-center" style="white-space: nowrap;padding-right: 10px;">
-                                        {{ item.player_name }}
-                                        <v-chip
-                                            v-if="item.wins > 0"
-                                            color="primary"
-                                            class="ma-1"
-                                            size="small"
-                                            variant="elevated"
-                                            style="border-radius: 50%; width: 20px; height: 20px; padding: 0; justify-content: center;"
-                                        >
-                                            승
-                                        </v-chip>
-                                        <v-chip
-                                            v-else-if="item.losses > 0"
-                                            color="error"
-                                            class="ma-1"
-                                            size="small"
-                                            variant="elevated"
-                                            style="border-radius: 50%; width: 20px; height: 20px; padding: 0; justify-content: center;"
-                                        >
-                                            패
-                                        </v-chip>
-                                        <v-chip
-                                            v-else-if="item.saves > 0"
-                                            color="green"
-                                            class="ma-1"
-                                            size="small"
-                                            variant="elevated"
-                                            style="border-radius: 50%; width: 20px; height: 20px; padding: 0; justify-content: center;"
-                                        >
-                                            세
-                                        </v-chip>
-                                        <v-chip
-                                            v-else-if="item.holds > 0"
-                                            color="gray"
-                                            class="ma-1"
-                                            size="small"
-                                            variant="elevated"
-                                            style="border-radius: 50%; width: 20px; height: 20px; padding: 0; justify-content: center;"
-                                        >
-                                            홀
-                                        </v-chip>
-                                        <v-chip
-                                            v-else-if="item.blown_saves > 0"
-                                            color="brown"
-                                            class="ma-1"
-                                            size="small"
-                                            variant="elevated"
-                                            style="border-radius: 50%; width: 20px; height: 20px; padding: 0; justify-content: center;"
-                                        >
-                                            블
-                                        </v-chip>
-                                    </div>
-                                </template>
-                            </v-data-table>
-                        </v-card-text>
-                        
-                    </v-card>
-                </v-col>
             </v-row>
         </v-col>
     </v-row>
@@ -744,8 +769,8 @@ const pitcherHeaders = [
     { title: '이름', key: 'player_name', fixed: true,},
     { title: '이닝', key: 'outs_pitched_display', nowrap: true, align: 'center' },
     // { title: '아웃수', key: 'outs_pitched', nowrap: true, align: 'center' },
-    { title: '상대한 타자 수', key: 'batters_faced', nowrap: true, align: 'center' },
-    { title: '투구 수', key: 'pitches_thrown', nowrap: true, align: 'center' },
+    { title: '상대타자', key: 'batters_faced', nowrap: true, align: 'center' },
+    { title: '투구수', key: 'pitches_thrown', nowrap: true, align: 'center' },
     { title: '피안타', key: 'hits_allowed', nowrap: true, align: 'center' },
     { title: '피홈런', key: 'home_runs_allowed', nowrap: true, align: 'center' },
     { title: '실점', key: 'runs_allowed', nowrap: true, align: 'center' },
@@ -757,7 +782,7 @@ const pitcherHeaders = [
     { title: '패', key: 'losses', nowrap: true, align: 'center' },
     { title: '세이브', key: 'saves', nowrap: true, align: 'center' },
     { title: '홀드', key: 'holds', nowrap: true, align: 'center' },
-    { title: '블론세이브', key: 'blown_saves', nowrap: true, align: 'center' }
+    { title: '블론', key: 'blown_saves', nowrap: true, align: 'center' }
 ];
 
 // 필터링된 데이터

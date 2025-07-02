@@ -2324,11 +2324,13 @@ const setPitcherGameStats = async (stats, pitcher, dailyYn=false, seasonYn=false
     }
 }
 
-const setOut = async (battingNumberYn=true, confirmYn=true) => {
-    gameCurrentInfo.value.strike = 0;
-    gameCurrentInfo.value.ball = 0;
-    gameCurrentInfo.value.home_current_pitch_count = 0;
-    gameCurrentInfo.value.away_current_pitch_count = 0;
+const setOut = async (battingNumberYn=true, confirmYn=true, countYn=true) => {
+    if(countYn){
+        gameCurrentInfo.value.strike = 0;
+        gameCurrentInfo.value.ball = 0;
+        gameCurrentInfo.value.home_current_pitch_count = 0;
+        gameCurrentInfo.value.away_current_pitch_count = 0;
+    }
 
     if(confirmYn){
         if(!await confirm(`※ ${getPlayerName(currentBatter.value)}의 타석을 종료하시겠습니까?\n\n주자 및 타점 입력이 제한되며,\n다음 타석으로 진행됩니다.`)){
@@ -2359,6 +2361,12 @@ const setOut = async (battingNumberYn=true, confirmYn=true) => {
     
     if(current_out<2) gameCurrentInfo.value.out++;
     else{
+        if(!countYn){
+            gameCurrentInfo.value.strike = 0;
+            gameCurrentInfo.value.ball = 0;
+            gameCurrentInfo.value.home_current_pitch_count = 0;
+            gameCurrentInfo.value.away_current_pitch_count = 0;
+        }
         gameCurrentInfo.value.out = 0;
         const current_inning_half = gameCurrentInfo.value.inning_half;
         gameCurrentInfo.value.runner_1b = null;
@@ -3728,7 +3736,7 @@ const setPickoffFromFirst = async () => {
 
     gameCurrentInfo.value.runner_1b = null;
 
-    await setOut(false, false);
+    await setOut(false, false, false);
 
     await setCurrentGamedayInfo('lastInfo');
 }
@@ -3745,7 +3753,7 @@ const setPickoffFromSecond = async () => {
 
     gameCurrentInfo.value.runner_2b = null;
 
-    await setOut(false, false);
+    await setOut(false, false, false);
 
     await setCurrentGamedayInfo('lastInfo');
 }
@@ -3762,7 +3770,7 @@ const setPickoffFromThird = async () => {
 
     gameCurrentInfo.value.runner_3b = null;
 
-    await setOut(false, false);
+    await setOut(false, false, false);
 
     await setCurrentGamedayInfo('lastInfo');
 }
