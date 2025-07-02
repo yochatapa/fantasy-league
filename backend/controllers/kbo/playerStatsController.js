@@ -4,14 +4,9 @@ import { sendSuccess, sendBadRequest, sendServerError } from '../../utils/apiRes
 
 // 타자 통계 API
 export const getTopBatters = async (req, res) => {
-    const accessToken = req.headers['authorization']?.split(' ')[1]
     const limit = parseInt(req.params.limit, 10) || 5
 
-    if (!accessToken) return sendBadRequest(res, '토큰이 제공되지 않았습니다.')
-
     try {
-        jwt.verify(accessToken, process.env.JWT_SECRET)
-
         const statTypes = [
             { key: 'avg', label: '타율', unit: '', column: 'ROUND(CAST(hits AS NUMERIC) / NULLIF(at_bats, 0), 3)' }, // 타율은 계산
             { key: 'hr', label: '홈런', unit: '개', column: 'home_runs' },
@@ -59,14 +54,9 @@ export const getTopBatters = async (req, res) => {
 
 // 투수 통계 API
 export const getTopPitchers = async (req, res) => {
-    const accessToken = req.headers['authorization']?.split(' ')[1]
     const limit = parseInt(req.params.limit, 10) || 5
 
-    if (!accessToken) return sendBadRequest(res, '토큰이 제공되지 않았습니다.')
-
     try {
-        jwt.verify(accessToken, process.env.JWT_SECRET)
-
         const statTypes = [
             { key: 'era', label: '평균자책', unit: '', column: 'ROUND(CAST(earned_runs AS NUMERIC) * 9 / NULLIF(outs_pitched, 0) * 3, 2)', asc: true },
             { key: 'win', label: '승수', unit: '승', column: 'wins' },

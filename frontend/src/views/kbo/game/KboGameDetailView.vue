@@ -995,8 +995,8 @@ watch(gamedayInfo, () => {
 watch(()=>currentBatter.value, async (newVal) => {
     if(!!newVal.game_id && !!getPlayerId(newVal)){
         const [currentInfoRes, inningInfoRes] = await Promise.all([
-                commonFetch(`/api/admin/game/${newVal.game_id}/batter/${getPlayerId(newVal)}/current-stats`),
-                commonFetch(`/api/admin/game/inning-info/${newVal.game_id}`)
+                commonFetch(`/api/kbo/game/${newVal.game_id}/batter/${getPlayerId(newVal)}/current-stats`),
+                commonFetch(`/api/kbo/game/inning-info/${newVal.game_id}`)
             ]);
 
         if(currentInfoRes.success && currentInfoRes?.data?.currentBatterStats?.[0]){
@@ -1016,88 +1016,6 @@ watch(()=>currentBatter.value, async (newVal) => {
         }
     }
 })
-
-watch(
-    () => [gameCurrentInfo.value.away_batting_number, gameCurrentInfo.value.home_batting_number],
-    async () => {
-        const info = gameCurrentInfo.value;
-        const status = selectedMatchup.value?.status;
-
-        if (
-            status === 'playball' &&
-            info.inning >= 9 &&
-            info.inning_half === 'bottom' &&
-            info.away_score < info.home_score
-        ) {
-            await setGameOver();
-        }
-    }
-)
-
-const updateGameStatus = async (status) => {
-    const gameId = selectedMatchup.value.game_id;
-    try {
-        const response = await commonFetch(`/api/admin/game/status/update`,{
-            method : "PUT",
-            body : {
-                gameId
-                , status
-            }
-        })
-        
-        if(response.success){
-            await getGameDetailInfo(gameId)
-        }else throw new Error();
-
-        return true
-    } catch (error) {
-        
-    }
-}
-
-const updateGameSeasonStats = async () => {
-    const gameId = selectedMatchup.value.game_id;
-    try {
-        const response = await commonFetch(`/api/admin/game/stats/update/season`,{
-            method : "PUT",
-            body : {
-                gameId
-            }
-        })
-    } catch (error) {
-        
-    }
-}
-
-const updateGameDailyStats = async () => {
-    const gameId = selectedMatchup.value.game_id;
-    try {
-        const response = await commonFetch(`/api/admin/game/stats/update/daily`,{
-            method : "PUT",
-            body : {
-                gameId
-            }
-        })
-    } catch (error) {
-        
-    }
-}
-
-const updateGameScore = async () => {
-    const gameId = selectedMatchup.value.game_id;
-    try {
-        const response = await commonFetch(`/api/admin/game/score/update`,{
-            method : "PUT",
-            body : {
-                gameId,
-                homeScore : gameCurrentInfo.value.home_score,
-                awayScore : gameCurrentInfo.value.away_score,
-            }
-        })
-    } catch (error) {
-        
-    }
-}
 
 const clearLineup = () => {
      lineup.value = {
@@ -1172,8 +1090,8 @@ const getGameDetailInfo = async (game_id) => {
         clearLineup();
         
         await Promise.all([
-            commonFetch(`/api/admin/game/${game_id}`),
-            commonFetch(`/api/admin/game/current-info/${game_id}`),
+            commonFetch(`/api/kbo/game/${game_id}`),
+            commonFetch(`/api/kbo/game/current-info/${game_id}`),
         ]).then(async ([gameMasterRes, gameCurrentRes]) => {
             if(gameMasterRes.success){
                 awayTeamInfo.value = gameMasterRes.data.awayTeamInfo
@@ -1210,7 +1128,7 @@ const getGameDetailInfo = async (game_id) => {
 
 const getCompletedInfo = async () => {
     try {
-        const response = await commonFetch(`/api/admin/game/${selectedMatchup.value.game_id}/completed-info`)
+        const response = await commonFetch(`/api/kbo/game/${selectedMatchup.value.game_id}/completed-info`)
 
         if(response.success){
             winning_pitcher_yn.value = !!response.data.gameCompletedInfo.win;
@@ -1238,8 +1156,8 @@ const getCompletedInfo = async () => {
 const getRosterDetailInfo = async (awayTeamId, homeTeamId) => {
     try {
         Promise.all([
-            commonFetch(`/api/admin/roster/${awayTeamId}?date=${selectedMatchup.value.game_date}`)
-            , commonFetch(`/api/admin/roster/${homeTeamId}?date=${selectedMatchup.value.game_date}`)
+            commonFetch(`/api/kbo/roster/${awayTeamId}?date=${selectedMatchup.value.game_date}`)
+            , commonFetch(`/api/kbo/roster/${homeTeamId}?date=${selectedMatchup.value.game_date}`)
         ]).then(([awayRes, homeRes])=>{
             if(awayRes.success){
                 awayTeamRosterInfo.value = awayRes.data.rosterInfo
@@ -1258,109 +1176,6 @@ const getRosterDetailInfo = async (awayTeamId, homeTeamId) => {
 
 const setCurrentInning = (inning) => {
     currentInning.value = inning;
-}
-
-const setCurrentGamedayInfo = async (type) => {
-    if(selectedMatchup.value.status !== 'playball') return;
-    const pushData = {...gameCurrentInfo.value, batter: {...currentBatter.value}, pitcher : {...currentPitcher.value}, type:type};
-    if(!!!gamedayInfo.value[gameCurrentInfo.value.inning]) gamedayInfo.value[gameCurrentInfo.value.inning] = {}
-    if(!!!gamedayInfo.value[gameCurrentInfo.value.inning][gameCurrentInfo.value.inning_half]) gamedayInfo.value[gameCurrentInfo.value.inning][gameCurrentInfo.value.inning_half] = {}
-    if(!!!gamedayInfo.value[gameCurrentInfo.value.inning][gameCurrentInfo.value.inning_half][isAway.value?gameCurrentInfo.value.away_batting_number:gameCurrentInfo.value.home_batting_number]){
-        try {
-            const response = await commonFetch(`/api/admin/game/current-info`,{
-                method : 'POST'
-                , body : {
-                    ...pushData
-                    , game_id : selectedMatchup.value.game_id
-                    , type:'startInfo'
-                }
-            })
-
-            if(response.success){
-                gamedayInfo.value[gameCurrentInfo.value.inning][gameCurrentInfo.value.inning_half][isAway.value?gameCurrentInfo.value.away_batting_number:gameCurrentInfo.value.home_batting_number] = [
-                    { batter : {...currentBatter.value}, pitcher : {...currentPitcher.value}, type:'startInfo' },
-                ];
-            }
-        } catch (error) {
-            alert("게임 정보 저장 중 오류가 발생했습니다.\n다시 시도해주세요.","error")
-        }
-    }
-
-    try {
-        const response = await commonFetch(`/api/admin/game/current-info`,{
-            method : 'POST'
-            , body : {
-                ...pushData
-                , game_id : selectedMatchup.value.game_id
-            }
-        })
-
-        if(response.success && type !== "lastInfo"){
-            gamedayInfo.value?.[gameCurrentInfo.value.inning]?.[gameCurrentInfo.value.inning_half]?.[isAway.value?gameCurrentInfo.value.away_batting_number:gameCurrentInfo.value.home_batting_number]?.push(pushData)
-        }
-    } catch (error) {
-        console.error(error);
-        alert("게임 정보 저장 중 오류가 발생했습니다.\n다시 시도해주세요.","error")
-    }
-}
-
-const setPitcherGameStats = async (stats, pitcher, dailyYn=false, seasonYn=false) => {
-    if(!!!pitcher) pitcher = currentPitcher.value;
-    
-    try {
-        const response = await commonFetch(`/api/admin/game/pitcher/stats`,{
-            method : 'POST'
-            , body : {
-                stats
-                , game_id : selectedMatchup.value.game_id
-                , player_id : getPlayerId(pitcher)
-                , team_id : pitcher.team_id
-                , opponent_team_id : (pitcher.team_id===selectedMatchup.value.home_team_id?selectedMatchup.value.away_team_id:selectedMatchup.value.home_team_id)
-                , batting_order : pitcher.batting_order
-                , inning : gameCurrentInfo.value.inning
-                , inning_half : gameCurrentInfo.value.inning_half
-                , out : gameCurrentInfo.value.out
-                , seasonYn
-                , dailyYn
-            }
-        })
-    } catch (error) {
-        console.error(error)
-        alert("투수 스탯 저장 중 오류가 발생했습니다.\n다시 시도해주세요.","error")
-    }
-}
-
-const setGameOver = async (dail) => {
-    alert("게임이 종료되었습니다.");
-    
-    const homePitcher = lineupList.value[0]?.['home']?.at(-1);
-    const awayPitcher = lineupList.value[0]?.['away']?.at(-1);
-
-    await setPitcherGameStats({
-        pitches_thrown : gameCurrentInfo.value.home_pitch_count - ((getPlayerId(homePitcher)!==selectedMatchup.value.home_suspended_pitcher_id)?0:selectedMatchup.value.home_pitch_count),
-        outs_pitched : gameCurrentInfo.value.home_current_out - ((getPlayerId(homePitcher)!==selectedMatchup.value.home_suspended_pitcher_id)?0:selectedMatchup.value.home_current_out),
-        batters_faced : gameCurrentInfo.value.away_current_batting_number - ((getPlayerId(homePitcher)!==selectedMatchup.value.home_suspended_pitcher_id)?0:selectedMatchup.value.away_current_batting_number)
-    }, homePitcher);
-
-    await setPitcherGameStats({
-        pitches_thrown : gameCurrentInfo.value.away_pitch_count - ((getPlayerId(awayPitcher)!==selectedMatchup.value.away_suspended_pitcher_id)?0:selectedMatchup.value.away_pitch_count),
-        outs_pitched : gameCurrentInfo.value.away_current_out - ((getPlayerId(awayPitcher)!==selectedMatchup.value.away_suspended_pitcher_id)?0:selectedMatchup.value.away_current_out),
-        batters_faced : gameCurrentInfo.value.home_current_batting_number - ((getPlayerId(awayPitcher)!==selectedMatchup.value.away_suspended_pitcher_id)?0:selectedMatchup.value.home_current_batting_number)
-    }, awayPitcher);
-    
-    gameCurrentInfo.value.home_pitch_count = 0;
-    gameCurrentInfo.value.away_current_batting_number = 0;
-    gameCurrentInfo.value.home_current_out = 0;
-    gameCurrentInfo.value.away_pitch_count = 0;
-    gameCurrentInfo.value.home_current_batting_number = 0;
-    gameCurrentInfo.value.away_current_out = 0;
-
-    await setCurrentGamedayInfo('gameEnd');
-    await setCurrentGamedayInfo('lastInfo');
-    await updateGameStatus('completed');
-    await updateGameDailyStats();
-    await updateGameSeasonStats();
-    await updateGameScore();
 }
 
 onMounted(async ()=>{

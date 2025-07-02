@@ -34,12 +34,12 @@ export async function commonFetch(url, options = {}) {
             const currentPath = window.location.pathname;
             
             if(response.status === 401){
-                if(!PUBLIC_ROUTES.includes(currentPath)){
+                if(!PUBLIC_ROUTES.some(route => currentPath.startsWith(route))){
                     alert("로그인 정보가 없습니다.\n다시 로그인해주세요.")
                     location.href=`${location.origin}`
                 }
             }else if(response.status === 403){
-                if(!PUBLIC_ROUTES.includes(currentPath)){
+                if(!PUBLIC_ROUTES.some(route => currentPath.startsWith(route))){
                     alert("접근 권한이 없습니다.\n다시 로그인해주세요.")
                     location.href=`${location.origin}`
                 }

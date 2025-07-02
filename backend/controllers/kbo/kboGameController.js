@@ -8,11 +8,7 @@ export const getKboGameSchedules = async (req, res) => {
     const accessToken = req.headers['authorization']?.split(' ')[1]
     const date = req.params.date
 
-    if (!accessToken) return sendBadRequest(res, '토큰이 제공되지 않았습니다.')
-
     try {
-        jwt.verify(accessToken, process.env.JWT_SECRET)
-
         const { rows } = await query(`
             SELECT
                 kgm.id,
