@@ -339,7 +339,7 @@
                         </v-card-text>
                     </v-card>
                 </v-col>
-                <v-col cols="12" :md="selectedMatchup.status === 'scheduled' && lineupList.filter(ll => ll.away.length > 0 && ll.home.length >0).length < 10?12:6" v-if="lineupYn && lineupList.filter(ll => ll.away.length > 0 && ll.home.length >0).length === 10">
+                <v-col cols="12" :md="selectedMatchup.status === 'scheduled'?12:6" v-if="lineupYn && lineupList.filter(ll => ll.away.length > 0 && ll.home.length >0).length === 10">
                     <v-card class="h-100">
                         <v-card-title>라인업</v-card-title>
                         <v-divider></v-divider>
