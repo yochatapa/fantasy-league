@@ -147,9 +147,7 @@
                 </v-col>
                 <v-col cols="12" v-if="selectedMatchup.status === 'completed'">
                     <v-card>
-                        <v-card-title>선수 기록</v-card-title>
-                        <v-divider></v-divider>
-                        <v-card-text>
+                        <v-card-title>
                             <div class="d-flex">
                                 <img
                                     :src="selectedMatchup.away_team_path"
@@ -158,10 +156,11 @@
                                     style="height:2rem"
                                     
                                 />
-                                <h2 class="font-weight-bold team-name text-center" v-if="!isMobile">
-                                    {{ selectedMatchup.away_team_name }}
-                                </h2>
+                                {{ selectedMatchup.away_team_name }}
                             </div>
+                        </v-card-title>
+                        <v-divider></v-divider>
+                        <v-card-text>
                             <v-col cols="12">
                                 <span class="text-h6">타자 스탯</span>
                             </v-col>
@@ -251,9 +250,12 @@
                                     </div>
                                 </template>
                             </v-data-table>
-                            
-                            <v-divider class="mb-8"></v-divider>
-
+                        </v-card-text>
+                    </v-card>
+                </v-col>
+                <v-col cols="12" v-if="selectedMatchup.status === 'completed'">
+                    <v-card>
+                        <v-card-title>
                             <div class="d-flex">
                                 <img
                                     :src="selectedMatchup.home_team_path"
@@ -262,10 +264,10 @@
                                     style="height:2rem"
                                     
                                 />
-                                <h2 class="font-weight-bold team-name text-center" v-if="!isMobile">
-                                    {{ selectedMatchup.home_team_name }}
-                                </h2>
+                                {{ selectedMatchup.home_team_name }}
                             </div>
+                        </v-card-title>
+                        <v-card-text>
                             <v-col cols="12">
                                 <span class="text-h6">타자 스탯</span>
                             </v-col>
