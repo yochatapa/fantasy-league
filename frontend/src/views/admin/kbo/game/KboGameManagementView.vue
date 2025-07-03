@@ -2470,6 +2470,11 @@ const setForceNonOut = async () => {
         gameCurrentInfo.value.home_current_batting_number++;
     }
 
+    gameCurrentInfo.value.strike = 0;
+    gameCurrentInfo.value.ball = 0;
+    gameCurrentInfo.value.home_current_pitch_count = 0;
+    gameCurrentInfo.value.away_current_pitch_count = 0;
+
     gameCurrentInfo.value.is_available_stat = true;
 
     await setCurrentGamedayInfo('lastInfo');
