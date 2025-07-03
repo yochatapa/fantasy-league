@@ -2197,10 +2197,10 @@ const saveRoster = async () => {
                 const awayHome = isAway.value?'away':'home';
                 const battingOrderInfo = lineupList.value[runnerOrderNum]?.[awayHome];
                 const lastBatterInfo = battingOrderInfo?.[(battingOrderInfo?.length??1)-1]
-                gameCurrentInfo.value[`runner_${runnerNum}b`] = lastBatterInfo
+                gameCurrentInfo.value[`runner_${runnerNum}b`] = {...lastBatterInfo, pitcher : { ...gameCurrentInfo.value[`runner_${runnerNum}b`]?.pitcher }}
 
                 await setCurrentGamedayInfo('lastInfo');
-            }    
+            }
         }
     } catch (error) {
         alert("라인업 저장 중 문제가 발생하였습니다.\n다시 한 번 시도해주세요.");
