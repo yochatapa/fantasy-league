@@ -1554,6 +1554,7 @@ const currentBatter = computed(()=>{
         replaced_by: null,
         batting_order: null,
         replaced_inning: null,
+        replaced_inning_half: null,
         position : null,
     }
 })
@@ -1568,6 +1569,7 @@ const currentPitcher = computed(()=>{
         replaced_by: null,
         batting_order: null,
         replaced_inning: null,
+        replaced_inning_half: null,
         position : null,
     }
 })
@@ -1961,6 +1963,7 @@ const clearLineup = () => {
         replaced_by: null,
         batting_order: null,
         replaced_inning: null,
+        replaced_inning_half: null,
         position : null,
     }
 
@@ -2123,6 +2126,7 @@ const saveRoster = async () => {
                 , game_id : selectedMatchup.value.game_id
                 , isReplace : isReplace.value
                 , replaced_inning : gameCurrentInfo.value.inning
+                , replaced_inning_half: gameCurrentInfo.value.inning_half
                 , replaced_out : gameCurrentInfo.value.out
             }
         })
@@ -2138,6 +2142,18 @@ const saveRoster = async () => {
                     outs_pitched : isAway.value?gameCurrentInfo.value.home_current_out - ((getPlayerId(currentPitcher.value)!==selectedMatchup.value.home_suspended_pitcher_id)?0:selectedMatchup.value.home_current_out):gameCurrentInfo.value.away_current_out - ((getPlayerId(currentPitcher.value)!==selectedMatchup.value.away_suspended_pitcher_id)?0:selectedMatchup.value.away_current_out),
                     batters_faced : isAway.value?gameCurrentInfo.value.away_current_batting_number - ((getPlayerId(currentPitcher.value)!==selectedMatchup.value.home_suspended_pitcher_id)?0:selectedMatchup.value.away_current_batting_number):gameCurrentInfo.value.home_current_batting_number - ((getPlayerId(currentPitcher.value)!==selectedMatchup.value.away_suspended_pitcher_id)?0:selectedMatchup.value.home_current_batting_number)
                 });
+
+                if(lineupList.value[0]?.[isAway.value?'home':'away']?.length === 1){ // 선발투수
+                    const pitcherRes = await commonFetch(`/api/admin/game/${selectedMatchup.value.game_id}/pitcher/${getPlayerId(currentPitcher.value)}/current-stats`);
+
+                    if(pitcherRes.success && pitcherRes?.data?.currentPitcherStats){
+                        if(Number(pitcherRes?.data?.currentPitcherStats?.[0]?.earned_runs) <= 3 && Number(pitcherRes?.data?.currentPitcherStats?.[0]?.outs_pitched) >= 18 && await confirm(`${getPlayerName(currentPitcher.value)}의 퀄리티스타트를 등록하시겠습니까?`)){
+                            await setPitcherGameStats({
+                                quality_start : 1
+                            });
+                        }
+                    }
+                }
                 
                 if(isAway.value){
                     gameCurrentInfo.value.home_pitch_count = 0;
@@ -2225,6 +2241,7 @@ const setPlayerInfo = (teamFlag, orderIndex) => {
         replaced_by: null,
         batting_order: playerInfo.batting_order,
         replaced_inning: null,
+        replaced_inning_half: null,
         position : null,
     }
 
@@ -2288,7 +2305,8 @@ const setInningGameStats = async (teamId, stats = {}) => {
                 hits: stats.hits ?? 0,
                 errors: stats.errors ?? 0,
                 base_on_balls: stats.base_on_balls ?? 0,
-                strikeouts: stats.strikeouts ?? 0
+                strikeouts: stats.strikeouts ?? 0,
+                hit_by_pitch: stats.hit_by_pitch ?? 0,
             }
         });
         return response;
@@ -2401,13 +2419,15 @@ const setOut = async (battingNumberYn=true, confirmYn=true, countYn=true) => {
         gameCurrentInfo.value.runner_3b = null;
 
         if(!gameCurrentInfo.value.is_available_stat){
-            if(isAway.value){
-                gameCurrentInfo.value.away_batting_number++;
-                gameCurrentInfo.value.away_current_batting_number++;
-            }
-            else{
-                gameCurrentInfo.value.home_batting_number++;
-                gameCurrentInfo.value.home_current_batting_number++;
+            if(!battingNumberYn){
+                if(isAway.value){
+                    gameCurrentInfo.value.away_batting_number++;
+                    gameCurrentInfo.value.away_current_batting_number++;
+                }
+                else{
+                    gameCurrentInfo.value.home_batting_number++;
+                    gameCurrentInfo.value.home_current_batting_number++;
+                }
             }
         }
 
@@ -3718,7 +3738,7 @@ const setCaughtStealingSecondBase = async () => {
 
     gameCurrentInfo.value.runner_1b = null;
 
-    await setOut(false, false);
+    await setOut(false, false, false);
 
     await setCurrentGamedayInfo('lastInfo');
 }
@@ -3733,7 +3753,7 @@ const setCaughtStealingThirdBase = async () => {
 
     gameCurrentInfo.value.runner_2b = null;
 
-    await setOut(false, false);
+    await setOut(false, false, false);
 
     await setCurrentGamedayInfo('lastInfo');
 }
@@ -3746,7 +3766,7 @@ const setCaughtStealingHomeBase = async () => {
 
     gameCurrentInfo.value.runner_3b = null;
 
-    await setOut(false, false);
+    await setOut(false, false, false);
 
     await setCurrentGamedayInfo('lastInfo');
 }
@@ -3925,6 +3945,10 @@ const setSacrificeBunt = async () => {
 
 const setHitByPitch = async () => {
     await setCurrentGamedayInfo('hitByPitch');
+
+    await setInningGameStats(isAway.value?selectedMatchup.value.away_team_id:selectedMatchup.value.home_team_id,{
+        hit_by_pitch : 1
+    })
     
     await setBatterGameStats({
         plate_appearances : 1,
@@ -4278,7 +4302,7 @@ const setPassedBall = async () => {
                     options,
                     itemValue: 'id',
                     itemTitle: 'name',
-                    rules: [(v) => !!v || '이동할 베이스를 선택해주세요'],
+                    rules: [(v) => (v!==undefined && v!==null && v!=='') || '이동할 베이스를 선택해주세요'],
                 }
             );
 
@@ -4292,7 +4316,7 @@ const setPassedBall = async () => {
     if(runnerMoveNum === 0) return alert("주자가 이동하지 않으면 포일처리를 할 수 없습니다.","error");
 
     await setCurrentGamedayInfo(`passedBall`);
-    await setCurrentGamedayInfo(`ball`);
+    //await setCurrentGamedayInfo(`ball`);
 
     const catcherList = lineupList.value.flatMap(inning => inning[isAway.value ? 'home' : 'away'])?.filter(batter => getPlayerPosition(batter)?.toString() === "C")
 
@@ -4306,7 +4330,7 @@ const setPassedBall = async () => {
         errors : 1,
     },catcherInfo);
 
-    const current_ball = gameCurrentInfo.value.ball;
+    /*const current_ball = gameCurrentInfo.value.ball;
     if(isAway.value){
         gameCurrentInfo.value.home_pitch_count++;
         gameCurrentInfo.value.home_current_pitch_count++;
@@ -4318,7 +4342,7 @@ const setPassedBall = async () => {
     
     if(current_ball<3){
         gameCurrentInfo.value.ball++;
-    }
+    }*/
 
     await setCurrentGamedayInfo('lastInfo');
 }
@@ -4350,6 +4374,84 @@ const setGameOver = async (dail) => {
         outs_pitched : gameCurrentInfo.value.away_current_out - ((getPlayerId(awayPitcher)!==selectedMatchup.value.away_suspended_pitcher_id)?0:selectedMatchup.value.away_current_out),
         batters_faced : gameCurrentInfo.value.home_current_batting_number - ((getPlayerId(awayPitcher)!==selectedMatchup.value.away_suspended_pitcher_id)?0:selectedMatchup.value.home_current_batting_number)
     }, awayPitcher);
+
+    const [homePitcherRes, awayPitcherRes] = await Promise.all([
+        commonFetch(`/api/admin/game/${selectedMatchup.value.game_id}/pitcher/${getPlayerId(homePitcher)}/current-stats`),
+        commonFetch(`/api/admin/game/${selectedMatchup.value.game_id}/pitcher/${getPlayerId(awayPitcher)}/current-stats`),
+    ]);
+
+    if(homePitcherRes.success && homePitcherRes?.data?.currentPitcherStats?.[0]){
+        const homePitcherData = homePitcherRes?.data?.currentPitcherStats?.[0]
+        const isCompletedHome = lineupList.value[0]?.['home']?.length === 1;
+        const isShutOutHome = isCompletedHome && (Number(homePitcherData.earned_runs) === 0);
+        const isNoHitHome = isShutOutHome && (Number(homePitcherData.hits_allowed) === 0) && gameCurrentInfo.value.inning >= 9;
+        const isPerfectHome = isNoHitHome && (Number(homePitcherData.walks_allowed) === 0) && (Number(homePitcherData.hit_batters) === 0);
+
+        if(isPerfectHome && await confirm(`${getPlayerName(homePitcher)}의 퍼펙트게임을 등록하시겠습니까?`)){
+            await setPitcherGameStats({
+                perfect_game : 1,
+                no_hit : 1,
+                shutout : 1,
+                complete_game : 1,
+                quality_start : 1
+            }, homePitcher);
+        }else if(isNoHitHome && await confirm(`${getPlayerName(homePitcher)}의 노히터 노런을 등록하시겠습니까?`)){
+            await setPitcherGameStats({
+                no_hit : 1,
+                shutout : 1,
+                complete_game : 1,
+                quality_start : 1
+            }, homePitcher);
+        }else if(isShutOutHome && await confirm(`${getPlayerName(homePitcher)}의 완봉을 등록하시겠습니까?`)){
+            await setPitcherGameStats({
+                shutout : 1,
+                complete_game : 1,
+                quality_start : 1
+            }, homePitcher);
+        }else if(isCompletedHome && await confirm(`${getPlayerName(homePitcher)}의 완투를 등록하시겠습니까?`)){
+            await setPitcherGameStats({
+                complete_game : 1,
+                quality_start : 1
+            }, homePitcher);
+        }
+    }
+
+    if (awayPitcherRes.success && awayPitcherRes?.data?.currentPitcherStats?.[0]) {
+        const awayPitcherData = awayPitcherRes.data.currentPitcherStats[0];
+        const isCompletedAway = lineupList.value[0]?.['away']?.length === 1;
+        const isShutOutAway = isCompletedAway && (Number(awayPitcherData.earned_runs) === 0);
+        const isNoHitAway = isShutOutAway && (Number(awayPitcherData.hits_allowed) === 0) && gameCurrentInfo.value.inning >= 9;
+        const isPerfectAway = isNoHitAway && (Number(awayPitcherData.walks_allowed) === 0) && (Number(awayPitcherData.hit_batters) === 0);
+
+        if (isPerfectAway && await confirm(`${getPlayerName(awayPitcher)}의 퍼펙트게임을 등록하시겠습니까?`)) {
+            await setPitcherGameStats({
+                perfect_game: 1,
+                no_hit: 1,
+                shutout: 1,
+                complete_game: 1,
+                quality_start: 1
+            }, awayPitcher);
+        } else if (isNoHitAway && await confirm(`${getPlayerName(awayPitcher)}의 노히터 노런을 등록하시겠습니까?`)) {
+            await setPitcherGameStats({
+                no_hit: 1,
+                shutout: 1,
+                complete_game: 1,
+                quality_start: 1
+            }, awayPitcher);
+        } else if (isShutOutAway && await confirm(`${getPlayerName(awayPitcher)}의 완봉을 등록하시겠습니까?`)) {
+            await setPitcherGameStats({
+                shutout: 1,
+                complete_game: 1,
+                quality_start: 1
+            }, awayPitcher);
+        } else if (isCompletedAway && await confirm(`${getPlayerName(awayPitcher)}의 완투를 등록하시겠습니까?`)) {
+            await setPitcherGameStats({
+                complete_game: 1,
+                quality_start: 1
+            }, awayPitcher);
+        }
+    }
+    
     
     // gameCurrentInfo.value.home_pitch_count = 0;
     // gameCurrentInfo.value.away_current_batting_number = 0;

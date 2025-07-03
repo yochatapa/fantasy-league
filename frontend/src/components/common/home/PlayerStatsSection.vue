@@ -4,7 +4,7 @@
             <h3 class="font-weight-bold mb-2">타자 TOP 5</h3>
         </v-col>
 
-        <v-col cols="12" class="d-flex position-relative justify-center" v-if="batterVisible">
+        <v-col cols="12" class="d-flex position-relative justify-center" v-if="batterVisible && batterStats?.topPlayers?.length>0">
             <swiper 
                 :breakpoints="breakpoints"
                 :space-between="20" 
@@ -18,12 +18,18 @@
             <div class="swiper-button-next batter"></div>
             <div class="swiper-button-prev batter"></div>
         </v-col>
+        <v-col v-else-if="batterVisible" cols="12">
+            <v-card  class="pa-6 d-flex flex-column align-center" elevation="1">
+                <v-icon size="48" color="grey">mdi-emoticon-sad-outline</v-icon>
+                <div class="text-h6 mt-2 mb-1">타자 순위 정보가 없습니다.</div>
+            </v-card>
+        </v-col>
 
         <v-col cols="12" class="mt-6" v-if="pitcherVisible">
             <h3 class="font-weight-bold mb-2">투수 TOP 5</h3>
         </v-col>
 
-        <v-col cols="12" class="d-flex position-relative justify-center" v-if="pitcherVisible">
+        <v-col cols="12" class="d-flex position-relative justify-center" v-if="pitcherVisible && pitcherStats?.topPlayers?.length>0">
             <swiper 
                 :breakpoints="breakpoints"
                 :space-between="20" 
@@ -36,6 +42,12 @@
                 <div class="swiper-button-next pitcher"></div>
                 <div class="swiper-button-prev pitcher"></div>
             </swiper>
+        </v-col>
+        <v-col v-else-if="pitcherVisible" cols="12">
+            <v-card  class="pa-6 d-flex flex-column align-center" elevation="1">
+                <v-icon size="48" color="grey">mdi-emoticon-sad-outline</v-icon>
+                <div class="text-h6 mt-2 mb-1">투수 순위 정보가 없습니다.</div>
+            </v-card>
         </v-col>
     </v-row>
 </template>

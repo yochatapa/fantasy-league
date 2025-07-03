@@ -299,6 +299,7 @@ export const getKboGameDetail = async (req, res) => {
                 COALESCE(krp.throwing_hand,kp.throwing_hand) as throwing_hand,
                 krp.name AS replaced_player_name,
                 kgr.replaced_inning,
+                kgr.replaced_inning_half,
                 kgr.replaced_out,
                 kgr.replaced_position,
                 kgr.created_at,
@@ -310,7 +311,21 @@ export const getKboGameDetail = async (req, res) => {
             LEFT JOIN kbo_player_master kp ON kgr.player_id = kp.id
             LEFT JOIN kbo_player_master krp ON kgr.replaced_by = krp.id
             WHERE kgr.game_id = $1
-            ORDER BY kgr.batting_order, CASE WHEN kgr.replaced_inning IS NULL THEN 0 ELSE kgr.replaced_inning END, CASE WHEN kgr.replaced_out IS NULL THEN 0 ELSE kgr.replaced_out END, kgr.id;
+            ORDER BY 
+                kgr.batting_order, 
+                CASE 
+                    WHEN kgr.replaced_inning IS NULL THEN 0 
+                    ELSE kgr.replaced_inning 
+                END, 
+                CASE 
+                    WHEN kgr.replaced_inning_half IS NULL THEN 0 
+                    WHEN kgr.replaced_inning_half = 'top' THEN 1 
+                    WHEN kgr.replaced_inning_half = 'bottom' THEN 2 
+                END,
+                CASE 
+                    WHEN kgr.replaced_out IS NULL THEN 0 
+                    ELSE kgr.replaced_out 
+                END, kgr.id;
         `;
         
         const { rows : gameInfo} = await query(gameInfoQuery, [gameId]);
@@ -531,7 +546,7 @@ export const updateKboGameStatus = async (req, res) => {
 
 export const createKboGameRoster = async (req, res) => {
     const { 
-        game_id, team_id, player_id, batting_order, role, replaced_by, replaced_inning, replaced_out, position, replaced_position, isReplace
+        game_id, team_id, player_id, batting_order, role, replaced_by, replaced_inning, replaced_out, position, replaced_position, isReplace, replaced_inning_half
     } = req.body;
 
     const accessToken = req.headers['authorization']?.split(' ')[1];
@@ -550,7 +565,7 @@ export const createKboGameRoster = async (req, res) => {
     // 필수값 검증
     if(isReplace){
         if (!game_id || !team_id || batting_order === null || batting_order === undefined || !player_id || !position || 
-            !replaced_by || !replaced_inning || replaced_out === undefined || !replaced_position) {
+            !replaced_by || !replaced_inning || replaced_out === undefined || !replaced_position || !replaced_inning_half) {
             return sendBadRequest(res, "필수 입력값을 모두 입력해주세요.");
         }
     }else{
@@ -566,18 +581,19 @@ export const createKboGameRoster = async (req, res) => {
                 INSERT INTO kbo_game_roster (
                     game_id, team_id, player_id, batting_order, role,
                     replaced_by, replaced_inning, replaced_out, position, replaced_position,
-                    created_at
+                    replaced_inning_half, created_at
                 ) VALUES (
                     $1, $2, $3, $4, $5, 
                     $6, $7, $8, $9, $10,
-                    CURRENT_TIMESTAMP
+                    $11, CURRENT_TIMESTAMP
                 )
                 RETURNING id
             `;
             const { rows } = await client.query(insertGameQuery, [
                 game_id, team_id, player_id, batting_order, role,
-                replaced_by || null, (replaced_inning === undefined || replaced_inning === null)?null:replaced_inning, (replaced_out === undefined || replaced_out === null)?null:replaced_out, position, replaced_position || null
-            ]);replaced_inning
+                replaced_by || null, (replaced_inning === undefined || replaced_inning === null)?null:replaced_inning, (replaced_out === undefined || replaced_out === null)?null:replaced_out, position, replaced_position || null,
+                replaced_inning_half || null
+            ]);
 
             const gameRosterId = rows[0].id;
 
@@ -720,7 +736,8 @@ export const getKboGameInningStats = async (req, res) => {
                 SUM(runs) AS runs,
                 SUM(hits) AS hits,
                 SUM(errors) AS errors,
-                SUM(base_on_balls) AS base_on_balls
+                SUM(base_on_balls) AS base_on_balls,
+                SUM(hit_by_pitch) AS hit_by_pitch
             FROM kbo_game_inning_stats
             WHERE game_id = $1
             GROUP BY team_id, inning
@@ -728,7 +745,7 @@ export const getKboGameInningStats = async (req, res) => {
         `;
         const { rows: statRows } = await query(statsQuery, [gameId]);
 
-        // 데이터 정리
+        // 초기화
         const result = {
             home: [],
             away: [],
@@ -740,30 +757,32 @@ export const getKboGameInningStats = async (req, res) => {
         };
 
         statRows.forEach(row => {
-            const target = row.team_id === home_team_id ? result.home : result.away;
+            const isHome = row.team_id === home_team_id;
+            const offenseTarget = isHome ? result.home : result.away;
+            const offenseSummary = isHome ? result.summary.home : result.summary.away;
+            const defenseSummary = isHome ? result.summary.away : result.summary.home;
 
-            // 이닝별 데이터 push (index = inning - 1)
-            target[row.inning - 1] = {
+            // 이닝별 데이터 삽입
+            offenseTarget[row.inning - 1] = {
                 inning: row.inning,
-                runs: row.runs,
-                hits: row.hits,
-                errors: row.errors,
-                base_on_balls: row.base_on_balls,
+                runs: Number(row.runs) ?? 0,
+                hits: Number(row.hits) ?? 0,
+                errors: Number(row.errors) ?? 0, // 각 이닝 표시용 (수비 실책)
+                base_on_balls: Number(row.base_on_balls) ?? 0,
             };
 
-            // 요약 데이터 누적
-            const summary = row.team_id === home_team_id ? result.summary.home : result.summary.away;
-            summary.R += Number(row.runs) ?? 0;
-            summary.H += Number(row.hits) ?? 0;
-            summary.E += Number(row.errors) ?? 0;
-            summary.B += Number(row.base_on_balls) ?? 0;
+            // 요약 누적
+            offenseSummary.R += Number(row.runs) ?? 0;
+            offenseSummary.H += Number(row.hits) ?? 0;
+            offenseSummary.B += (Number(row.base_on_balls) ?? 0) + (Number(row.hit_by_pitch) ?? 0);
+            defenseSummary.E += Number(row.errors) ?? 0;
 
             if (row.inning > result.maxInning) {
                 result.maxInning = row.inning;
             }
         });
 
-        // 배열 길이를 이닝 수에 맞게 고정 (빈 이닝은 undefined로 남음)
+        // 이닝 수에 맞춰 배열 길이 고정
         result.home.length = result.maxInning;
         result.away.length = result.maxInning;
 
@@ -1119,7 +1138,7 @@ export const createGameInningStats = async (req, res) => {
     const {
         game_id, inning, inning_half, team_id,
         runs = 0, hits = 0, errors = 0,
-        base_on_balls = 0, strikeouts = 0
+        base_on_balls = 0, strikeouts = 0, hit_by_pitch = 0
     } = req.body;
 
     const accessToken = req.headers['authorization']?.split(' ')[1];
@@ -1149,16 +1168,16 @@ export const createGameInningStats = async (req, res) => {
             const insertQuery = `
                 INSERT INTO kbo_game_inning_stats (
                     game_id, inning, inning_half, team_id,
-                    runs, hits, errors, base_on_balls, strikeouts, updated_at
+                    runs, hits, errors, base_on_balls, strikeouts, hit_by_pitch, updated_at
                 ) VALUES (
                     $1, $2, $3, $4,
-                    $5, $6, $7, $8, $9, CURRENT_TIMESTAMP
+                    $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP
                 )
             `;
 
             await client.query(insertQuery, [
                 game_id, inning, inning_half, team_id,
-                runs, hits, errors, base_on_balls, strikeouts
+                runs, hits, errors, base_on_balls, strikeouts, hit_by_pitch
             ]);
         });
 
@@ -1461,6 +1480,98 @@ export const getKboCurrentBatterStats = async (req,res) => {
     }
 }
 
+export const getKboCurrentPitcherStats = async (req, res) => {
+    let { gameId, playerId } = req.params;
+
+    if (!gameId || !playerId) {
+        return sendBadRequest(res, "게임 정보가 잘못되었습니다.");
+    }
+
+    try {
+        const currentPitcherStatsQuery = `
+            WITH related_games AS (
+                SELECT id
+                FROM kbo_game_master
+                WHERE suspended_game_id = (SELECT suspended_game_id FROM kbo_game_master WHERE id = $1)
+                OR id = (SELECT suspended_game_id FROM kbo_game_master WHERE id = $1)
+                OR suspended_game_id = $1
+                OR id = $1
+            )
+            SELECT
+                pgs.player_id,
+                COALESCE(SUM(COALESCE(pgs.outs_pitched, 0)), 0) AS outs_pitched,
+                COALESCE(SUM(COALESCE(pgs.batters_faced, 0)), 0) AS batters_faced,
+                COALESCE(SUM(COALESCE(pgs.pitches_thrown, 0)), 0) AS pitches_thrown,
+                COALESCE(SUM(COALESCE(pgs.hits_allowed, 0)), 0) AS hits_allowed,
+                COALESCE(SUM(COALESCE(pgs.home_runs_allowed, 0)), 0) AS home_runs_allowed,
+                COALESCE(SUM(COALESCE(pgs.runs_allowed, 0)), 0) AS runs_allowed,
+                COALESCE(SUM(COALESCE(pgs.earned_runs, 0)), 0) AS earned_runs,
+                COALESCE(SUM(COALESCE(pgs.walks_allowed, 0)), 0) AS walks_allowed,
+                COALESCE(SUM(COALESCE(pgs.hit_batters, 0)), 0) AS hit_batters,
+                COALESCE(SUM(COALESCE(pgs.strikeouts, 0)), 0) AS strikeouts,
+                COALESCE(SUM(COALESCE(pgs.wild_pitches, 0)), 0) AS wild_pitches,
+                COALESCE(SUM(COALESCE(pgs.balks, 0)), 0) AS balks,
+                COALESCE(SUM(COALESCE(pgs.wins, 0)), 0) AS wins,
+                COALESCE(SUM(COALESCE(pgs.losses, 0)), 0) AS losses,
+                COALESCE(SUM(COALESCE(pgs.saves, 0)), 0) AS saves,
+                COALESCE(SUM(COALESCE(pgs.holds, 0)), 0) AS holds,
+                COALESCE(SUM(COALESCE(pgs.blown_saves, 0)), 0) AS blown_saves,
+                COALESCE(SUM(COALESCE(pgs.quality_start, 0)), 0) AS quality_start,
+                COALESCE(SUM(COALESCE(pgs.complete_game, 0)), 0) AS complete_game,
+                COALESCE(SUM(COALESCE(pgs.shutout, 0)), 0) AS shutout,
+                COALESCE(SUM(COALESCE(pgs.perfect_game, 0)), 0) AS perfect_game,
+                COALESCE(SUM(COALESCE(pgs.no_hit, 0)), 0) AS no_hit
+            FROM
+                public.pitcher_game_stats pgs
+            JOIN
+                related_games rg ON pgs.game_id = rg.id
+            WHERE
+                pgs.player_id = $2
+            GROUP BY
+                pgs.player_id
+        `;
+
+        let { rows: currentPitcherStats } = await query(currentPitcherStatsQuery, [gameId, playerId]);
+
+        if (currentPitcherStats.length === 0) {
+            currentPitcherStats = [{
+                game_id: gameId,
+                player_id: playerId,
+                outs_pitched: 0,
+                batters_faced: 0,
+                pitches_thrown: 0,
+                hits_allowed: 0,
+                home_runs_allowed: 0,
+                runs_allowed: 0,
+                earned_runs: 0,
+                walks_allowed: 0,
+                hit_batters: 0,
+                strikeouts: 0,
+                wild_pitches: 0,
+                balks: 0,
+                wins: 0,
+                losses: 0,
+                saves: 0,
+                holds: 0,
+                blown_saves: 0,
+                quality_start: 0,
+                complete_game: 0,
+                shutout: 0,
+                perfect_game: 0,
+                no_hit: 0
+            }];
+        }
+
+        return sendSuccess(res, {
+            message: "현 게임 투수 스탯 정보를 성공적으로 조회했습니다.",
+            currentPitcherStats
+        });
+    } catch (error) {
+        return sendServerError(res, error, "현 게임 투수 스탯 정보 조회 중 오류가 발생했습니다. 다시 시도해주세요.");
+    }
+};
+
+
 export const updateKboGameSeasonStats = async (req, res) => {
     const { gameId } = req.body;
     const accessToken = req.headers['authorization']?.split(' ')[1];
@@ -1606,7 +1717,8 @@ export const updateKboGameSeasonStats = async (req, res) => {
                     walks_allowed, intentional_walks_allowed, hit_batters, hit_by_pitch_allowed,
                     intentional_base_on_balls, strikeouts, wild_pitches, balks, wins,
                     losses, saves, holds, blown_saves, flyouts, groundouts, linedrives,
-                    grounded_into_double_play, triple_play, pickoffs
+                    grounded_into_double_play, triple_play, pickoffs,
+                    quality_start, complete_game, shutout, perfect_game, no_hit
                 )
                 SELECT
                     $2, player_id, team_id,
@@ -1640,13 +1752,18 @@ export const updateKboGameSeasonStats = async (req, res) => {
                     COALESCE(SUM(linedrives), 0),
                     COALESCE(SUM(grounded_into_double_play), 0),
                     COALESCE(SUM(triple_play), 0),
-                    COALESCE(SUM(pickoffs), 0)
+                    COALESCE(SUM(pickoffs), 0),
+                    COALESCE(SUM(quality_start), 0),
+                    COALESCE(SUM(complete_game), 0),
+                    COALESCE(SUM(shutout), 0),
+                    COALESCE(SUM(perfect_game), 0),
+                    COALESCE(SUM(no_hit), 0)
                 FROM pitcher_game_stats
                 WHERE game_id = ANY($1)
                 GROUP BY player_id, team_id
                 ON CONFLICT (season_year, player_id, team_id) DO UPDATE
                 SET
-                    games_played = 1 + EXCLUDED.games_played,
+                    games_played = 1 + pitcher_season_stats.games_played,
                     games_started = pitcher_season_stats.games_started + EXCLUDED.games_started,
                     outs_pitched = pitcher_season_stats.outs_pitched + EXCLUDED.outs_pitched,
                     batters_faced = pitcher_season_stats.batters_faced + EXCLUDED.batters_faced,
@@ -1676,10 +1793,16 @@ export const updateKboGameSeasonStats = async (req, res) => {
                     linedrives = pitcher_season_stats.linedrives + EXCLUDED.linedrives,
                     grounded_into_double_play = pitcher_season_stats.grounded_into_double_play + EXCLUDED.grounded_into_double_play,
                     triple_play = pitcher_season_stats.triple_play + EXCLUDED.triple_play,
-                    pickoffs = pitcher_season_stats.pickoffs + EXCLUDED.pickoffs;
+                    pickoffs = pitcher_season_stats.pickoffs + EXCLUDED.pickoffs,
+                    quality_start = pitcher_season_stats.quality_start + EXCLUDED.quality_start,
+                    complete_game = pitcher_season_stats.complete_game + EXCLUDED.complete_game,
+                    shutout = pitcher_season_stats.shutout + EXCLUDED.shutout,
+                    perfect_game = pitcher_season_stats.perfect_game + EXCLUDED.perfect_game,
+                    no_hit = pitcher_season_stats.no_hit + EXCLUDED.no_hit;
                 `,
                 [relatedGameIds, seasonYear]
             );
+
 
             return sendSuccess(res, {
                 message: `${relatedGameIds.length}개의 게임 통계를 시즌 누적으로 반영했습니다.`,
@@ -1798,7 +1921,8 @@ export const updateKboGameDailyStats = async (req, res) => {
                     intentional_base_on_balls, strikeouts, wild_pitches, balks,
                     wins, losses, saves, holds, blown_saves,
                     flyouts, groundouts, linedrives, grounded_into_double_play,
-                    triple_play, pickoffs
+                    triple_play, pickoffs,
+                    quality_start, complete_game, shutout, perfect_game, no_hit
                 )
                 SELECT
                     $2, $3,
@@ -1813,7 +1937,9 @@ export const updateKboGameDailyStats = async (req, res) => {
                     COALESCE(SUM(pgs.balks), 0), COALESCE(SUM(pgs.wins), 0), COALESCE(SUM(pgs.losses), 0), COALESCE(SUM(pgs.saves), 0),
                     COALESCE(SUM(pgs.holds), 0), COALESCE(SUM(pgs.blown_saves), 0), COALESCE(SUM(pgs.flyouts), 0), COALESCE(SUM(pgs.groundouts), 0),
                     COALESCE(SUM(pgs.linedrives), 0), COALESCE(SUM(pgs.grounded_into_double_play), 0), COALESCE(SUM(pgs.triple_play), 0),
-                    COALESCE(SUM(pgs.pickoffs), 0)
+                    COALESCE(SUM(pgs.pickoffs), 0),
+                    COALESCE(SUM(pgs.quality_start), 0), COALESCE(SUM(pgs.complete_game), 0), COALESCE(SUM(pgs.shutout), 0),
+                    COALESCE(SUM(pgs.perfect_game), 0), COALESCE(SUM(pgs.no_hit), 0)
                 FROM pitcher_game_stats pgs
                 JOIN kbo_game_master kgm ON pgs.game_id = kgm.id
                 WHERE kgm.id = $1
@@ -1849,8 +1975,14 @@ export const updateKboGameDailyStats = async (req, res) => {
                     linedrives = pitcher_daily_stats.linedrives + EXCLUDED.linedrives,
                     grounded_into_double_play = pitcher_daily_stats.grounded_into_double_play + EXCLUDED.grounded_into_double_play,
                     triple_play = pitcher_daily_stats.triple_play + EXCLUDED.triple_play,
-                    pickoffs = pitcher_daily_stats.pickoffs + EXCLUDED.pickoffs;
+                    pickoffs = pitcher_daily_stats.pickoffs + EXCLUDED.pickoffs,
+                    quality_start = pitcher_daily_stats.quality_start + EXCLUDED.quality_start,
+                    complete_game = pitcher_daily_stats.complete_game + EXCLUDED.complete_game,
+                    shutout = pitcher_daily_stats.shutout + EXCLUDED.shutout,
+                    perfect_game = pitcher_daily_stats.perfect_game + EXCLUDED.perfect_game,
+                    no_hit = pitcher_daily_stats.no_hit + EXCLUDED.no_hit;
             `, [gameId, season_year, game_date]);
+
 
             return sendSuccess(res, {
                 message: "게임 통계를 일자 통계로 반영했습니다.",
