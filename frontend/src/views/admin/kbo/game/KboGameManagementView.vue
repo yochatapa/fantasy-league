@@ -2197,10 +2197,10 @@ const saveRoster = async () => {
                 const awayHome = isAway.value?'away':'home';
                 const battingOrderInfo = lineupList.value[runnerOrderNum]?.[awayHome];
                 const lastBatterInfo = battingOrderInfo?.[(battingOrderInfo?.length??1)-1]
-                gameCurrentInfo.value[`runner_${runnerNum}b`] = lastBatterInfo
+                gameCurrentInfo.value[`runner_${runnerNum}b`] = {...lastBatterInfo, pitcher : { ...gameCurrentInfo.value[`runner_${runnerNum}b`]?.pitcher }}
 
                 await setCurrentGamedayInfo('lastInfo');
-            }    
+            }
         }
     } catch (error) {
         alert("라인업 저장 중 문제가 발생하였습니다.\n다시 한 번 시도해주세요.");
@@ -2469,6 +2469,11 @@ const setForceNonOut = async () => {
         gameCurrentInfo.value.home_batting_number++;
         gameCurrentInfo.value.home_current_batting_number++;
     }
+
+    gameCurrentInfo.value.strike = 0;
+    gameCurrentInfo.value.ball = 0;
+    gameCurrentInfo.value.home_current_pitch_count = 0;
+    gameCurrentInfo.value.away_current_pitch_count = 0;
 
     gameCurrentInfo.value.is_available_stat = true;
 
@@ -4209,13 +4214,13 @@ const setWildPitch = async () => {
     if(runnerMoveNum === 0) return alert("주자가 이동하지 않으면 폭투처리를 할 수 없습니다.","error");
 
     await setCurrentGamedayInfo(`wildPitch`);
-    await setCurrentGamedayInfo(`ball`);
+    // await setCurrentGamedayInfo(`ball`);
 
     await setPitcherGameStats({
         wild_pitches : 1,
     });
 
-    const current_ball = gameCurrentInfo.value.ball;
+    /*const current_ball = gameCurrentInfo.value.ball;
     if(isAway.value){
         gameCurrentInfo.value.home_pitch_count++;
         gameCurrentInfo.value.home_current_pitch_count++;
@@ -4227,7 +4232,7 @@ const setWildPitch = async () => {
     
     if(current_ball<3){
         gameCurrentInfo.value.ball++;
-    }
+    }*/
 
     await setCurrentGamedayInfo('lastInfo');
 }
@@ -4322,13 +4327,15 @@ const setPassedBall = async () => {
 
     const catcherInfo = catcherList[catcherList.length - 1]
 
-    await setInningGameStats(isAway.value?selectedMatchup.value.away_team_id:selectedMatchup.value.home_team_id,{
-        errors : 1
-    })
+    if(await confirm("포수의 실책을 등록하시겠습니까?")){
+        await setInningGameStats(isAway.value?selectedMatchup.value.away_team_id:selectedMatchup.value.home_team_id,{
+            errors : 1
+        })
 
-    await setBatterGameStats({
-        errors : 1,
-    },catcherInfo);
+        await setBatterGameStats({
+            errors : 1,
+        },catcherInfo);
+    }
 
     /*const current_ball = gameCurrentInfo.value.ball;
     if(isAway.value){
