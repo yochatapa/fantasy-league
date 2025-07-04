@@ -174,7 +174,7 @@ const currentDefenders = computed(() => {
         .map(order => order[side]?.at(-1))
         .filter(Boolean)
         .reverse(); // 최신 선수 우선
-    console.log(latestNine.forEach(player => console.log(player.replaced_position ?? player.position, player.replaced_player_name ?? player.player_name, player))) 
+     
     const defenderMap = new Map();
 
     for (const player of latestNine) {
