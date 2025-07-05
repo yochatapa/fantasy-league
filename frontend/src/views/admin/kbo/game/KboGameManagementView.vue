@@ -2257,26 +2257,6 @@ const setOut = async (battingNumberYn=true, confirmYn=true, countYn=true) => {
             gameCurrentInfo.value.home_current_pitch_count = 0;
             gameCurrentInfo.value.away_current_pitch_count = 0;
         }
-        gameCurrentInfo.value.out = 0;
-        const current_inning_half = gameCurrentInfo.value.inning_half;
-        gameCurrentInfo.value.runner_1b = null;
-        gameCurrentInfo.value.runner_2b = null;
-        gameCurrentInfo.value.runner_3b = null;
-
-        if(!gameCurrentInfo.value.is_available_stat){
-            if(!battingNumberYn){
-                if(isAway.value){
-                    gameCurrentInfo.value.away_batting_number++;
-                    gameCurrentInfo.value.away_current_batting_number++;
-                }
-                else{
-                    gameCurrentInfo.value.home_batting_number++;
-                    gameCurrentInfo.value.home_current_batting_number++;
-                }
-            }
-        }
-
-        gameCurrentInfo.value.is_available_stat = true;
         
         if(
             gameCurrentInfo.value.inning >= 9
@@ -2300,6 +2280,27 @@ const setOut = async (battingNumberYn=true, confirmYn=true, countYn=true) => {
             currentInning.value = gameCurrentInfo.value.inning
             gameCurrentInfo.value.inning_half = "top"
         }
+
+        gameCurrentInfo.value.out = 0;
+        const current_inning_half = gameCurrentInfo.value.inning_half;
+        gameCurrentInfo.value.runner_1b = null;
+        gameCurrentInfo.value.runner_2b = null;
+        gameCurrentInfo.value.runner_3b = null;
+
+        if(!gameCurrentInfo.value.is_available_stat){
+            if(!battingNumberYn){
+                if(isAway.value){
+                    gameCurrentInfo.value.away_batting_number++;
+                    gameCurrentInfo.value.away_current_batting_number++;
+                }
+                else{
+                    gameCurrentInfo.value.home_batting_number++;
+                    gameCurrentInfo.value.home_current_batting_number++;
+                }
+            }
+        }
+
+        gameCurrentInfo.value.is_available_stat = true;
     }
 }
 
