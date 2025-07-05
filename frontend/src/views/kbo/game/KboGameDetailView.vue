@@ -362,252 +362,295 @@
                         
                     </v-card>
                 </v-col>
-                <v-col cols="12" md="6" v-if="lineupYn && selectedMatchup.status !== 'scheduled'">
-                    <v-card class="h-100">
-                        <v-card-title>경기 중계</v-card-title>
-                        <v-divider></v-divider>
-                        <v-card-text>
-                            <baseball-stadium 
-                                :gameday-info="gamedayInfo" 
-                                :current-inning="currentInning" 
-                                :game-current-info="gameCurrentInfo"
-                                :lineup-list="lineupList"
-                                :current-batter="currentBatter"
-                                :current-pitcher="currentPitcher"
-                            />
-                            <div class="chip-container mt-2">
-                                <div class="d-flex" style="gap: 4px; overflow-x: auto; white-space: nowrap;">
-                                    <v-chip
-                                        v-for="number in gameCurrentInfo.inning>9?gameCurrentInfo.inning:9"
-                                        :key="number"
-                                        class="d-flex justify-center align-center cursor-pointer"
-                                        size="small"
-                                        :variant="number === currentInning ? 'tonal' : 'text'"
-                                        @click="setCurrentInning(number)"
-                                        :disabled="number>gameCurrentInfo.inning"
-                                    >
-                                        {{ number }}회
-                                    </v-chip>
-                                </div>
-
-                                <!-- 아래의 내용 영역 -->
-                                <v-card class="content-card mt-3" elevation="2">
-                                    <div class="content-wrapper" ref="contentCard">
-                                        <div v-for="(inningInfo, topBottom) in gamedayInfo[currentInning]" class="w-100">
-                                            <div>
-                                                <v-divider></v-divider>
-                                                <br>
-                                                <span>{{currentInning}}회 {{ topBottom==='top'?"초":"말" }}</span>
-                                            </div>
-                                            <div v-for="(outInfo, outcount) in inningInfo">
-                                                <div>
-                                                    <br>
-                                                    <v-divider></v-divider>
-                                                    <br>
-                                                    <span>{{ outInfo?.at(-1)?.batter?.batting_order }}번 타자 : {{ getPlayerName(outInfo?.at(-1)?.batter) }}</span>
-                                                    <br>
-                                                    <span>
-                                                        {{ outInfo?.at(-1)?.batter?.stats?.plate_appearances }}타석 {{ outInfo?.at(-1)?.batter?.stats?.at_bats }}타수 {{ outInfo?.at(-1)?.batter?.stats?.hits }}안타 {{ outInfo?.at(-1)?.batter?.stats?.walks }}볼넷 {{ outInfo?.at(-1)?.batter?.stats?.strikeouts }}삼진
-                                                    </span>
-                                                    <br>
-                                                    <span v-if="outInfo?.at(-1)?.batter?.stats?.hits>0">(1루타 {{ outInfo?.at(-1)?.batter?.stats?.singles }}, 2루타 {{ outInfo?.at(-1)?.batter?.stats?.doubles }}, 3루타 {{ outInfo?.at(-1)?.batter?.stats?.triples }}, 홈런 {{ outInfo?.at(-1)?.batter?.stats?.home_runs }})</span>
-                                                    <br v-if="outInfo?.at(-1)?.batter?.stats?.hits>0">
-                                                    <span>
-                                                        {{ outInfo?.at(-1)?.batter?.stats?.rbis }}타점 {{ outInfo?.at(-1)?.batter?.stats?.runs }}득점 {{ outInfo?.at(-1)?.batter?.stats?.stolen_bases }}도루
-                                                    </span>
-                                                    <br>
-                                                    <br>
-                                                    <span>투수 : {{ getPlayerName(outInfo?.at(-1)?.pitcher) }}</span>
-                                                </div>
-                                                <br>
-                                                <div v-for="(ballInfo, index) in outInfo">
-                                                    <div v-if="ballInfo.type === 'gameEnd'">
-                                                        경기 종료
-                                                        <br>
-                                                        {{ selectedMatchup.away_team_name }} : {{ gameCurrentInfo.away_score }}점
-                                                        <br>
-                                                        {{ selectedMatchup.home_team_name }} : {{ gameCurrentInfo.home_score }}점
-                                                    </div>
-                                                    
-                                                    <div v-if="ballInfo.type.startsWith('changePitcher')">
-                                                        투수 교체 ({{ getPlayerName(lineupList.flatMap(inning => [...inning.home,  ...inning.away])?.find(pitcher => {return getPlayerId(pitcher)?.toString() === ballInfo.type.split(':')[1]})) }} ▶ {{ getPlayerName(lineupList.flatMap(inning => [...inning.home,  ...inning.away])?.find(pitcher => {return getPlayerId(pitcher)?.toString() === ballInfo.type.split(':')[2]})) }})
-                                                    </div>
-                                                    <div v-else-if="ballInfo.type.startsWith('changeBatter')">
-                                                        타자 교체 ({{ getPlayerName(lineupList.flatMap(inning => [...inning.home,  ...inning.away])?.find(batter => {return getPlayerId(batter)?.toString() === ballInfo.type.split(':')[1]})) }} ▶ {{ getPlayerName(lineupList.flatMap(inning => [...inning.home,  ...inning.away])?.find(batter => {return getPlayerId(batter)?.toString() === ballInfo.type.split(':')[2]})) }})
-                                                    </div>
-                                                    <div v-else-if="ballInfo.type.startsWith('changeRunner')">
-                                                        {{ ballInfo.type.split(':')[1] }}루 주자 교체 ({{ getPlayerName(lineupList.flatMap(inning => [...inning.home,  ...inning.away])?.find(batter => {return getPlayerId(batter)?.toString() === ballInfo.type.split(':')[2]})) }} ▶ {{ getPlayerName(lineupList.flatMap(inning => [...inning.home,  ...inning.away])?.find(batter => {return getPlayerId(batter)?.toString() === ballInfo.type.split(':')[3]})) }})
-                                                    </div>
-                                                    <div v-else-if="ballInfo.type.startsWith('changePlayer')">
-                                                        선수 교체 ({{ getPlayerName(lineupList.flatMap(inning => [...inning.home,  ...inning.away])?.find(batter => {return getPlayerId(batter)?.toString() === ballInfo.type.split(':')[1]})) }} ▶ {{ getPlayerName(lineupList.flatMap(inning => [...inning.home,  ...inning.away])?.find(batter => {return getPlayerId(batter)?.toString() === ballInfo.type.split(':')[2]})) }})
-                                                    </div>
-                                                    <div v-else-if="ballInfo.type.startsWith('changeDefense')">
-                                                        수비 교체 ({{ ballInfo.type.split(':')[1] }} {{ lineupList.flatMap(inning => [...inning.home,  ...inning.away])?.filter(batter => batter.player_id?.toString() === ballInfo.type.split(':')[2])?.at(-1)?.player_name }} ▶ {{ ballInfo.type.split(':')[3] }} {{ lineupList.flatMap(inning => [...inning.home,  ...inning.away])?.filter(batter => batter.replaced_by?.toString() === ballInfo.type.split(':')[4])?.at(-1)?.replaced_player_name }})
-                                                    </div>
-                                                    
-                                                    <div v-if="['flyout','groundout','linedrive','doubleplay','tripleplay','hitting','sacrificeFly','sacrificeBunt'].includes(ballInfo.type)">
-                                                        {{ (ballInfo[topBottom==='top'?'home_current_pitch_count':'away_current_pitch_count'])+1 }}구 : 타격
-                                                    </div>
-                                                    <div v-else-if="ballInfo.type.startsWith('pitchclock')" class="text-error">
-                                                        {{ ballInfo.type === "pitchclockStrike"?'타자':'투수' }} 피치클락 위반 
-                                                    </div>
-                                                    <div v-else-if="ballInfo.type.startsWith('wildPitch')" class="text-error">
-                                                        투수 폭투
-                                                    </div>
-                                                    <div v-else-if="ballInfo.type.startsWith('passedBall')" class="text-error">
-                                                        포일
-                                                    </div>
-                                                    <div v-else-if="ballInfo.type.startsWith('balk')" class="text-error">
-                                                        투수 보크
-                                                    </div>
-
-                                                    <div v-if="['strike','ball','foul','swingAndMiss'].includes(ballInfo.type)">
-                                                        {{ (ballInfo[topBottom==='top'?'home_current_pitch_count':'away_current_pitch_count'])+1 }}구 : {{ ballInfo.type==='strike'?'스트라이크':(ballInfo.type==='ball'?'볼':(ballInfo.type==='foul'?'파울':(ballInfo.type==='swingAndMiss'?'헛스윙':''))) }} <span class="text-grey-lighten-1">| {{ ballInfo.ball + (ballInfo.type==="ball"?1:0)}} - {{ ballInfo.strike + (["strike","swingAndMiss"].includes(ballInfo.type)?1:0) + (ballInfo.type === "foul" && ballInfo.strike<2 ? 1 : 0)}}</span>
-                                                    </div>
-                                                    <div v-else-if="['strikeout'].includes(ballInfo.type)" class="text-error">
-                                                        스트라이크 아웃
-                                                    </div>
-                                                    <div v-else-if="['flyout'].includes(ballInfo.type)" class="text-error">
-                                                        플라이 아웃
-                                                    </div>
-                                                    <div v-else-if="['groundout'].includes(ballInfo.type)" class="text-error">
-                                                        땅볼 아웃
-                                                    </div>
-                                                    <div v-else-if="['linedrive'].includes(ballInfo.type)" class="text-error">
-                                                        직선타
-                                                    </div>
-                                                    <div v-else-if="['baseonballs'].includes(ballInfo.type)" class="text-green">
-                                                        볼넷
-                                                    </div>
-                                                    <div v-else-if="['hitByPitch'].includes(ballInfo.type)" class="text-green">
-                                                        사구
-                                                    </div>
-                                                    <div v-else-if="['intentionalBaseOnBalls'].includes(ballInfo.type)" class="text-green">
-                                                        고의사구
-                                                    </div>
-                                                    <div v-else-if="['fieldersChoice'].includes(ballInfo.type)" class="text-primary">
-                                                        타자 주자 야수선택으로 출루
-                                                    </div>
-                                                    <div v-else-if="['groundOutReached'].includes(ballInfo.type)" class="text-primary">
-                                                        티자 주자 땅볼로 출루
-                                                    </div>
-                                                    <div v-else-if="['doubleplay'].includes(ballInfo.type)" class="text-error">
-                                                        병살타
-                                                    </div>
-                                                    <div v-else-if="['tripleplay'].includes(ballInfo.type)" class="text-error">
-                                                        삼중살
-                                                    </div>
-                                                    <div v-else-if="ballInfo.type.startsWith('out')" class="text-error">
-                                                        {{ ballInfo.type.split(':')[1] === '0'
-                                                            ? '타자 주자 아웃'
-                                                            : ballInfo.type.split(':')[1] + '루 주자 아웃' }}
-                                                        (
-                                                        {{ ballInfo.type.split(':')[1] === '0'
-                                                            ? getPlayerName(ballInfo?.batter)
-                                                            : getPlayerName(ballInfo?.['runner_' + ballInfo.type.split(':')[1] + 'b']) }}
-                                                        )
-                                                    </div>
-                                                    <div v-else-if="['hit'].includes(ballInfo.type)" class="text-primary">
-                                                        안타 ({{ getPlayerName(outInfo?.at(-1)?.batter) }})
-                                                    </div>
-                                                    <div v-else-if="['double'].includes(ballInfo.type)" class="text-primary">
-                                                        2루타 ({{ getPlayerName(outInfo?.at(-1)?.batter) }})
-                                                    </div>
-                                                    <div v-else-if="['triple'].includes(ballInfo.type)" class="text-primary">
-                                                        3루타 ({{ getPlayerName(outInfo?.at(-1)?.batter) }})
-                                                    </div>
-                                                    <div v-else-if="['homerun'].includes(ballInfo.type)" class="text-primary">
-                                                        홈런 ({{ getPlayerName(outInfo?.at(-1)?.batter) }})
-                                                    </div>
-                                                    <div v-else-if="ballInfo.type.startsWith('runner')">
-                                                        {{ ballInfo.type.split(':')[1]==='0'?'타자주자':ballInfo.type.split(':')[1]+'루' }} -> {{ ballInfo.type.split(':')[2]==='4'?"홈":ballInfo.type.split(':')[2]+'루' }} 진루 ({{ ballInfo.type.split(':')[1] === '0'?(ballInfo?.batter?.replaced_player_name??ballInfo?.batter?.player_name) :(ballInfo?.['runner_'+ballInfo.type.split(':')[1]+'b']?.replaced_player_name??ballInfo?.['runner_'+ballInfo.type.split(':')[1]+'b']?.player_name) }})
-                                                    </div>
-                                                    <div v-else-if="ballInfo.type.startsWith('score')" class="text-primary">
-                                                        {{ ballInfo.type.split(':')[1] === "4" ? getPlayerName(outInfo?.at(-1)?.batter) : getPlayerName(ballInfo['runner_'+ballInfo.type.split(':')[1]+'b']) }} 득점
-                                                    </div>
-                                                    <div v-else-if="['rbi'].includes(ballInfo.type)">
-                                                        {{ getPlayerName(ballInfo?.batter) }} 타점
-                                                    </div>
-                                                    <div v-else-if="ballInfo.type.startsWith('stolenBase')">
-                                                        {{ ballInfo.type.split(':')[1] === "4"?"홈":ballInfo.type.split(':')[1]+"루"}} 도루 ({{ getPlayerName(ballInfo['runner_'+(Number(ballInfo.type.split(':')[1])-1)+'b']) }})
-                                                    </div>
-                                                    <div v-else-if="ballInfo.type.startsWith('caughtStealing')" class="text-error">
-                                                        {{ ballInfo.type.split(':')[1] === "4"?"홈":ballInfo.type.split(':')[1]+"루"}} 도루 실패 ({{ getPlayerName(ballInfo['runner_'+(Number(ballInfo.type.split(':')[1])-1)+'b']) }})
-                                                    </div>
-                                                    <div v-else-if="ballInfo.type.startsWith('pickoff')" class="text-error">
-                                                        {{ ballInfo.type.split(':')[1] === "4"?"홈":ballInfo.type.split(':')[1]+"루"}} 주자 견제사 ({{ getPlayerName(ballInfo['runner_'+ballInfo.type.split(':')[1]+'b']) }})
-                                                    </div>
-                                                    <div v-else-if="ballInfo.type.startsWith('sacrificeFly')" class="text-secondary">
-                                                        희생플라이 ({{ getPlayerName(outInfo?.at(-1)?.batter) }})
-                                                    </div>
-                                                    <div v-else-if="ballInfo.type.startsWith('sacrificeBunt')" class="text-secondary">
-                                                        희생번트 ({{ getPlayerName(outInfo?.at(-1)?.batter) }})
-                                                    </div>
-                                                    <div v-else-if="ballInfo.type.startsWith('error')" class="text-secondary">
-                                                        {{ POSITIONS.filter(position => position.code === ballInfo.type.split(':')[1])?.[0]?.name??'' }} 실책
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <br>
-                                        </div>
-                                    </div>
-                                </v-card>
-                            </div>
-                        </v-card-text>
-                    </v-card>
-                </v-col>
-                <v-col cols="12" :md="selectedMatchup.status === 'scheduled'?12:6" v-if="lineupYn && lineupList.filter(ll => ll.away.length > 0 && ll.home.length >0).length === 10">
-                    <v-card class="h-100">
-                        <v-card-title>라인업</v-card-title>
-                        <v-divider></v-divider>
-                        <v-card-text>
-                            <v-row class="text-center font-bold">
-                                <v-col>원정팀</v-col>
-                                <span class="py-3">타순</span>
-                                <v-col>홈팀</v-col>
-                            </v-row>
-                            <v-row
-                                v-for="(lineup, index) in lineupList"
-                                :key="index"
-                                class="d-flex align-center text-center"
-                            >
+                <v-col cols="12" md="4" v-if="lineupYn && selectedMatchup.status !== 'scheduled'">
+                    <v-row>
+                        <v-col cols="12">
+                            <v-card class="h-100">
+                                <v-card-title>경기 중계</v-card-title>
                                 <v-divider></v-divider>
-                                <v-col
-                                    class="d-flex flex-column"
-                                    :class="{ 'selected-lineup': selectedLineup[0] === 'away' && selectedLineup[1] === index }"
-                                >
-                                    <div
-                                        v-for="(player, aIdx) in groupPlayers(lineupList[((index + 1) % 10)]?.away || [])"
-                                        :key="aIdx"
-                                        class="d-flex justify-space-between"
-                                    >
-                                        <span class="w-100">
-                                            ({{ player.positions.join(',') }}) {{ player.name }}
-                                        </span>
-                                    </div>
-                                </v-col>
+                                <v-card-text>
+                                    <baseball-stadium 
+                                        :gameday-info="gamedayInfo" 
+                                        :current-inning="currentInning" 
+                                        :game-current-info="gameCurrentInfo"
+                                        :lineup-list="lineupList"
+                                        :current-batter="currentBatter"
+                                        :current-pitcher="currentPitcher"
+                                    />
+                                    <div class="chip-container mt-2">
+                                        <div class="d-flex" style="gap: 4px; overflow-x: auto; white-space: nowrap;">
+                                            <v-chip
+                                                v-for="number in gameCurrentInfo.inning>9?gameCurrentInfo.inning:9"
+                                                :key="number"
+                                                class="d-flex justify-center align-center cursor-pointer"
+                                                size="small"
+                                                :variant="number === currentInning ? 'tonal' : 'text'"
+                                                @click="setCurrentInning(number)"
+                                                :disabled="number>gameCurrentInfo.inning"
+                                            >
+                                                {{ number }}회
+                                            </v-chip>
+                                        </div>
 
-                                <span class="pa-3">
-                                    {{ ((index + 1) % 10) === 0 ? "투수" : ((index + 1) % 10) + "번" }}
-                                </span>
+                                        <!-- 아래의 내용 영역 -->
+                                        <v-card class="content-card mt-3" elevation="2">
+                                            <div class="content-wrapper" ref="contentCard">
+                                                <div v-for="(inningInfo, topBottom) in gamedayInfo[currentInning]" class="w-100">
+                                                    <div>
+                                                        <v-divider></v-divider>
+                                                        <br>
+                                                        <span>{{currentInning}}회 {{ topBottom==='top'?"초":"말" }}</span>
+                                                    </div>
+                                                    <div v-for="(outInfo, outcount) in inningInfo">
+                                                        <div>
+                                                            <br>
+                                                            <v-divider></v-divider>
+                                                            <br>
+                                                            <span>{{ outInfo?.at(-1)?.batter?.batting_order }}번 타자 : {{ getPlayerName(outInfo?.at(-1)?.batter) }}</span>
+                                                            <br>
+                                                            <span>
+                                                                {{ outInfo?.at(-1)?.batter?.stats?.plate_appearances }}타석 {{ outInfo?.at(-1)?.batter?.stats?.at_bats }}타수 {{ outInfo?.at(-1)?.batter?.stats?.hits }}안타 {{ outInfo?.at(-1)?.batter?.stats?.walks }}볼넷 {{ outInfo?.at(-1)?.batter?.stats?.strikeouts }}삼진
+                                                            </span>
+                                                            <br>
+                                                            <span v-if="outInfo?.at(-1)?.batter?.stats?.hits>0">(1루타 {{ outInfo?.at(-1)?.batter?.stats?.singles }}, 2루타 {{ outInfo?.at(-1)?.batter?.stats?.doubles }}, 3루타 {{ outInfo?.at(-1)?.batter?.stats?.triples }}, 홈런 {{ outInfo?.at(-1)?.batter?.stats?.home_runs }})</span>
+                                                            <br v-if="outInfo?.at(-1)?.batter?.stats?.hits>0">
+                                                            <span>
+                                                                {{ outInfo?.at(-1)?.batter?.stats?.rbis }}타점 {{ outInfo?.at(-1)?.batter?.stats?.runs }}득점 {{ outInfo?.at(-1)?.batter?.stats?.stolen_bases }}도루
+                                                            </span>
+                                                            <br>
+                                                            <br>
+                                                            <span>투수 : {{ getPlayerName(outInfo?.at(-1)?.pitcher) }}</span>
+                                                        </div>
+                                                        <br>
+                                                        <div v-for="(ballInfo, index) in outInfo">
+                                                            <div v-if="ballInfo.type === 'gameEnd'">
+                                                                경기 종료
+                                                                <br>
+                                                                {{ selectedMatchup.away_team_name }} : {{ gameCurrentInfo.away_score }}점
+                                                                <br>
+                                                                {{ selectedMatchup.home_team_name }} : {{ gameCurrentInfo.home_score }}점
+                                                            </div>
+                                                            
+                                                            <div v-if="ballInfo.type.startsWith('changePitcher')">
+                                                                투수 교체 ({{ getPlayerName(lineupList.flatMap(inning => [...inning.home,  ...inning.away])?.find(pitcher => {return getPlayerId(pitcher)?.toString() === ballInfo.type.split(':')[1]})) }} ▶ {{ getPlayerName(lineupList.flatMap(inning => [...inning.home,  ...inning.away])?.find(pitcher => {return getPlayerId(pitcher)?.toString() === ballInfo.type.split(':')[2]})) }})
+                                                            </div>
+                                                            <div v-else-if="ballInfo.type.startsWith('changeBatter')">
+                                                                타자 교체 ({{ getPlayerName(lineupList.flatMap(inning => [...inning.home,  ...inning.away])?.find(batter => {return getPlayerId(batter)?.toString() === ballInfo.type.split(':')[1]})) }} ▶ {{ getPlayerName(lineupList.flatMap(inning => [...inning.home,  ...inning.away])?.find(batter => {return getPlayerId(batter)?.toString() === ballInfo.type.split(':')[2]})) }})
+                                                            </div>
+                                                            <div v-else-if="ballInfo.type.startsWith('changeRunner')">
+                                                                {{ ballInfo.type.split(':')[1] }}루 주자 교체 ({{ getPlayerName(lineupList.flatMap(inning => [...inning.home,  ...inning.away])?.find(batter => {return getPlayerId(batter)?.toString() === ballInfo.type.split(':')[2]})) }} ▶ {{ getPlayerName(lineupList.flatMap(inning => [...inning.home,  ...inning.away])?.find(batter => {return getPlayerId(batter)?.toString() === ballInfo.type.split(':')[3]})) }})
+                                                            </div>
+                                                            <div v-else-if="ballInfo.type.startsWith('changePlayer')">
+                                                                선수 교체 ({{ getPlayerName(lineupList.flatMap(inning => [...inning.home,  ...inning.away])?.find(batter => {return getPlayerId(batter)?.toString() === ballInfo.type.split(':')[1]})) }} ▶ {{ getPlayerName(lineupList.flatMap(inning => [...inning.home,  ...inning.away])?.find(batter => {return getPlayerId(batter)?.toString() === ballInfo.type.split(':')[2]})) }})
+                                                            </div>
+                                                            <div v-else-if="ballInfo.type.startsWith('changeDefense')">
+                                                                수비 교체 ({{ ballInfo.type.split(':')[1] }} {{ lineupList.flatMap(inning => [...inning.home,  ...inning.away])?.filter(batter => batter.player_id?.toString() === ballInfo.type.split(':')[2])?.at(-1)?.player_name }} ▶ {{ ballInfo.type.split(':')[3] }} {{ lineupList.flatMap(inning => [...inning.home,  ...inning.away])?.filter(batter => batter.replaced_by?.toString() === ballInfo.type.split(':')[4])?.at(-1)?.replaced_player_name }})
+                                                            </div>
+                                                            
+                                                            <div v-if="['flyout','groundout','linedrive','doubleplay','tripleplay','hitting','sacrificeFly','sacrificeBunt'].includes(ballInfo.type)">
+                                                                {{ (ballInfo[topBottom==='top'?'home_current_pitch_count':'away_current_pitch_count'])+1 }}구 : 타격
+                                                            </div>
+                                                            <div v-else-if="ballInfo.type.startsWith('pitchclock')" class="text-error">
+                                                                {{ ballInfo.type === "pitchclockStrike"?'타자':'투수' }} 피치클락 위반 
+                                                            </div>
+                                                            <div v-else-if="ballInfo.type.startsWith('wildPitch')" class="text-error">
+                                                                투수 폭투
+                                                            </div>
+                                                            <div v-else-if="ballInfo.type.startsWith('passedBall')" class="text-error">
+                                                                포일
+                                                            </div>
+                                                            <div v-else-if="ballInfo.type.startsWith('balk')" class="text-error">
+                                                                투수 보크
+                                                            </div>
 
-                                <v-col
-                                    class="d-flex flex-column"
-                                    :class="{ 'selected-lineup': selectedLineup[0] === 'home' && selectedLineup[1] === index }"
-                                >
-                                    <div
-                                        v-for="(player, hIdx) in groupPlayers(lineupList[((index + 1) % 10)]?.home || [])"
-                                        :key="hIdx"
-                                        class="d-flex justify-space-between"
-                                    >
-                                        <span class="w-100">
-                                            ({{ player.positions.join(',') }}) {{ player.name }}
-                                        </span>
+                                                            <div v-if="['strike','ball','foul','swingAndMiss'].includes(ballInfo.type)">
+                                                                {{ (ballInfo[topBottom==='top'?'home_current_pitch_count':'away_current_pitch_count'])+1 }}구 : {{ ballInfo.type==='strike'?'스트라이크':(ballInfo.type==='ball'?'볼':(ballInfo.type==='foul'?'파울':(ballInfo.type==='swingAndMiss'?'헛스윙':''))) }} <span class="text-grey-lighten-1">| {{ ballInfo.ball + (ballInfo.type==="ball"?1:0)}} - {{ ballInfo.strike + (["strike","swingAndMiss"].includes(ballInfo.type)?1:0) + (ballInfo.type === "foul" && ballInfo.strike<2 ? 1 : 0)}}</span>
+                                                            </div>
+                                                            <div v-else-if="['strikeout'].includes(ballInfo.type)" class="text-error">
+                                                                스트라이크 아웃
+                                                            </div>
+                                                            <div v-else-if="['flyout'].includes(ballInfo.type)" class="text-error">
+                                                                플라이 아웃
+                                                            </div>
+                                                            <div v-else-if="['groundout'].includes(ballInfo.type)" class="text-error">
+                                                                땅볼 아웃
+                                                            </div>
+                                                            <div v-else-if="['linedrive'].includes(ballInfo.type)" class="text-error">
+                                                                직선타
+                                                            </div>
+                                                            <div v-else-if="['baseonballs'].includes(ballInfo.type)" class="text-green">
+                                                                볼넷
+                                                            </div>
+                                                            <div v-else-if="['hitByPitch'].includes(ballInfo.type)" class="text-green">
+                                                                사구
+                                                            </div>
+                                                            <div v-else-if="['intentionalBaseOnBalls'].includes(ballInfo.type)" class="text-green">
+                                                                고의사구
+                                                            </div>
+                                                            <div v-else-if="['fieldersChoice'].includes(ballInfo.type)" class="text-primary">
+                                                                타자 주자 야수선택으로 출루
+                                                            </div>
+                                                            <div v-else-if="['groundOutReached'].includes(ballInfo.type)" class="text-primary">
+                                                                티자 주자 땅볼로 출루
+                                                            </div>
+                                                            <div v-else-if="['doubleplay'].includes(ballInfo.type)" class="text-error">
+                                                                병살타
+                                                            </div>
+                                                            <div v-else-if="['tripleplay'].includes(ballInfo.type)" class="text-error">
+                                                                삼중살
+                                                            </div>
+                                                            <div v-else-if="ballInfo.type.startsWith('out')" class="text-error">
+                                                                {{ ballInfo.type.split(':')[1] === '0'
+                                                                    ? '타자 주자 아웃'
+                                                                    : ballInfo.type.split(':')[1] + '루 주자 아웃' }}
+                                                                (
+                                                                {{ ballInfo.type.split(':')[1] === '0'
+                                                                    ? getPlayerName(ballInfo?.batter)
+                                                                    : getPlayerName(ballInfo?.['runner_' + ballInfo.type.split(':')[1] + 'b']) }}
+                                                                )
+                                                            </div>
+                                                            <div v-else-if="['hit'].includes(ballInfo.type)" class="text-primary">
+                                                                안타 ({{ getPlayerName(outInfo?.at(-1)?.batter) }})
+                                                            </div>
+                                                            <div v-else-if="['double'].includes(ballInfo.type)" class="text-primary">
+                                                                2루타 ({{ getPlayerName(outInfo?.at(-1)?.batter) }})
+                                                            </div>
+                                                            <div v-else-if="['triple'].includes(ballInfo.type)" class="text-primary">
+                                                                3루타 ({{ getPlayerName(outInfo?.at(-1)?.batter) }})
+                                                            </div>
+                                                            <div v-else-if="['homerun'].includes(ballInfo.type)" class="text-primary">
+                                                                홈런 ({{ getPlayerName(outInfo?.at(-1)?.batter) }})
+                                                            </div>
+                                                            <div v-else-if="ballInfo.type.startsWith('runner')">
+                                                                {{ ballInfo.type.split(':')[1]==='0'?'타자주자':ballInfo.type.split(':')[1]+'루' }} -> {{ ballInfo.type.split(':')[2]==='4'?"홈":ballInfo.type.split(':')[2]+'루' }} 진루 ({{ ballInfo.type.split(':')[1] === '0'?(ballInfo?.batter?.replaced_player_name??ballInfo?.batter?.player_name) :(ballInfo?.['runner_'+ballInfo.type.split(':')[1]+'b']?.replaced_player_name??ballInfo?.['runner_'+ballInfo.type.split(':')[1]+'b']?.player_name) }})
+                                                            </div>
+                                                            <div v-else-if="ballInfo.type.startsWith('score')" class="text-primary">
+                                                                {{ ballInfo.type.split(':')[1] === "4" ? getPlayerName(outInfo?.at(-1)?.batter) : getPlayerName(ballInfo['runner_'+ballInfo.type.split(':')[1]+'b']) }} 득점
+                                                            </div>
+                                                            <div v-else-if="['rbi'].includes(ballInfo.type)">
+                                                                {{ getPlayerName(ballInfo?.batter) }} 타점
+                                                            </div>
+                                                            <div v-else-if="ballInfo.type.startsWith('stolenBase')">
+                                                                {{ ballInfo.type.split(':')[1] === "4"?"홈":ballInfo.type.split(':')[1]+"루"}} 도루 ({{ getPlayerName(ballInfo['runner_'+(Number(ballInfo.type.split(':')[1])-1)+'b']) }})
+                                                            </div>
+                                                            <div v-else-if="ballInfo.type.startsWith('caughtStealing')" class="text-error">
+                                                                {{ ballInfo.type.split(':')[1] === "4"?"홈":ballInfo.type.split(':')[1]+"루"}} 도루 실패 ({{ getPlayerName(ballInfo['runner_'+(Number(ballInfo.type.split(':')[1])-1)+'b']) }})
+                                                            </div>
+                                                            <div v-else-if="ballInfo.type.startsWith('pickoff')" class="text-error">
+                                                                {{ ballInfo.type.split(':')[1] === "4"?"홈":ballInfo.type.split(':')[1]+"루"}} 주자 견제사 ({{ getPlayerName(ballInfo['runner_'+ballInfo.type.split(':')[1]+'b']) }})
+                                                            </div>
+                                                            <div v-else-if="ballInfo.type.startsWith('sacrificeFly')" class="text-secondary">
+                                                                희생플라이 ({{ getPlayerName(outInfo?.at(-1)?.batter) }})
+                                                            </div>
+                                                            <div v-else-if="ballInfo.type.startsWith('sacrificeBunt')" class="text-secondary">
+                                                                희생번트 ({{ getPlayerName(outInfo?.at(-1)?.batter) }})
+                                                            </div>
+                                                            <div v-else-if="ballInfo.type.startsWith('error')" class="text-secondary">
+                                                                {{ POSITIONS.filter(position => position.code === ballInfo.type.split(':')[1])?.[0]?.name??'' }} 실책
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <br>
+                                                </div>
+                                            </div>
+                                        </v-card>
                                     </div>
-                                </v-col>
-                            </v-row>
-                        </v-card-text>
-                    </v-card>
+                                    
+                                </v-card-text>
+                            </v-card>
+                        </v-col>
+                        <v-col cols="12" v-if="lineupYn && lineupList.filter(ll => ll.away.length > 0 && ll.home.length >0).length === 10">
+                            <v-card class="h-100">
+                                <v-card-title>라인업</v-card-title>
+                                <v-divider></v-divider>
+                                <v-card-text>
+                                    <v-row class="text-center font-bold">
+                                        <v-col>원정팀</v-col>
+                                        <span class="py-3">타순</span>
+                                        <v-col>홈팀</v-col>
+                                    </v-row>
+                                    <v-row
+                                        v-for="(lineup, index) in lineupList"
+                                        :key="index"
+                                        class="d-flex align-center text-center"
+                                    >
+                                        <v-divider></v-divider>
+                                        <v-col
+                                            class="d-flex flex-column"
+                                            :class="{ 'selected-lineup': selectedLineup[0] === 'away' && selectedLineup[1] === index }"
+                                        >
+                                            <div
+                                                v-for="(player, aIdx) in groupPlayers(lineupList[((index + 1) % 10)]?.away || [])"
+                                                :key="aIdx"
+                                                class="d-flex justify-space-between cursor-pointer"
+                                                @click="setPlayerInfo('away', index)"
+                                            >
+                                                <v-icon
+                                                    v-if="aIdx === 0 && selectedMatchup.status === 'scheduled'"
+                                                    color="error"
+                                                    class="cursor-pointer"
+                                                    @click.stop="deleteRoster(player.roster_id)"
+                                                >mdi-delete</v-icon>
+                                                <span class="w-100">
+                                                    ({{ player.positions.join(',') }}) {{ player.name }}
+                                                </span>
+                                            </div>
+                                        </v-col>
+
+                                        <span class="pa-3">
+                                            {{ ((index + 1) % 10) === 0 ? "투수" : ((index + 1) % 10) + "번" }}
+                                        </span>
+
+                                        <v-col
+                                            class="d-flex flex-column"
+                                            :class="{ 'selected-lineup': selectedLineup[0] === 'home' && selectedLineup[1] === index }"
+                                        >
+                                            <div
+                                                v-for="(player, hIdx) in groupPlayers(lineupList[((index + 1) % 10)]?.home || [])"
+                                                :key="hIdx"
+                                                class="d-flex justify-space-between cursor-pointer"
+                                                @click="setPlayerInfo('home', index)"
+                                            >
+                                                <span class="w-100">
+                                                    ({{ player.positions.join(',') }}) {{ player.name }}
+                                                </span>
+                                                <v-icon
+                                                    v-if="hIdx === 0 && selectedMatchup.status === 'scheduled'"
+                                                    color="error"
+                                                    class="cursor-pointer"
+                                                    @click.stop="deleteRoster(player.roster_id)"
+                                                >mdi-delete</v-icon>
+                                            </div>
+                                        </v-col>
+                                    </v-row>
+                                </v-card-text>
+                            </v-card>
+                        </v-col>
+                    </v-row>
+                </v-col>
+                <v-col cols="12" md="8">
+                    <v-row>
+                        <PlayerStatsTable
+                            :matchup="selectedMatchup"
+                            :batters="awayBatters"
+                            :pitchers="awayPitchers"
+                            :isHome="false"
+                            :gameCurrentInfo="gameCurrentInfo"
+                            :lineupList="lineupList"
+                            :getPlayerId="getPlayerId"
+                            :cols="12"
+                        />
+                        <PlayerStatsTable
+                            :matchup="selectedMatchup"
+                            :batters="homeBatters"
+                            :pitchers="homePitchers"
+                            :isHome="true"
+                            :gameCurrentInfo="gameCurrentInfo"
+                            :lineupList="lineupList"
+                            :getPlayerId="getPlayerId"
+                            :cols="12"
+                        />
+                    </v-row>
                 </v-col>
             </v-row>
         </v-col>
@@ -621,6 +664,7 @@ import { commonFetch, getNewFormData } from '@/utils/common/commonFetch';
 import { formatDate } from '@/utils/common/dateUtils.js';
 import { encryptData, decryptData } from '@/utils/common/crypto.js';
 import BaseballStadium from '@/components/kbo/BaseballStadium.vue';
+import PlayerStatsTable from '@/components/kbo/PlayerStatsTable.vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useDisplay } from 'vuetify';
 
@@ -742,50 +786,6 @@ const hold_pitcher_yn = ref(true);
 const blown_save_pitcher_yn = ref(true);
 
 const fullPlayerStats = ref([]);
-
-// 전체 타자 스탯 필드
-const batterHeaders = [
-    { title: '이름', key: 'player_name', fixed: true, align: 'center' },
-    { title: '타석', key: 'plate_appearances', nowrap: true, align: 'center' },
-    { title: '타수', key: 'at_bats', nowrap: true, align: 'center' },
-    { title: '안타', key: 'hits', nowrap: true, align: 'center' },
-    { title: '1루타', key: 'singles', nowrap: true, align: 'center' },
-    { title: '2루타', key: 'doubles', nowrap: true, align: 'center' },
-    { title: '3루타', key: 'triples', nowrap: true, align: 'center' },
-    { title: '홈런', key: 'home_runs', nowrap: true, align: 'center' },
-    { title: '타점', key: 'rbi', nowrap: true, align: 'center' },
-    { title: '득점', key: 'runs', nowrap: true, align: 'center' },
-    { title: '볼넷', key: 'walks', nowrap: true, align: 'center' },
-    { title: '고의사구', key: 'intentional_base_on_balls', nowrap: true, align: 'center' },
-    { title: '삼진', key: 'batter_strikeouts', nowrap: true, align: 'center' },
-    { title: '사구', key: 'hit_by_pitch', nowrap: true, align: 'center' },
-    { title: '희생번트', key: 'sacrifice_bunts', nowrap: true, align: 'center' },
-    { title: '희생플라이', key: 'sacrifice_flies', nowrap: true, align: 'center' },
-    { title: '도루', key: 'stolen_bases', nowrap: true, align: 'center' },
-    { title: '도루실패', key: 'caught_stealings', nowrap: true, align: 'center' },
-    { title: '실책', key: 'batter_errors', nowrap: true, align: 'center' }
-];
-
-// 전체 투수 스탯 필드
-const pitcherHeaders = [
-    { title: '이름', key: 'player_name', fixed: true,},
-    { title: '이닝', key: 'outs_pitched_display', nowrap: true, align: 'center' },
-    // { title: '아웃수', key: 'outs_pitched', nowrap: true, align: 'center' },
-    { title: '상대타자', key: 'batters_faced', nowrap: true, align: 'center' },
-    { title: '투구수', key: 'pitches_thrown', nowrap: true, align: 'center' },
-    { title: '피안타', key: 'hits_allowed', nowrap: true, align: 'center' },
-    { title: '피홈런', key: 'home_runs_allowed', nowrap: true, align: 'center' },
-    { title: '실점', key: 'runs_allowed', nowrap: true, align: 'center' },
-    { title: '자책점', key: 'earned_runs', nowrap: true, align: 'center' },
-    { title: '볼넷허용', key: 'walks_allowed', nowrap: true, align: 'center' },
-    { title: '탈삼진', key: 'pitcher_strikeouts', nowrap: true, align: 'center' },
-    { title: '폭투', key: 'wild_pitches', nowrap: true, align: 'center' },
-    { title: '승', key: 'wins', nowrap: true, align: 'center' },
-    { title: '패', key: 'losses', nowrap: true, align: 'center' },
-    { title: '세이브', key: 'saves', nowrap: true, align: 'center' },
-    { title: '홀드', key: 'holds', nowrap: true, align: 'center' },
-    { title: '블론', key: 'blown_saves', nowrap: true, align: 'center' }
-];
 
 // 필터링된 데이터
 const homeBatters = computed(() =>
@@ -1014,6 +1014,14 @@ watch(()=>currentBatter.value, async (newVal) => {
             },
             maxInning: 9
         }
+    }
+})
+
+watch([()=>gameCurrentInfo.value.away_pitch_count,()=>gameCurrentInfo.value.home_pitch_count, ()=>gameCurrentInfo.value.away_batting_number,()=>gameCurrentInfo.value.home_batting_number],async () => {
+    const fullStatsRes = await commonFetch(`/api/admin/game/${selectedMatchup.value.game_id}/full-stats`)
+
+    if(fullStatsRes.success){
+        fullPlayerStats.value = fullStatsRes.data.fullPlayerStats
     }
 })
 
