@@ -454,6 +454,15 @@ import { useDisplay } from 'vuetify';
 import { io } from 'socket.io-client';
 
 const socket = io(`${import.meta.env.VITE_API_URL}`);  // 서버 주소
+
+socket.on('connect', () => {
+    console.log('Socket connected');
+});
+
+socket.on('connect_error', (err) => {
+    console.error('Socket connection error:', err.message);
+});
+
 const router = useRouter();
 const route = useRoute();
 const { mobile } = useDisplay();
@@ -978,7 +987,12 @@ const setCurrentInning = (inning) => {
 }
 
 onMounted(async ()=>{
-    await getGameDetailInfo(gameId)
+    await getGameDetailInfo(gameId)    
+
+    socket.on('user:update', (data) => {
+        console.log('user:update received:', data);
+        messages.value.push(data);
+    });
 })
 
 onUnmounted(() => {
