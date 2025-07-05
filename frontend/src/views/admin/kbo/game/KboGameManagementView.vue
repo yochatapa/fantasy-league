@@ -4199,11 +4199,15 @@ const setPassedBall = async () => {
 }
 
 const setBalk = async () => {
-    await setCurrentGamedayInfo('balk');
+    await setCurrentGamedayInfo('balk');    
 
     if (gameCurrentInfo.value.runner_3b?.player_id) await setRunnerAdvanceFromThird(false)
     if (gameCurrentInfo.value.runner_2b?.player_id) await setRunnerAdvanceFromSecond(1, false);
     if (gameCurrentInfo.value.runner_1b?.player_id) await setRunnerAdvanceFromFirst(1, false);
+
+    await setPitcherGameStats({
+        balks : 1
+    });
 
     await setCurrentGamedayInfo('lastInfo');
 }
