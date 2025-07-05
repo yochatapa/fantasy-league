@@ -297,6 +297,7 @@ export const getKboGameDetail = async (req, res) => {
                 kgr.replaced_by,
                 COALESCE(krp.batting_hand,kp.batting_hand) as batting_hand,
                 COALESCE(krp.throwing_hand,kp.throwing_hand) as throwing_hand,
+                COALESCE(ps8.uniform_number,ps7.uniform_number) as uniform_number,
                 krp.name AS replaced_player_name,
                 kgr.replaced_inning,
                 kgr.replaced_inning_half,
@@ -310,6 +311,8 @@ export const getKboGameDetail = async (req, res) => {
             LEFT JOIN kbo_team_master ktm ON kgr.team_id = ktm.id
             LEFT JOIN kbo_player_master kp ON kgr.player_id = kp.id
             LEFT JOIN kbo_player_master krp ON kgr.replaced_by = krp.id
+            LEFT JOIN kbo_player_season ps7 ON ps7.player_id = kgr.player_id and ps7.year = kgm.season_year and ps7.start_date <= kgm.game_date and kgm.game_date <= ps7.end_date
+            LEFT JOIN kbo_player_season ps8 ON ps8.player_id = kgr.replaced_by and ps8.year = kgm.season_year and ps8.start_date <= kgm.game_date and kgm.game_date <= ps8.end_date
             WHERE kgr.game_id = $1
             ORDER BY 
                 kgr.batting_order, 
@@ -975,6 +978,7 @@ export const getKboCurrentInfo = async (req, res) => {
                     'team_id', kgrbt.team_id,
                     'team_name', tm4.name,
                     'batting_hand', COALESCE(pm8.batting_hand,pm7.batting_hand),
+                    'uniform_number', COALESCE(ps8.uniform_number,ps7.uniform_number),
                     'throwing_hand', COALESCE(pm8.throwing_hand,pm7.throwing_hand),
                     'team_type', 
                         CASE 
@@ -1039,6 +1043,8 @@ export const getKboCurrentInfo = async (req, res) => {
                 LEFT JOIN kbo_game_roster kgrbt ON kgrbt.id = kgcs.batter_roster_id
                 LEFT JOIN kbo_player_master pm7 ON pm7.id = kgrbt.player_id
                 LEFT JOIN kbo_player_master pm8 ON pm8.id = kgrbt.replaced_by
+                LEFT JOIN kbo_player_season ps7 ON ps7.player_id = kgrbt.player_id and ps7.year = kgm.season_year and ps7.start_date <= kgm.game_date and kgm.game_date <= ps7.end_date
+                LEFT JOIN kbo_player_season ps8 ON ps8.player_id = kgrbt.replaced_by and ps8.year = kgm.season_year and ps8.start_date <= kgm.game_date and kgm.game_date <= ps8.end_date
                 LEFT JOIN kbo_team_master tm4 ON tm4.id = kgrbt.team_id
                 LEFT JOIN LATERAL (
                     SELECT jsonb_build_object(
@@ -2084,6 +2090,24 @@ export const getKboGameCompletedInfo = async (req, res) => {
                 'blown_save' AS role
             FROM pitcher_game_stats
             WHERE game_id = $1 AND blown_saves > 0
+            
+            UNION ALL
+
+            SELECT 
+                player_id,
+                team_id,
+                'go_ahead_rbi' AS role
+            FROM batter_game_stats
+            WHERE game_id = $1 AND go_ahead_rbi = 1
+
+            UNION ALL
+
+            SELECT 
+                player_id,
+                team_id,
+                'walk_off' AS role
+            FROM batter_game_stats
+            WHERE game_id = $1 AND walk_off = 1
         `;
 
         const { rows } = await query(gameCompletedInfoQuery, [gameId]);
@@ -2094,8 +2118,28 @@ export const getKboGameCompletedInfo = async (req, res) => {
             save: rows.find(r => r.role === 'save') || null,
             hold: rows.filter(r => r.role === 'hold'),
             blown_save: rows.filter(r => r.role === 'blown_save'),
+            go_ahead_rbi: rows.find(r => r.role === 'go_ahead_rbi') || null,
+            walk_off: rows.find(r => r.role === 'walk_off') || null,
         };
 
+        return sendSuccess(res, {
+            message: "게임 완료 정보를 성공적으로 조회했습니다.",
+            gameCompletedInfo
+            
+        });
+    } catch (error) {
+        return sendServerError(res, error, "게임 완료 정보 조회 중 오류가 발생했습니다. 다시 시도해주세요.");
+    }
+};
+
+export const getKboGameFullStats = async (req, res) => {
+    const { gameId } = req.params;
+
+    if (!gameId) {
+        return sendBadRequest(res, "게임 정보가 잘못되었습니다.");
+    }
+
+    try {      
         const fullStatsQuery = `
             WITH base_game_id_cte AS (
                 SELECT 
@@ -2142,6 +2186,7 @@ export const getKboGameCompletedInfo = async (req, res) => {
                     kgr.position,
                     COALESCE(krp.batting_hand,kp.batting_hand) as batting_hand,
                     COALESCE(krp.throwing_hand,kp.throwing_hand) as throwing_hand,
+                    COALESCE(ps8.uniform_number,ps7.uniform_number) as uniform_number,
                     CASE 
                         WHEN kgr.replaced_by IS NOT NULL THEN krp.player_type
                         ELSE kp.player_type
@@ -2152,6 +2197,8 @@ export const getKboGameCompletedInfo = async (req, res) => {
                 LEFT JOIN kbo_team_master ktm ON kgr.team_id = ktm.id
                 LEFT JOIN kbo_player_master kp ON kgr.player_id = kp.id
                 LEFT JOIN kbo_player_master krp ON kgr.replaced_by = krp.id
+                LEFT JOIN kbo_player_season ps7 ON ps7.player_id = kgr.player_id and ps7.year = kgm.season_year and ps7.start_date <= kgm.game_date and kgm.game_date <= ps7.end_date
+                LEFT JOIN kbo_player_season ps8 ON ps8.player_id = kgr.replaced_by and ps8.year = kgm.season_year and ps8.start_date <= kgm.game_date and kgm.game_date <= ps8.end_date
                 ORDER BY 
                     CASE 
                         WHEN kgr.replaced_by IS NOT NULL THEN kgr.replaced_by 
@@ -2272,7 +2319,6 @@ export const getKboGameCompletedInfo = async (req, res) => {
 
         return sendSuccess(res, {
             message: "게임 완료 정보를 성공적으로 조회했습니다.",
-            gameCompletedInfo,
             fullPlayerStats
         });
     } catch (error) {

@@ -699,7 +699,7 @@
                                             density="compact"
                                             v-model="winning_pitcher"
                                             :items="lineupList[0][gameCurrentInfo.away_score>gameCurrentInfo.home_score?'away':'home'].filter(item=>getPlayerId(item)!==save_pitcher && !hold_pitcher?.includes(getPlayerId(item)))"
-                                            :item-title="item => `(${getPlayerPosition(item)}) ${getPlayerName(item)} `"
+                                            :item-title="item => `(${item.uniform_number}) ${getPlayerName(item)} `"
                                             :item-value="item => getPlayerId(item)"
                                             :readonly="winning_pitcher_yn"
                                         ></v-select>
@@ -717,7 +717,7 @@
                                             density="compact"
                                             v-model="losing_pitcher"
                                             :items="lineupList[0][gameCurrentInfo.away_score<gameCurrentInfo.home_score?'away':'home'].filter(item=>!hold_pitcher?.includes(getPlayerId(item)))"
-                                            :item-title="item => `(${getPlayerPosition(item)}) ${getPlayerName(item)} `"
+                                            :item-title="item => `(${item.uniform_number}) ${getPlayerName(item)} `"
                                             :item-value="item => getPlayerId(item)"
                                             :readonly="losing_pitcher_yn"
                                         ></v-select>
@@ -735,7 +735,7 @@
                                             density="compact"
                                             v-model="save_pitcher"
                                             :items="lineupList[0][gameCurrentInfo.away_score>gameCurrentInfo.home_score?'away':'home'].filter(item=>getPlayerId(item)!==winning_pitcher && !hold_pitcher?.includes(getPlayerId(item)) && !blown_save_pitcher?.includes(getPlayerId(item)))"
-                                            :item-title="item => `(${getPlayerPosition(item)}) ${getPlayerName(item)} `"
+                                            :item-title="item => `(${item.uniform_number}) ${getPlayerName(item)} `"
                                             :item-value="item => getPlayerId(item)"
                                             :readonly="save_pitcher_yn"
                                         ></v-select>
@@ -759,7 +759,7 @@
                                                 ...lineupList[0]['away'].filter(item=>getPlayerId(item)!==winning_pitcher && getPlayerId(item)!==losing_pitcher && getPlayerId(item)!==save_pitcher)
                                                 ,...lineupList[0]['home'].filter(item=>getPlayerId(item)!==winning_pitcher && getPlayerId(item)!==losing_pitcher && getPlayerId(item)!==save_pitcher)
                                             ]"
-                                            :item-title="item => `(${getPlayerPosition(item)}) ${getPlayerName(item)} `"
+                                            :item-title="item => `(${item.uniform_number}) ${getPlayerName(item)} `"
                                             :item-value="item => getPlayerId(item)"
                                             :readonly="hold_pitcher_yn"
                                         ></v-select>
@@ -783,11 +783,65 @@
                                                 ...lineupList[0]['away'].filter(item=>getPlayerId(item)!==save_pitcher)
                                                 ,...lineupList[0]['home'].filter(item=>getPlayerId(item)!==save_pitcher)
                                             ]"
-                                            :item-title="item => `(${getPlayerPosition(item)}) ${getPlayerName(item)} `"
+                                            :item-title="item => `(${item.uniform_number}) ${getPlayerName(item)} `"
                                             :item-value="item => getPlayerId(item)"
                                             :readonly="blown_save_pitcher_yn"
                                         ></v-select>
                                         <v-btn style="margin-top: 2px;" color="primary" @click="setBlownSavePitcher()" v-if="!blown_save_pitcher_yn">
+                                            저장
+                                        </v-btn>
+                                    </div>
+                                </v-col>
+                            </v-row>
+                            <v-row>
+                                <!-- 결승타 -->
+                                <v-col cols="12" md="6">
+                                    <div class="mb-3">
+                                        <span class="text-subtitle-1 font-weight-bold">결승타</span>
+                                    </div>
+                                    <div class="d-flex" style="gap:8px">
+                                        <v-select
+                                            density="compact"
+                                            v-model="go_ahead_hit_batter"
+                                            :items="Array.from(
+                                                new Map(
+                                                    lineupList
+                                                        .slice(1, 10)
+                                                        .flatMap(item => [...item.away, ...item.home])
+                                                        .map(player => [getPlayerId(player), player])  // [key, value] 쌍
+                                                ).values()
+                                            ).sort((a,b)=>a.team_id-b.team_id)"
+                                            :item-title="item => `(${item.uniform_number}) ${getPlayerName(item)} `"
+                                            :item-value="item => getPlayerId(item)"
+                                            :readonly="go_ahead_hit_yn"
+                                        ></v-select>
+                                        <v-btn style="margin-top: 2px;" color="primary" @click="setGoAheadHit()" v-if="!go_ahead_hit_yn">
+                                            저장
+                                        </v-btn>
+                                    </div>
+                                </v-col>
+                                <!-- 끝내기 -->
+                                <v-col cols="12" md="6">
+                                    <div class="mb-3">
+                                        <span class="text-subtitle-1 font-weight-bold">끝내기</span>
+                                    </div>
+                                    <div class="d-flex" style="gap:8px">
+                                        <v-select
+                                            density="compact"
+                                            v-model="walk_off_batter"
+                                            :items="Array.from(
+                                                new Map(
+                                                    lineupList
+                                                        .slice(1, 10)
+                                                        .flatMap(item => [...item.away, ...item.home])
+                                                        .map(player => [getPlayerId(player), player])  // [key, value] 쌍
+                                                ).values()
+                                            ).sort((a,b)=>a.team_id-b.team_id)"
+                                            :item-title="item => `(${item.uniform_number}) ${getPlayerName(item)} `"
+                                            :item-value="item => getPlayerId(item)"
+                                            :readonly="walk_off_yn"
+                                        ></v-select>
+                                        <v-btn style="margin-top: 2px;" color="primary" @click="setWalkOff()" v-if="!walk_off_yn">
                                             저장
                                         </v-btn>
                                     </div>
@@ -1009,7 +1063,7 @@
                         </v-card-text>
                     </v-card>
                 </v-col>
-                <v-col cols="12" v-if="selectedMatchup.status === 'completed'">
+                <v-col cols="12" v-if="selectedMatchup.status !== 'scheduled'">
                     <v-card>
                         <v-card-title>
                             <div class="d-flex">
@@ -1113,11 +1167,20 @@
                                         </v-chip>
                                     </div>
                                 </template>
+                                <template #item.outs_pitched_display="{ item }">
+                                    {{ (item.player_id===getPlayerId(lineupList[0].away.at(-1)))?getInningDisplayInfo(gameCurrentInfo.away_current_out - ((item.player_id!==selectedMatchup.away_suspended_pitcher_id)?0:selectedMatchup.away_current_out)):item.outs_pitched_display }}
+                                </template>
+                                <template #item.batters_faced="{ item }">
+                                    {{ (item.player_id===getPlayerId(lineupList[0].away.at(-1)))?gameCurrentInfo.home_current_batting_number - ((item.player_id!==selectedMatchup.away_suspended_pitcher_id)?0:selectedMatchup.home_current_batting_number):item.outs_pitched_display }}
+                                </template>
+                                <template #item.pitches_thrown="{ item }">
+                                    {{ (item.player_id===getPlayerId(lineupList[0].away.at(-1)))?gameCurrentInfo.away_pitch_count - ((item.player_id!==selectedMatchup.away_suspended_pitcher_id)?0:selectedMatchup.away_pitch_count):item.outs_pitched_display }}
+                                </template>
                             </v-data-table>
                         </v-card-text>
                     </v-card>
                 </v-col>
-                <v-col cols="12" v-if="selectedMatchup.status === 'completed'">
+                <v-col cols="12" v-if="selectedMatchup.status !== 'scheduled'">
                     <v-card>
                         <v-card-title>
                             <div class="d-flex">
@@ -1219,6 +1282,15 @@
                                             블
                                         </v-chip>
                                     </div>
+                                </template>
+                                <template #item.outs_pitched_display="{ item }">
+                                    {{ (item.player_id===getPlayerId(lineupList[0].home.at(-1)))?getInningDisplayInfo(gameCurrentInfo.home_current_out - ((item.player_id!==selectedMatchup.home_suspended_pitcher_id)?0:selectedMatchup.home_current_out)):item.outs_pitched_display }}
+                                </template>
+                                <template #item.batters_faced="{ item }">
+                                    {{ (item.player_id===getPlayerId(lineupList[0].home.at(-1)))?gameCurrentInfo.away_current_batting_number - ((item.player_id!==selectedMatchup.home_suspended_pitcher_id)?0:selectedMatchup.away_current_batting_number):item.outs_pitched_display }}
+                                </template>
+                                <template #item.pitches_thrown="{ item }">
+                                    {{ (item.player_id===getPlayerId(lineupList[0].home.at(-1)))?gameCurrentInfo.home_pitch_count - ((item.player_id!==selectedMatchup.home_suspended_pitcher_id)?0:selectedMatchup.home_pitch_count):item.outs_pitched_display }}
                                 </template>
                             </v-data-table>
                             
@@ -1425,11 +1497,17 @@ const save_pitcher = ref(null);
 const hold_pitcher = ref(null);
 const blown_save_pitcher = ref(null);
 
+const go_ahead_hit_batter = ref(null)
+const walk_off_batter = ref(null)
+
 const winning_pitcher_yn = ref(true);
 const losing_pitcher_yn = ref(true);
 const save_pitcher_yn = ref(true);
 const hold_pitcher_yn = ref(true);
 const blown_save_pitcher_yn = ref(true);
+
+const go_ahead_hit_yn = ref(false)
+const walk_off_yn = ref(false)
 
 const fullPlayerStats = ref([]);
 
@@ -1689,11 +1767,20 @@ watch(gamedayInfo, () => {
     });
 }, { deep: true });
 
+watch([()=>gameCurrentInfo.value.away_pitch_count,()=>gameCurrentInfo.value.home_pitch_count],async () => {
+    const fullStatsRes = await commonFetch(`/api/admin/game/${selectedMatchup.value.game_id}/full-stats`)
+
+    if(fullStatsRes.success){
+        fullPlayerStats.value = fullStatsRes.data.fullPlayerStats
+    }
+})
+
 watch(()=>currentBatter.value, async (newVal) => {
     if(!!newVal.game_id && !!getPlayerId(newVal)){
-        const [currentInfoRes, inningInfoRes] = await Promise.all([
+        const [currentInfoRes, inningInfoRes, fullStatsRes] = await Promise.all([
                 commonFetch(`/api/admin/game/${newVal.game_id}/batter/${getPlayerId(newVal)}/current-stats`),
-                commonFetch(`/api/admin/game/inning-info/${newVal.game_id}`)
+                commonFetch(`/api/admin/game/inning-info/${newVal.game_id}`),
+                commonFetch(`/api/admin/game/${selectedMatchup.value.game_id}/full-stats`)
             ]);
 
         if(currentInfoRes.success && currentInfoRes?.data?.currentBatterStats?.[0]){
@@ -1710,6 +1797,10 @@ watch(()=>currentBatter.value, async (newVal) => {
                 away: { R: 0, H: 0, E: 0, B: 0 }
             },
             maxInning: 9
+        }
+
+        if(fullStatsRes.success){
+            fullPlayerStats.value = fullStatsRes.data.fullPlayerStats
         }
     }
 })
@@ -1780,6 +1871,17 @@ const addMatchup = async () => {
         
     }
 };
+
+function getInningDisplayInfo(outsPitched) {
+    const totalOuts = Number(outsPitched) || 0;
+
+    const fullInnings = Math.floor(totalOuts / 3);
+    const remainder = totalOuts % 3;
+
+    const fraction = remainder === 1 ? '⅓' : remainder === 2 ? '⅔' : '';
+
+    return `${fullInnings} ${fraction}`.trim();
+}
 
 const addSuspendedMatchup = async () => {try {
         const response = await commonFetch("/api/admin/game/create/suspended",{
@@ -2068,25 +2170,36 @@ const getGameDetailInfo = async (game_id) => {
 
 const getCompletedInfo = async () => {
     try {
-        const response = await commonFetch(`/api/admin/game/${selectedMatchup.value.game_id}/completed-info`)
+        const [completeInfoRes, fullStatsRes] = await Promise.all([
+            commonFetch(`/api/admin/game/${selectedMatchup.value.game_id}/completed-info`),
+            commonFetch(`/api/admin/game/${selectedMatchup.value.game_id}/full-stats`),
+        ]);
 
-        if(response.success){
-            winning_pitcher_yn.value = !!response.data.gameCompletedInfo.win;
-            winning_pitcher.value = response.data.gameCompletedInfo.win?.player_id
+        if(completeInfoRes.success){
+            winning_pitcher_yn.value = !!completeInfoRes.data.gameCompletedInfo.win;
+            winning_pitcher.value = completeInfoRes.data.gameCompletedInfo.win?.player_id
 
-            losing_pitcher_yn.value = !!response.data.gameCompletedInfo.loss;
-            losing_pitcher.value = response.data.gameCompletedInfo.loss?.player_id
+            losing_pitcher_yn.value = !!completeInfoRes.data.gameCompletedInfo.loss;
+            losing_pitcher.value = completeInfoRes.data.gameCompletedInfo.loss?.player_id
 
-            save_pitcher_yn.value = !!response.data.gameCompletedInfo.save;
-            save_pitcher.value = response.data.gameCompletedInfo.save?.player_id
+            save_pitcher_yn.value = !!completeInfoRes.data.gameCompletedInfo.save;
+            save_pitcher.value = completeInfoRes.data.gameCompletedInfo.save?.player_id
             
-            hold_pitcher_yn.value = response.data.gameCompletedInfo.hold.length > 0;
-            hold_pitcher.value = response.data.gameCompletedInfo.hold?.map(info => info?.player_id)
+            hold_pitcher_yn.value = completeInfoRes.data.gameCompletedInfo.hold.length > 0;
+            hold_pitcher.value = completeInfoRes.data.gameCompletedInfo.hold?.map(info => info?.player_id)
             
-            blown_save_pitcher_yn.value = response.data.gameCompletedInfo.blown_save.length > 0;
-            blown_save_pitcher.value = response.data.gameCompletedInfo.blown_save?.map(info => info?.player_id)
+            blown_save_pitcher_yn.value = completeInfoRes.data.gameCompletedInfo.blown_save.length > 0;
+            blown_save_pitcher.value = completeInfoRes.data.gameCompletedInfo.blown_save?.map(info => info?.player_id)
 
-            fullPlayerStats.value = response.data.fullPlayerStats
+            go_ahead_hit_yn.value = !!completeInfoRes.data.gameCompletedInfo.go_ahead_rbi;
+            go_ahead_hit_batter.value = completeInfoRes.data.gameCompletedInfo.go_ahead_rbi?.player_id
+
+            walk_off_yn.value = !!completeInfoRes.data.gameCompletedInfo.walk_off;
+            walk_off_batter.value = completeInfoRes.data.gameCompletedInfo.walk_off?.player_id
+        }
+
+        if(fullStatsRes.success){
+            fullPlayerStats.value = fullStatsRes.data.fullPlayerStats
         }
     } catch (error) {
         alert("게임 완료 정보 조회 중 오류가 발생했습니다.\n다시 시도해주세요.","error")
@@ -4521,6 +4634,24 @@ const setBlownSavePitcher = async () => {
     );
     await getCompletedInfo();
 };
+
+const setGoAheadHit = async () => {
+    if(!go_ahead_hit_batter.value) return alert("결승타를 친 타자를 선택해주세요.", "error")
+    await setBatterGameStats({
+        go_ahead_rbi : 1
+    }, lineupList.value.flatMap(item => [...item.away, ...item.home]).find(ll => getPlayerId(ll) === go_ahead_hit_batter.value)
+    , true, true);
+    await getCompletedInfo();
+}
+
+const setWalkOff = async () => {
+    if(!walk_off_batter.value) return alert("끝내기를 친 타자를 선택해주세요.", "error")
+    await setBatterGameStats({
+        walk_off : 1
+    }, lineupList.value.flatMap(item => [...item.away, ...item.home]).find(ll => getPlayerId(ll) === walk_off_batter.value)
+    , true, true);
+    await getCompletedInfo();
+}
 
 const setGameStart = async()=>{
     const homePitcher = lineupList.value[0]?.['home']?.at(-1);

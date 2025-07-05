@@ -3,7 +3,7 @@ import { verifyToken, verifyAdmin}  from '../middleware/auth.js'
 import { getKboTeamList, createKboTeam, updateKboTeam, deleteKboTeam, getKboTeamDetail } from '../controllers/admin/kboTeamManagementController.js';
 import { getKboPlayerList, createKboPlayer, getKboPlayerDetail, updateKboPlayer, deleteKboPlayer } from '../controllers/admin/kboPlayerManagementController.js';
 import handleUpload from '../middleware/upload.js';
-import { getKboCurrentInfo, createKboCurrentInfo, createKboGame, createKboGameRoster, deleteKboGame, deleteKboGameRoster, getKboGameDetail, getKboGameList, updateKboGameStatus, createBatterGameStats, createPitcherGameStats, getKboCurrentBatterStats, getKboGameCompletedInfo, updateKboGameScore, updateKboGameSeasonStats, updateKboGameDailyStats, createKboSuspendedGame, createGameInningStats, getKboGameInningStats, getKboCurrentPitcherStats } from '../controllers/admin/kboGameManagementController.js';
+import { getKboCurrentInfo, createKboCurrentInfo, createKboGame, createKboGameRoster, deleteKboGame, deleteKboGameRoster, getKboGameDetail, getKboGameList, updateKboGameStatus, createBatterGameStats, createPitcherGameStats, getKboCurrentBatterStats, getKboGameCompletedInfo, updateKboGameScore, updateKboGameSeasonStats, updateKboGameDailyStats, createKboSuspendedGame, createGameInningStats, getKboGameInningStats, getKboCurrentPitcherStats, getKboGameFullStats } from '../controllers/admin/kboGameManagementController.js';
 import { createTeamRoster, deactiveTeamRoster, deleteTeamRoster, getTeamRosterDetail, getTeamRosterList } from '../controllers/admin/kboRosterManagementController.js';
 
 const router = express.Router();
@@ -32,6 +32,7 @@ router.get('/game/current-info/:gameId', verifyToken, verifyAdmin, getKboCurrent
 router.get('/game/inning-info/:gameId', verifyToken, verifyAdmin, getKboGameInningStats);
 router.get('/game/:gameId/batter/:playerId/current-stats', verifyToken, verifyAdmin, getKboCurrentBatterStats);
 router.get('/game/:gameId/pitcher/:playerId/current-stats', verifyToken, verifyAdmin, getKboCurrentPitcherStats);
+router.get('/game/:gameId/full-stats', verifyToken, verifyAdmin, getKboGameFullStats);
 router.get('/game/:gameId/completed-info', verifyToken, verifyAdmin, getKboGameCompletedInfo);
 router.get('/game/:gameId',verifyToken, verifyAdmin, getKboGameDetail);
 router.put('/game/status/update', verifyToken, verifyAdmin, updateKboGameStatus);
