@@ -58,6 +58,7 @@
                                 <div class="d-flex justify-center flex-column align-center mb-3">
                                     <p class="mb-1"><strong>경기장:</strong> {{ STADIUMS.find(sdm => sdm.code === selectedMatchup.stadium)?.name??'' }}</p>
                                     <p><strong>경기일시:</strong> {{ selectedMatchup.game_date }} {{ selectedMatchup.game_time }}</p>
+                                    <p class="mt-1" v-if="selectedMatchup.status === 'completed'"><strong>승리투수:</strong> <span>{{ getPlayerName(lineupList.flatMap(item => [...item.away, ...item.home]).find(ll => getPlayerId(ll) === winning_pitcher))}}</span> <span>|</span> <strong>패전투수:</strong> <span>{{ getPlayerName(lineupList.flatMap(item => [...item.away, ...item.home]).find(ll => getPlayerId(ll) === losing_pitcher)) }}</span> <span v-if="save_pitcher_yn">|</span> <strong v-if="save_pitcher_yn">세이브투수:</strong> <span>{{ getPlayerName(lineupList.flatMap(item => [...item.away, ...item.home]).find(ll => getPlayerId(ll) === save_pitcher)) }}</span></p>
                                 </div>
                                 <div>
                                     <v-table class="no-cell-padding">
