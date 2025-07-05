@@ -58,7 +58,7 @@
                                 <div class="d-flex justify-center flex-column align-center mb-3">
                                     <p class="mb-1"><strong>경기장:</strong> {{ STADIUMS.find(sdm => sdm.code === selectedMatchup.stadium)?.name??'' }}</p>
                                     <p><strong>경기일시:</strong> {{ selectedMatchup.game_date }} {{ selectedMatchup.game_time }}</p>
-                                    <p class="mt-1" v-if="selectedMatchup.status === 'completed'"><strong>승리투수:</strong> <span>{{ getPlayerName(lineupList.flatMap(item => [...item.away, ...item.home]).find(ll => getPlayerId(ll) === winning_pitcher))}}</span> <span>|</span> <strong>패전투수:</strong> <span>{{ getPlayerName(lineupList.flatMap(item => [...item.away, ...item.home]).find(ll => getPlayerId(ll) === losing_pitcher)) }}</span> <span v-if="save_pitcher_yn">|</span> <strong v-if="save_pitcher_yn">세이브투수:</strong> <span>{{ getPlayerName(lineupList.flatMap(item => [...item.away, ...item.home]).find(ll => getPlayerId(ll) === save_pitcher)) }}</span></p>
+                                    <!-- <p class="mt-1" v-if="selectedMatchup.status === 'completed'"><strong>승리투수:</strong> <span>{{ getPlayerName(lineupList.flatMap(item => [...item.away, ...item.home]).find(ll => getPlayerId(ll) === winning_pitcher))}}</span> <span>|</span> <strong>패전투수:</strong> <span>{{ getPlayerName(lineupList.flatMap(item => [...item.away, ...item.home]).find(ll => getPlayerId(ll) === losing_pitcher)) }}</span> <span v-if="save_pitcher_yn">|</span> <strong v-if="save_pitcher_yn">세이브투수:</strong> <span>{{ getPlayerName(lineupList.flatMap(item => [...item.away, ...item.home]).find(ll => getPlayerId(ll) === save_pitcher)) }}</span></p> -->
                                 </div>
                                 <div>
                                     <v-table class="no-cell-padding">
@@ -442,7 +442,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, nextTick } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import { STADIUMS, POSITIONS, GAME_STATUS } from '@/utils/code/code.js';
 import { commonFetch, getNewFormData } from '@/utils/common/commonFetch';
 import { formatDate } from '@/utils/common/dateUtils.js';
@@ -451,7 +451,9 @@ import BaseballStadium from '@/components/kbo/BaseballStadium.vue';
 import PlayerStatsTable from '@/components/kbo/PlayerStatsTable.vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useDisplay } from 'vuetify';
+import { io } from 'socket.io-client';
 
+const socket = io(`${import.meta.env.VITE_API_URL}`);  // 서버 주소
 const router = useRouter();
 const route = useRoute();
 const { mobile } = useDisplay();
@@ -920,25 +922,30 @@ const getGameDetailInfo = async (game_id) => {
 
 const getCompletedInfo = async () => {
     try {
-        const response = await commonFetch(`/api/kbo/game/${selectedMatchup.value.game_id}/completed-info`)
+       const [completeInfoRes, fullStatsRes] = await Promise.all([
+            commonFetch(`/api/admin/game/${selectedMatchup.value.game_id}/completed-info`),
+            commonFetch(`/api/admin/game/${selectedMatchup.value.game_id}/full-stats`),
+        ]);
 
-        if(response.success){
-            winning_pitcher_yn.value = !!response.data.gameCompletedInfo.win;
-            winning_pitcher.value = response.data.gameCompletedInfo.win?.player_id
+        if(completeInfoRes.success){
+            winning_pitcher_yn.value = !!completeInfoRes.data.gameCompletedInfo.win;
+            winning_pitcher.value = completeInfoRes.data.gameCompletedInfo.win?.player_id
 
-            losing_pitcher_yn.value = !!response.data.gameCompletedInfo.loss;
-            losing_pitcher.value = response.data.gameCompletedInfo.loss?.player_id
+            losing_pitcher_yn.value = !!completeInfoRes.data.gameCompletedInfo.loss;
+            losing_pitcher.value = completeInfoRes.data.gameCompletedInfo.loss?.player_id
 
-            save_pitcher_yn.value = !!response.data.gameCompletedInfo.save;
-            save_pitcher.value = response.data.gameCompletedInfo.save?.player_id
+            save_pitcher_yn.value = !!completeInfoRes.data.gameCompletedInfo.save;
+            save_pitcher.value = completeInfoRes.data.gameCompletedInfo.save?.player_id
             
-            hold_pitcher_yn.value = response.data.gameCompletedInfo.hold.length > 0;
-            hold_pitcher.value = response.data.gameCompletedInfo.hold?.map(info => info?.player_id)
+            hold_pitcher_yn.value = completeInfoRes.data.gameCompletedInfo.hold.length > 0;
+            hold_pitcher.value = completeInfoRes.data.gameCompletedInfo.hold?.map(info => info?.player_id)
             
-            blown_save_pitcher_yn.value = response.data.gameCompletedInfo.blown_save.length > 0;
-            blown_save_pitcher.value = response.data.gameCompletedInfo.blown_save?.map(info => info?.player_id)
+            blown_save_pitcher_yn.value = completeInfoRes.data.gameCompletedInfo.blown_save.length > 0;
+            blown_save_pitcher.value = completeInfoRes.data.gameCompletedInfo.blown_save?.map(info => info?.player_id)
+        }
 
-            fullPlayerStats.value = response.data.fullPlayerStats
+        if(fullStatsRes.success){
+            fullPlayerStats.value = fullStatsRes.data.fullPlayerStats
         }
     } catch (error) {
         alert("게임 완료 정보 조회 중 오류가 발생했습니다.\n다시 시도해주세요.","error")
@@ -973,6 +980,11 @@ const setCurrentInning = (inning) => {
 onMounted(async ()=>{
     await getGameDetailInfo(gameId)
 })
+
+onUnmounted(() => {
+    socket.off('connect');
+    socket.off('user:update');
+});
 </script>
 
 <style scoped>
