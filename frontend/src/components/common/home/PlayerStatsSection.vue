@@ -4,7 +4,7 @@
             <h3 class="font-weight-bold mb-2">타자 TOP 5</h3>
         </v-col>
 
-        <v-col cols="12" class="d-flex position-relative justify-center" v-if="batterVisible && batterStats?.topPlayers?.length>0">
+        <v-col cols="12" class="d-flex position-relative justify-center" v-if="batterVisible && batterStats?.[0]?.topPlayers?.length>0">
             <swiper 
                 :breakpoints="breakpoints"
                 :space-between="20" 
@@ -29,7 +29,7 @@
             <h3 class="font-weight-bold mb-2">투수 TOP 5</h3>
         </v-col>
 
-        <v-col cols="12" class="d-flex position-relative justify-center" v-if="pitcherVisible && pitcherStats?.topPlayers?.length>0">
+        <v-col cols="12" class="d-flex position-relative justify-center" v-if="pitcherVisible && pitcherStats?.[0]?.topPlayers?.length>0">
             <swiper 
                 :breakpoints="breakpoints"
                 :space-between="20" 
