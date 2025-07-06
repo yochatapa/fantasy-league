@@ -50,7 +50,7 @@
                 </v-list>
             </v-col>
         </v-row>
-        {{ console.log(currentSeasonInfo)??'' }}
+
         <!-- 공지사항 -->
         <v-card class="mb-6">
             <v-card-text>
@@ -86,7 +86,7 @@
                                 }"
                             > 
                                 <div class="text-caption font-weight-bold">
-                                    {{ item.ddayText }}
+                                    {{ item.label }}
                                 </div>
                                 <v-icon
                                     :color="item.key === 'today' ? 'blue' : (item.key === 'draft' ? 'green' : 'red')"
@@ -308,21 +308,8 @@ function getDDayText(target) {
 }
 
 // 날짜 객체
-const draftDate = computed(() => parseDate(currentSeasonInfo.value.draft_date))
+const draftDate = computed(() => parseDate(currentSeasonInfo.value.draft_start_date))
 const startDate = computed(() => parseDate(currentSeasonInfo.value.start_date))
-
-// 날짜 정렬 후 퍼센트 계산
-const dates = computed(() => {
-    return [
-        { key: 'today', label: '오늘', date: today.value },
-        { key: 'draft', label: '드래프트', date: draftDate.value },
-        { key: 'start', label: '시즌 시작', date: startDate.value }
-    ].sort((a, b) => a.date - b.date)
-})
-
-const minTime = computed(() => dates.value[0].date.getTime())
-const maxTime = computed(() => dates.value[2].date.getTime())
-const totalDuration = computed(() => maxTime.value - minTime.value)
 
 const MIN_PIXEL_GAP = 100
 
@@ -330,18 +317,32 @@ const datePercents = computed(() => {
     if (!barWidth.value) barWidth.value = barRef.value?.offsetWidth
     if (!barWidth.value) return []
 
-    const sorted = [
+    const all = [
         { key: 'today', label: '오늘', date: today.value },
         { key: 'draft', label: '드래프트', date: draftDate.value },
         { key: 'start', label: '시즌 시작', date: startDate.value }
-    ].sort((a, b) => a.date.getTime() - b.date.getTime())
+    ]
 
-    const min = sorted[0].date.getTime()
-    const max = sorted[2].date.getTime()
+    // 날짜+시간까지 완전 동일할 때만 병합
+    const merged = []
+    for (const item of all) {
+        const existing = merged.find(m => m.date.getTime() === item.date.getTime())
+        if (existing) {
+            existing.key += `,${item.key}`
+            existing.label += `, ${item.label}`
+        } else {
+            merged.push({ ...item })
+        }
+    }
+
+    // 날짜순 정렬
+    merged.sort((a, b) => a.date.getTime() - b.date.getTime())
+
+    const min = merged[0].date.getTime()
+    const max = merged[merged.length - 1].date.getTime()
     const total = max - min || 1
 
-    // 기본 위치 (퍼센트 및 px)
-    const raw = sorted.map(entry => {
+    const raw = merged.map(entry => {
         const percent = ((entry.date.getTime() - min) / total) * 100
         const px = (percent / 100) * barWidth.value
         const hour = entry.date.getHours()
@@ -353,7 +354,7 @@ const datePercents = computed(() => {
             px,
             ddayText: getDDayText(entry.date),
             formatted: formatDate(entry.date),
-            time: hour + ":" + minute
+            time: `${hour}:${minute.toString().padStart(2, '0')}`
         }
     })
 
@@ -368,14 +369,14 @@ const datePercents = computed(() => {
         adjusted.push(current)
     }
 
-    // 전체 보정된 px 기준으로 다시 퍼센트 환산
     const newMaxPx = adjusted[adjusted.length - 1].px
     adjusted.forEach(item => {
         item.percent = (item.px / newMaxPx) * 100
     })
-
+    console.log(adjusted)
     return adjusted
 })
+
 
 // 링크 복사
 const copyLink = () => {
@@ -457,7 +458,7 @@ const loadLeagueInfo = async () => {
                 leagueFormatLabel: LEAGUE_FORMATS.find(item => item.id === data.league_format)?.label || '',
                 // draftTypeLabel: DRAFT_METHODS.find(item => item.id === data.draft_type)?.label || '',
                 // formattedSeasonStartDate: dayjs(data.start_date).format('YYYY.MM.DD'),
-                // formattedDraftDate: dayjs(data.draft_date).format('YYYY.MM.DD'),
+                // formattedDraftDate: dayjs(data.draft_start_date).format('YYYY.MM.DD'),
             };
 
             seasonInfo.value = response.data.seasonInfo
