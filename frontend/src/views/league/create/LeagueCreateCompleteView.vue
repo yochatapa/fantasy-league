@@ -133,10 +133,10 @@ const loadLeagueInfo = async () => {
         // fetchLeagueInfo는 서버에서 리그 정보를 받아오는 API 호출 함수입니다.
 
         Promise.all([
-            commonFetch(`/api/league/info?leagueId=${encodeURIComponent(orgLeagueId)}`, {
+            commonFetch(`/api/league/${encodeURIComponent(orgLeagueId)}/info`, {
                 method : 'GET'
             }),
-            commonFetch(`/api/league/season/info?leagueId=${encodeURIComponent(orgLeagueId)}&seasonId=${encodeURIComponent(orgSeasonId)}`, {
+            commonFetch(`/api/league/${encodeURIComponent(orgLeagueId)}/season/${encodeURIComponent(orgSeasonId)}/info`, {
                 method : 'GET'
             })  
         ]).then(([leagueResponse, seasonResponse]) => {

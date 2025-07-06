@@ -199,7 +199,7 @@ export const createLeague = async (req, res) => {
 
 
 export const getLeagueInfo = async (req, res) => {
-    let { leagueId } = req.query;
+    let { leagueId } = req.params;
 
     leagueId = decryptData(leagueId)
     
@@ -231,7 +231,8 @@ export const getLeagueInfo = async (req, res) => {
 
         const leagueSeasonYearQuery = `
             SELECT
-                ls.season_year
+                ls.season_year,
+                ls.season_id
             FROM league_master lm
                 INNER JOIN league_season ls
                     ON lm.league_id = ls.league_id
@@ -247,7 +248,7 @@ export const getLeagueInfo = async (req, res) => {
         return sendSuccess(res, {
             message: '리그 정보가 조회되었습니다.',
             leagueInfo : leagueInfo.rows[0]
-            , seasonYear : leagueSeasonYearResult.rows
+            , seasonInfo : leagueSeasonYearResult.rows
         });
     } catch (error) {
         return sendServerError(res, error, '리그 정보 조회 중 문제가 발생했습니다. 다시 시도해주세요.');
@@ -446,7 +447,7 @@ export const joinLeague = async (req, res) => {
 
 
 export const getSeasonInfo = async (req, res) => {
-    let { leagueId, seasonId } = req.query;
+    let { leagueId, seasonId } = req.params;
 
     leagueId = decryptData(leagueId)
     seasonId = decryptData(seasonId)
@@ -454,29 +455,28 @@ export const getSeasonInfo = async (req, res) => {
     try {
         let leagueInfoQuery = `
             SELECT
-                ls.season_id 
-                , ls.season_year
-                , ls.max_teams
-                , ls.playoff_teams
-                , ls.foreign_player_limit 
-                , ls.start_date 
-                , ls.draft_date
-                , ls.draft_type
-                , ls.draft_timer 
-                , ls.allow_auto_draft
-                , ls.allow_trades
-                , ls.trade_deadline 
-                , ls.waiver_clear_days 
-                , ls.allow_matchup_reset 
-                , ls.injured_list_slots
-                , ls.tie_breaker
-                , ls.lineup_change_restriction 
-                , ls.season_status
+                ls.season_id,
+                ls.season_year,
+                ls.max_teams,
+                ls.playoff_teams,
+                ls.foreign_player_limit,
+                TO_CHAR(ls.start_date, 'YYYY.MM.DD HH24:MI') AS start_date,
+                TO_CHAR(ls.draft_date, 'YYYY.MM.DD HH24:MI') AS draft_date,
+                ls.draft_type,
+                ls.draft_timer,
+                ls.allow_auto_draft,
+                ls.allow_trades,
+                TO_CHAR(ls.trade_deadline, 'YYYY.MM.DD HH24:MI') AS trade_deadline,
+                ls.waiver_clear_days,
+                ls.allow_matchup_reset,
+                ls.injured_list_slots,
+                ls.tie_breaker,
+                ls.lineup_change_restriction,
+                ls.season_status
             FROM league_master lm
-                INNER JOIN league_season ls
-                    ON lm.league_id = ls.league_id
+                INNER JOIN league_season ls ON lm.league_id = ls.league_id
             WHERE lm.league_id = $1
-                AND ls.season_id = $2
+                AND ls.season_id = $2;
         `;
 
         const param = [leagueId, seasonId];

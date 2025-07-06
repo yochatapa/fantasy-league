@@ -14,7 +14,7 @@
             <v-col cols="12" class="d-flex">
                 <v-list dense class="horizontal-list bg-transparent pa-0">
                     <v-list-item
-                        v-if="seasonYears.length === 1"
+                        v-if="seasonInfo.length === 1"
                         class="pa-0"
                     >
                         <v-list-item-title>({{ seasonYear }}년)</v-list-item-title>
@@ -50,7 +50,8 @@
                 </v-list>
             </v-col>
         </v-row>
- 
+        {{ console.log(currentSeasonInfo)??'' }}
+        <!-- 공지사항 -->
         <v-card class="mb-6">
             <v-card-text>
                 <div class="d-flex align-center justify-space-between">
@@ -62,8 +63,71 @@
             </v-card-text>
         </v-card>
 
+        <!-- pending -->
+        <v-row v-if="currentSeasonInfo.season_status === 'pending'">
+            <v-col cols="12">
+                <v-card>
+                    <v-card-title class="d-flex justify-space-between align-center">
+                        시즌 일정
+                    </v-card-title>
+                    <v-divider></v-divider>
+                    <div class="d-flex flex-column align-center position-relative pt-6 pb-10 mx-10">
+                        <!-- 타임라인 바 -->
+                        <div ref="barRef" class="position-relative timeline-bar my-4" style="height: 8px; background: #e0e0e0; width: 100%; border-radius: 4px;">
+                            <div
+                                v-for="item in datePercents"
+                                :key="item.key"
+                                class="position-absolute text-no-wrap"
+                                :style="{
+                                    left: `calc(${item.percent}%)`,
+                                    transform: 'translateX(-50%)',
+                                    textAlign: 'center',
+                                    top: '-28px'
+                                }"
+                            > 
+                                <div class="text-caption font-weight-bold">
+                                    {{ item.ddayText }}
+                                </div>
+                                <v-icon
+                                    :color="item.key === 'today' ? 'blue' : (item.key === 'draft' ? 'green' : 'red')"
+                                    size="10"
+                                >mdi-circle</v-icon>
+                            </div>
+                        </div>
+
+                        <!-- 날짜 라벨 -->
+                        <div class="d-flex justify-space-between w-100 text-caption mt-2">
+                            <div
+                                v-for="item in datePercents"
+                                :key="item.key"
+                                :style="{ left: `calc(${item.percent}%)`, transform: 'translateX(-50%)', position: 'absolute', textAlign: 'center', top: '60px' }"
+                            >
+                                {{ item.formatted }}
+                            </div>
+                            <div
+                                v-for="item in datePercents"
+                                :key="item.key"
+                                :style="{ left: `calc(${item.percent}%)`, transform: 'translateX(-50%)', position: 'absolute', textAlign: 'center', top: '74px' }"
+                                class="text-no-wrap"
+                            >
+                                {{ item.key!=="start"?item.time:'' }}
+                            </div>
+                            <div
+                                v-for="item in datePercents"
+                                :key="item.key"
+                                :style="{ left: `calc(${item.percent}%)`, transform: 'translateX(-50%)', position: 'absolute', textAlign: 'center', top: (item.key==='draft'?'88px':'74px') }"
+                                class="text-no-wrap"
+                            >
+                                {{ item.key==="today"?'':item.label }}
+                            </div>
+                        </div>
+                    </div>
+                </v-card>
+            </v-col>
+        </v-row>
+
         <!-- 메인 영역 -->
-        <v-row align="stretch" no-gutters gap="6">
+        <v-row align="stretch" no-gutters gap="6" v-if="currentSeasonInfo.season_status !== 'pending'">
             <!-- 이번 주 매치 -->
             <v-col :cols="isMobile ? 12 : 8" :class="[ isMobile?'mb-6':'']">
                 <v-card :class="[
@@ -167,7 +231,7 @@
         </v-row>
 
         <!-- Waiver 기록 -->
-        <v-card class="pa-4 mt-6" elevation="2">
+        <v-card class="pa-4 mt-6" elevation="2" v-if="currentSeasonInfo.season_status !== 'pending'">
             <v-card-title class="text-h6">
                 Waiver 기록
             </v-card-title>
@@ -198,6 +262,7 @@ import { useDisplay } from 'vuetify';
 import { commonFetch } from '@/utils/common/commonFetch';
 import { LEAGUE_TYPES, LEAGUE_FORMATS, DRAFT_METHODS } from '@/utils/code/code';
 import { encryptData } from '@/utils/common/crypto.js';
+import { formatDate, parseDate, differenceInDays } from '@/utils/common/dateUtils.js';
 
 const { copy } = useClipboard();
 const { mobile } = useDisplay();
@@ -213,13 +278,104 @@ const noticeSummary = ref("공지사항 테스트입니다. 다들 주목하세�
 const orgLeagueId = route.query.leagueId;
 
 const leagueInfo = ref({});
-const seasonYears = ref([]);
+const seasonInfo = ref([]);
+const currentSeasonInfo = ref(null);
 const filteredSeasonYears = ref([]);
 
 const seasonYear = ref(null);
-watch([seasonYears,seasonYear],()=>{filteredSeasonYears.value = seasonYears.value.filter((sy)=>sy.season_year!==seasonYear.value); console.log(filteredSeasonYears.value)})
+watch([seasonInfo,seasonYear],()=>{filteredSeasonYears.value = seasonInfo.value.filter((sy)=>sy.season_year!==seasonYear.value);})
 
 const isLoadedData = ref(false);
+const seasonDataYn = ref(false);
+
+const barRef = ref(null)
+const barWidth = ref(0)
+
+window.addEventListener('resize', () => {
+    if (barRef.value) {
+        barWidth.value = barRef.value.offsetWidth
+    }
+})
+
+// today (1분마다 갱신)
+const today = ref(new Date())
+setInterval(() => today.value = new Date(), 1000 * 60)
+
+function getDDayText(target) {
+    const diff = differenceInDays(target, today.value)
+    if (diff === 0) return '오늘'
+    return diff > 0 ? `D-${diff}` : `D+${Math.abs(diff)}`
+}
+
+// 날짜 객체
+const draftDate = computed(() => parseDate(currentSeasonInfo.value.draft_date))
+const startDate = computed(() => parseDate(currentSeasonInfo.value.start_date))
+
+// 날짜 정렬 후 퍼센트 계산
+const dates = computed(() => {
+    return [
+        { key: 'today', label: '오늘', date: today.value },
+        { key: 'draft', label: '드래프트', date: draftDate.value },
+        { key: 'start', label: '시즌 시작', date: startDate.value }
+    ].sort((a, b) => a.date - b.date)
+})
+
+const minTime = computed(() => dates.value[0].date.getTime())
+const maxTime = computed(() => dates.value[2].date.getTime())
+const totalDuration = computed(() => maxTime.value - minTime.value)
+
+const MIN_PIXEL_GAP = 100
+
+const datePercents = computed(() => {
+    if (!barWidth.value) barWidth.value = barRef.value?.offsetWidth
+    if (!barWidth.value) return []
+
+    const sorted = [
+        { key: 'today', label: '오늘', date: today.value },
+        { key: 'draft', label: '드래프트', date: draftDate.value },
+        { key: 'start', label: '시즌 시작', date: startDate.value }
+    ].sort((a, b) => a.date.getTime() - b.date.getTime())
+
+    const min = sorted[0].date.getTime()
+    const max = sorted[2].date.getTime()
+    const total = max - min || 1
+
+    // 기본 위치 (퍼센트 및 px)
+    const raw = sorted.map(entry => {
+        const percent = ((entry.date.getTime() - min) / total) * 100
+        const px = (percent / 100) * barWidth.value
+        const hour = entry.date.getHours()
+        const minute = entry.date.getMinutes()
+
+        return {
+            ...entry,
+            percent,
+            px,
+            ddayText: getDDayText(entry.date),
+            formatted: formatDate(entry.date),
+            time: hour + ":" + minute
+        }
+    })
+
+    // 최소 픽셀 간격 보정
+    const adjusted = [raw[0]]
+    for (let i = 1; i < raw.length; i++) {
+        const prev = adjusted[i - 1]
+        const current = { ...raw[i] }
+        if (current.px - prev.px < MIN_PIXEL_GAP) {
+            current.px = prev.px + MIN_PIXEL_GAP
+        }
+        adjusted.push(current)
+    }
+
+    // 전체 보정된 px 기준으로 다시 퍼센트 환산
+    const newMaxPx = adjusted[adjusted.length - 1].px
+    adjusted.forEach(item => {
+        item.percent = (item.px / newMaxPx) * 100
+    })
+
+    return adjusted
+})
 
 // 링크 복사
 const copyLink = () => {
@@ -288,7 +444,7 @@ const rankings = ref([
 const loadLeagueInfo = async () => {
     try {
         // fetchLeagueInfo는 서버에서 리그 정보를 받아오는 API 호출 함수입니다.
-        const response = await commonFetch(`/api/league/info?leagueId=${encodeURIComponent(orgLeagueId)}`, {
+        const response = await commonFetch(`/api/league/${encodeURIComponent(orgLeagueId)}/info`, {
             method : 'GET'
         });
 
@@ -304,8 +460,17 @@ const loadLeagueInfo = async () => {
                 // formattedDraftDate: dayjs(data.draft_date).format('YYYY.MM.DD'),
             };
 
-            seasonYears.value = response.data.seasonYear
-            seasonYear.value = seasonYears.value[0].season_year;
+            seasonInfo.value = response.data.seasonInfo
+
+            if(seasonInfo.value?.length>0){
+                seasonYear.value = seasonInfo.value[0].season_year;
+                const seasonRes = await commonFetch(`/api/league/${encodeURIComponent(orgLeagueId)}/season/${encodeURIComponent(encryptData(seasonInfo.value[0].season_id))}/info`);
+
+                if(seasonRes.success){
+                    seasonDataYn.value = true;
+                    currentSeasonInfo.value = seasonRes.data.seasonInfo
+                }
+            }
         }else{
             alert("리그 정보 조회 도중 문제가 발생하였습니다.");
             router.push("/");
@@ -368,5 +533,12 @@ const goToNotices = () => {
 <style scoped>
 h1 {
     margin: 0;
+}
+
+.timeline-bar {
+    height: 10px;
+    background-color: #ccc;
+    border-radius: 5px;
+    position: relative;
 }
 </style>

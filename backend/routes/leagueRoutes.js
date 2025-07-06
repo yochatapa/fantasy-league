@@ -5,8 +5,8 @@ import { createLeague, getLeagueInfo, getLeagueList, getSeasonInfo, checkInviteC
 const router = express.Router();
 
 //GET
-router.get('/info', verifyToken, verifyTeams, getLeagueInfo);
-router.get('/season/info', verifyToken, verifyTeams, getSeasonInfo);
+router.get('/:leagueId/info', verifyToken, verifyTeams, getLeagueInfo);
+router.get('/:leagueId/season/:seasonId/info', verifyToken, verifyTeams, getSeasonInfo);
 router.get('/list', verifyToken, getLeagueList);
 
 // POST

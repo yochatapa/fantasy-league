@@ -159,7 +159,7 @@ export const verifyCommissioner = async (req, res, next) => {
 
 export const verifyTeams = async (req, res, next) => {
     const accessToken = req.headers['authorization']?.split(' ')[1];  // 'Bearer <token>' 형식에서 토큰 추출
-    let { leagueId } = req.query;
+    let { leagueId } = req.params;
     
     leagueId = decodeURIComponent(decryptData(leagueId))
     
