@@ -658,3 +658,28 @@ export const getSeasonInfo = async (req, res) => {
         return sendServerError(res, error, '시즌 정보 조회 중 문제가 발생했습니다. 다시 시도해주세요.');
     }
 };
+
+export const setDraftOrder = async(req,res) => {
+    let { leagueId, seasonId } = req.params;
+
+    const { 
+        order
+    } = req.body;
+
+    leagueId = decryptData(decodeURIComponent(leagueId));
+    seasonId = decryptData(decodeURIComponent(seasonId));
+
+    try {
+        await withTransaction(async (client)=>{
+
+        })
+        return sendSuccess(res, {
+            message: '시즌 정보가 조회되었습니다.',
+            leagueId,
+            seasonId,
+            order
+        });
+    } catch (error) {
+        return sendServerError(res, error, '시즌 정보 조회 중 문제가 발생했습니다. 다시 시도해주세요.');
+    }
+}

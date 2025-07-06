@@ -63,7 +63,7 @@
             </v-card-text>
         </v-card>
 
-        <!-- pending -->
+        <!-- 시즌 일정 -->
         <v-row v-if="currentSeasonInfo.season_status === 'pending'">
             <v-col cols="12">
                 <v-card>
@@ -125,6 +125,56 @@
                             </div>
                         </div>
                     </div>
+                </v-card>
+            </v-col>
+        </v-row>
+
+        <!-- 드래프트 순번 -->
+        <v-row v-if="currentSeasonInfo.season_status === 'pending'">
+            <v-col cols="12">
+                <v-card>
+                    <v-card-title class="d-flex justify-space-between align-center">
+                        드래프트 순번
+                    </v-card-title>
+                    <v-divider></v-divider>
+                    <v-card-text>
+                        <v-table>
+                            <thead>
+                                <tr>
+                                    <th class="text-center" style="width: 80px;">순번</th>
+                                    <th class="text-left">팀</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="team in draftTeams" :key="team.draft_order">
+                                    <!-- 순번 표시 -->
+                                    <td class="text-center">
+                                        <span v-if="team.team_id">{{ team.draft_order }}</span>
+                                        <v-btn
+                                            v-else
+                                            color="primary"
+                                            variant="outlined"
+                                            size="small"
+                                            @click="selectDraftSlot(team.draft_order)"
+                                        >
+                                            {{ team.draft_order }}번
+                                        </v-btn>
+                                    </td>
+
+                                    <!-- 팀 아이콘 + 이름 -->
+                                    <td>
+                                        <div v-if="team.team_id" class="d-flex align-center" style="gap: 8px">
+                                            <v-avatar size="24" v-if="team.file_path">
+                                                <v-img :src="team.file_path" :alt="team.team_name" />
+                                            </v-avatar>
+                                            <span>{{ team.team_name }}</span>
+                                        </div>
+                                        <span v-else class="text-grey">미정</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </v-table>
+                    </v-card-text>
                 </v-card>
             </v-col>
         </v-row>
@@ -284,6 +334,7 @@ const leagueInfo = ref({});
 const seasonInfo = ref([]);
 const currentSeasonInfo = ref(null);
 const filteredSeasonYears = ref([]);
+const draftTeams = ref([]);
 
 const seasonYear = ref(null);
 watch([seasonInfo,seasonYear],()=>{filteredSeasonYears.value = seasonInfo.value.filter((sy)=>sy.season_year!==seasonYear.value);})
@@ -473,6 +524,7 @@ const loadLeagueInfo = async () => {
                 if(seasonRes.success){
                     seasonDataYn.value = true;
                     currentSeasonInfo.value = seasonRes.data.seasonInfo
+                    draftTeams.value = seasonRes.data.draftTeams
                 }
             }
         }else{
@@ -531,6 +583,19 @@ const toggleDetails = () => {
 
 const goToNotices = () => {
     console.log("hihi")
+}
+
+const selectDraftSlot = async (order) => {
+    try {
+        await commonFetch(`/api/league/${encodeURIComponent(orgLeagueId)}/season/${encodeURIComponent(encryptData(currentSeasonInfo.value.season_id))}/draft-order`,{
+            method : "POST"
+            , body : {
+                order : order
+            }            
+        })   
+    } catch (error) {
+        
+    }
 }
 </script>
 
