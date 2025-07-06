@@ -2268,6 +2268,8 @@ const setOut = async (battingNumberYn=true, confirmYn=true, countYn=true) => {
             await setGameOver();
             return
         }
+
+        const current_inning_half = gameCurrentInfo.value.inning_half;
             
         if(current_inning_half === "top") gameCurrentInfo.value.inning_half = "bottom"
         else {
@@ -2282,7 +2284,6 @@ const setOut = async (battingNumberYn=true, confirmYn=true, countYn=true) => {
         }
 
         gameCurrentInfo.value.out = 0;
-        const current_inning_half = gameCurrentInfo.value.inning_half;
         gameCurrentInfo.value.runner_1b = null;
         gameCurrentInfo.value.runner_2b = null;
         gameCurrentInfo.value.runner_3b = null;
