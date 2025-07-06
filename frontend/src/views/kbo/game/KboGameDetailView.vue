@@ -146,7 +146,7 @@
                         </v-card-text>
                     </v-card>
                 </v-col>
-                <v-col cols="12" md="4" v-if="lineupYn && selectedMatchup.status !== 'scheduled'">
+                <v-col cols="12" md="4" v-if="(lineupYn && selectedMatchup.status === 'scheduled') || selectedMatchup.status !== 'scheduled'">
                     <v-row>
                         <v-col cols="12">
                             <v-card class="h-100">
@@ -338,12 +338,11 @@
                                                 </div>
                                             </div>
                                         </v-card>
-                                    </div>
-                                    
+                                    </div>                                    
                                 </v-card-text>
                             </v-card>
                         </v-col>
-                        <v-col cols="12" v-if="lineupYn && lineupList.filter(ll => ll.away.length > 0 && ll.home.length >0).length === 10">
+                        <v-col cols="12">
                             <v-card class="h-100">
                                 <v-card-title>라인업</v-card-title>
                                 <v-divider></v-divider>
@@ -454,14 +453,6 @@ import { useDisplay } from 'vuetify';
 import { io } from 'socket.io-client';
 
 const socket = io(`${import.meta.env.VITE_API_URL}`);  // 서버 주소
-
-socket.on('connect', () => {
-    console.log('Socket connected');
-});
-
-socket.on('connect_error', (err) => {
-    console.error('Socket connection error:', err.message);
-});
 
 const router = useRouter();
 const route = useRoute();
@@ -887,10 +878,12 @@ const getPlayerPosition = target => {
     return target?.replaced_position??target?.position
 }
 
-const getGameDetailInfo = async (game_id) => {
+const getGameDetailInfo = async (game_id,clearYn=true) => {
     try {
-        lineupList.value = new Array(10).fill(null).map(() => ({ away: [], home: [] }));
-        clearLineup();
+        if(clearYn){
+            lineupList.value = new Array(10).fill(null).map(() => ({ away: [], home: [] }));
+            clearLineup();
+        }
         
         await Promise.all([
             commonFetch(`/api/kbo/game/${game_id}`),
@@ -986,18 +979,51 @@ const setCurrentInning = (inning) => {
     currentInning.value = inning;
 }
 
+const setCurrentGamedayInfo = async (pushData) => {
+    if(!!!gamedayInfo.value[pushData.inning]) gamedayInfo.value[pushData.inning] = {}
+
+    if(!!!gamedayInfo.value[pushData.inning][pushData.inning_half]) gamedayInfo.value[pushData.inning][pushData.inning_half] = {}
+
+    if(!!!gamedayInfo.value[pushData.inning][pushData.inning_half][pushData.inning_half === 'top'?pushData.away_batting_number:pushData.home_batting_number])
+    gamedayInfo.value[pushData.inning][pushData.inning_half][pushData.inning_half === 'top'?pushData.away_batting_number:pushData.home_batting_number] = new Array();
+
+    gamedayInfo.value?.[pushData.inning]?.[pushData.inning_half]?.[pushData.inning_half === 'top'?pushData.away_batting_number:pushData.home_batting_number]?.push(pushData)
+    gameCurrentInfo.value = pushData
+    currentInning.value = gameCurrentInfo.value.inning
+}
+
 onMounted(async ()=>{
     await getGameDetailInfo(gameId)    
 
-    socket.on('user:update', (data) => {
-        console.log('user:update received:', data);
-        messages.value.push(data);
+    socket.on('connect', () => {
+        console.log('Socket connected');
+    });
+
+    socket.on('connect_error', (err) => {
+        console.error('Socket connection error:', err.message);
+    });
+
+    socket.on(gameId, async (resData) => {
+        console.log('Socket data received');
+        // messages.value.push(data);
+        if(!!!resData) return console.error("데이터 수신 중 오류가 발생하였습니다.");
+
+        switch(resData?.type){
+            case "currentInfo" :
+                setCurrentGamedayInfo(resData.data)
+                break;
+            case "rosterChange" :
+                await getGameDetailInfo(selectedMatchup.value.game_id,false)
+                break;
+        }
+
+        console.log(resData.message);
     });
 })
 
 onUnmounted(() => {
     socket.off('connect');
-    socket.off('user:update');
+    socket.off(gameId);
 });
 </script>
 

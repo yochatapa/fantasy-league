@@ -10,6 +10,7 @@ import { rootCertificates } from 'tls';
 import convertFileToBase64 from '../../utils/convertFileToBase64.js'; // apiResponse에서 임포트
 import { stat } from 'fs';
 import cluster from 'cluster';
+import { getIO } from '../../utils/socket.js';
 
 const finalUploadsBaseDir = path.join(process.cwd(), 'uploads');
 
@@ -598,11 +599,19 @@ export const createKboGameRoster = async (req, res) => {
                 replaced_inning_half || null
             ]);
 
-            const gameRosterId = rows[0].id;
+            const game_roster_id = rows[0].id;
+
+            const io = getIO();
+
+            io.emit(game_id, {
+                type: 'rosterChange',
+                data: { game_roster_id : game_roster_id },
+                message : "게임 로스터가 성공적으로 업데이트되었습니다."
+            });
 
             return sendSuccess(res, {
                 message: "게임 로스터가 성공적으로 생성되었습니다.",
-                gameRosterId
+                game_roster_id
             });
         });
     } catch (error) {
@@ -654,7 +663,8 @@ export const createKboCurrentInfo = async(req,res) => {
         game_id, type, inning, inning_half, strike, 
         ball, out, away_pitch_count, home_pitch_count, away_current_pitch_count, 
         home_current_pitch_count, away_batting_number, home_batting_number, away_score, home_score, 
-        runner_1b, runner_2b, runner_3b, batter, pitcher, is_available_stat, away_current_batting_number, home_current_batting_number, away_current_out, home_current_out
+        runner_1b, runner_2b, runner_3b, batter, pitcher, 
+        is_available_stat, away_current_batting_number, home_current_batting_number, away_current_out, home_current_out
     } = req.body;
 
     const accessToken = req.headers['authorization']?.split(' ')[1];
@@ -701,6 +711,19 @@ export const createKboCurrentInfo = async(req,res) => {
                 runner_1b?.pitcher?.roster_id, runner_2b?.pitcher?.roster_id, runner_3b?.pitcher?.roster_id, (is_available_stat === null ? true : is_available_stat), away_current_batting_number, 
                 home_current_batting_number, away_current_out, home_current_out,
             ])
+
+            const io = getIO();
+            io.emit(game_id, {
+                type: 'currentInfo',
+                data: { 
+                    game_id, type, inning, inning_half, strike, 
+                    ball, out, away_pitch_count, home_pitch_count, away_current_pitch_count, 
+                    home_current_pitch_count, away_batting_number, home_batting_number, away_score, home_score, 
+                    runner_1b, runner_2b, runner_3b, batter, pitcher, 
+                    is_available_stat, away_current_batting_number, home_current_batting_number, away_current_out, home_current_out
+                },
+                message: "게임 현 정보가 성공적으로 업데이트되었습니다."
+            });
         })
         
         return sendSuccess(res, {
