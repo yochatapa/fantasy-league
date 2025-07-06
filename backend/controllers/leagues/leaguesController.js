@@ -68,10 +68,6 @@ export const createLeague = async (req, res) => {
                     , playoff_teams
                     , foreign_player_limit
                     , start_date
-                    , draft_date
-                    , draft_type
-                    , draft_timer
-                    , allow_auto_draft
                     , allow_trades
                     , trade_deadline
                     , waiver_clear_days
@@ -83,7 +79,7 @@ export const createLeague = async (req, res) => {
                     , created_at
                     , updated_at
                 )
-                VALUES ($1, DATE_PART('year', CURRENT_DATE), $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                VALUES ($1, DATE_PART('year', CURRENT_DATE), $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 RETURNING season_id;
             `;
 
@@ -93,10 +89,6 @@ export const createLeague = async (req, res) => {
                 , playoffTeams
                 , 0
                 , seasonStartDate
-                , draftDate
-                , draftMethod
-                , 30
-                , true
                 , true
                 , null
                 , 1
@@ -132,9 +124,54 @@ export const createLeague = async (req, res) => {
                     , created_at
                     , updated_at
                 )
-                VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+                VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                RETURNING id;
             `;
-            await client.query(insertLeagueTeam, [leagueId, seasonId, user.userId, user.nickname]);
+            const leagueTeamResult = await client.query(insertLeagueTeam, [leagueId, seasonId, user.userId, user.nickname]);
+
+            const leagueTeamId = leagueTeamResult.rows[0].id;
+
+            const insertDraftMaster = `
+                INSERT INTO league_season_draft_master (
+                    league_id,
+                    season_id,
+                    draft_start_date,
+                    draft_type,
+                    draft_timer,
+                    allow_auto_draft,
+                    created_at,
+                    updated_at
+                )
+                VALUES ($1, $2, $3, $4, $5, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+            `;
+
+            await client.query(insertDraftMaster, [
+                leagueId,
+                seasonId,    // $2
+                draftDate,   // $3
+                draftMethod, // $4
+                30           // $5
+            ]);
+
+            // league_season_draft_teams 테이블에 1번 픽 팀 등록
+            const insertDraftTeam = `
+                INSERT INTO league_season_draft_teams (
+                    league_id,
+                    season_id,
+                    team_id,
+                    draft_order,
+                    is_auto_draft,
+                    created_at,
+                    updated_at
+                )
+                VALUES ($1, $2, $3, 1, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+            `;
+
+            await client.query(insertDraftTeam, [
+                leagueId,
+                seasonId,
+                leagueTeamId // ← 드래프트 1번픽 팀 ID
+            ]);
 
             // league_season_roster_slot 저장 (초기 설정)
             const insertLeagueRosterSlot = `
@@ -286,10 +323,6 @@ export const getLeagueList = async (req, res) => {
                 , ls.playoff_teams
                 , ls.foreign_player_limit 
                 , ls.start_date 
-                , ls.draft_date
-                , ls.draft_type
-                , ls.draft_timer 
-                , ls.allow_auto_draft
                 , ls.allow_trades
                 , ls.trade_deadline 
                 , ls.waiver_clear_days 
@@ -427,14 +460,47 @@ export const joinLeague = async (req, res) => {
                 VALUES(
                     $1, $2, $3, $4
                 )
+                RETURNING id
             `
 
-            await client.query(leagueJoinQuery,[
+            const { rows : leagueJoinResult} = await client.query(leagueJoinQuery,[
                 leagueId
                 , validLeagueResult.rows[0].season_id
                 , user.userId
                 , user.nickname
             ])
+
+            const leagueTeamId = leagueJoinResult[0].id;
+
+            const findDraftOrderQuery = `
+                SELECT gs.draft_order
+                FROM (
+                    SELECT generate_series(1, (SELECT max_teams FROM league_season WHERE league_id = $1 AND season_id = $2)) AS draft_order
+                ) gs
+                LEFT JOIN league_season_draft_teams ldt
+                    ON ldt.draft_order = gs.draft_order
+                    AND ldt.league_id = $1
+                    AND ldt.season_id = $2
+                WHERE ldt.draft_order IS NULL
+                ORDER BY gs.draft_order
+                LIMIT 1;
+            `;
+
+            const { rows } = await query(findDraftOrderQuery, [leagueId, validLeagueResult.rows[0].season_id]);
+            if (rows.length === 0) {
+                throw new Error('빈 draft_order가 없습니다.');
+            }
+
+            const emptyDraftOrder = rows[0].draft_order;
+
+            // 2) 비어있는 draft_order에 insert
+            const insertDraftTeamQuery = `
+                INSERT INTO league_season_draft_teams (league_id, season_id, draft_order, team_id)
+                VALUES ($1, $2, $3, $4)
+                RETURNING *;
+            `;
+
+            const { rows: insertedRows } = await query(insertDraftTeamQuery, [leagueId, validLeagueResult.rows[0].season_id, emptyDraftOrder, leagueTeamId]);
 
             return sendSuccess(res, {
                 message : "성공적으로 리그 가입이 되었습니다!"
@@ -449,11 +515,11 @@ export const joinLeague = async (req, res) => {
 export const getSeasonInfo = async (req, res) => {
     let { leagueId, seasonId } = req.params;
 
-    leagueId = decryptData(leagueId)
-    seasonId = decryptData(seasonId)
+    leagueId = decryptData(leagueId);
+    seasonId = decryptData(seasonId);
 
     try {
-        let leagueInfoQuery = `
+        const leagueInfoQuery = `
             SELECT
                 ls.season_id,
                 ls.season_year,
@@ -461,10 +527,6 @@ export const getSeasonInfo = async (req, res) => {
                 ls.playoff_teams,
                 ls.foreign_player_limit,
                 TO_CHAR(ls.start_date, 'YYYY.MM.DD HH24:MI') AS start_date,
-                TO_CHAR(ls.draft_date, 'YYYY.MM.DD HH24:MI') AS draft_date,
-                ls.draft_type,
-                ls.draft_timer,
-                ls.allow_auto_draft,
                 ls.allow_trades,
                 TO_CHAR(ls.trade_deadline, 'YYYY.MM.DD HH24:MI') AS trade_deadline,
                 ls.waiver_clear_days,
@@ -472,25 +534,127 @@ export const getSeasonInfo = async (req, res) => {
                 ls.injured_list_slots,
                 ls.tie_breaker,
                 ls.lineup_change_restriction,
-                ls.season_status
+                ls.season_status,
+
+                -- draft information
+                TO_CHAR(d.draft_start_date, 'YYYY.MM.DD HH24:MI') AS draft_start_date,
+                d.draft_end_date,
+                d.draft_type,
+                d.draft_timer,
+                d.allow_auto_draft,
+
+                -- team information
+                lst.id AS team_id,
+                lst.team_name,
+                ft.path AS logo_path,
+                ft.mimetype AS logo_mimetype
             FROM league_master lm
                 INNER JOIN league_season ls ON lm.league_id = ls.league_id
+                LEFT JOIN league_season_draft_master d ON ls.league_id = d.league_id and ls.season_id = d.season_id
+                LEFT JOIN league_season_team lst ON ls.season_id = lst.season_id
+                LEFT JOIN file_table ft ON ft.file_id = lst.logo_url::uuid AND ft.sn = 1
             WHERE lm.league_id = $1
-                AND ls.season_id = $2;
+            AND ls.season_id = $2;
         `;
+
 
         const param = [leagueId, seasonId];
 
         const seasonInfo = await query(leagueInfoQuery, param);
         
-        if(!seasonInfo.rows[0])
+        if (!seasonInfo.rows[0])
             return sendBadRequest(res, '시즌 정보가 없습니다.');
+
+        const teamListQuery = `
+            SELECT
+                lst.id,
+                lst.user_id,
+                lst.team_name,
+                lst.logo_url,
+                ft.path AS file_path,
+                ft.mimetype AS file_mimetype
+            FROM league_season_team lst
+            LEFT JOIN file_table ft ON ft.file_id = lst.logo_url::uuid AND ft.sn = 1
+            WHERE lst.league_id = $1
+            AND lst.season_id = $2;
+        `;
+
+        const { rows: teamList } = await query(teamListQuery, param);
+
+        // logo_url이 상대경로나 절대경로인 경우, 파일에서 base64로 변환
+        // mimetype 컬럼이 없으면 기본 이미지 타입(ex. image/png)로 지정하거나 mime-type 추론 필요
+        for (let i = 0; i < teamList.length; i++) {
+            const team = teamList[i];
+
+            if (team.logo_url) {
+                try {
+                    // 예를 들어 logo_url이 'uploads/teams/logo1.png' 같은 상대경로라면
+                    const filePath = path.isAbsolute(team.logo_url)
+                        ? team.logo_url
+                        : path.join(process.cwd(), team.logo_url);
+
+                    // mimetype 컬럼이 없으면 기본값 지정 (예: 'image/png')
+                    const mimeType = team.logo_url_mimetype || 'image/png';
+
+                    const base64Image = await convertFileToBase64(filePath, mimeType);
+
+                    team.logo_url = base64Image;
+                } catch (err) {
+                    // 파일 없거나 에러 나면 그냥 원래 url 유지하거나 null 처리 가능
+                    console.error(`Failed to convert logo_url to base64 for team id ${team.id}`, err);
+                    // team.logo_url = null; // 선택사항
+                }
+            }
+        }
+
+        const draftTeamQuery = `
+            SELECT
+                gs.draft_order,
+                lst.id AS team_id,
+                lst.user_id,
+                lst.team_name,
+                lst.logo_url,
+                ft.path AS file_path,
+                ft.mimetype AS file_mimetype
+            FROM (
+                SELECT generate_series(1, ls.max_teams) AS draft_order
+                FROM league_season ls
+                WHERE ls.league_id = $1 AND ls.season_id = $2
+            ) gs
+            LEFT JOIN league_season_draft_teams ldt
+                ON ldt.draft_order = gs.draft_order AND ldt.league_id = $1 AND ldt.season_id = $2
+            LEFT JOIN league_season_team lst
+                ON lst.id = ldt.team_id
+            LEFT JOIN file_table ft
+                ON ft.file_id = lst.logo_url::uuid AND ft.sn = 1
+            ORDER BY gs.draft_order;
+        `;
+
+        const { rows: draftTeams } = await query(draftTeamQuery, param);
+
+        // base64 변환 처리
+        for (const team of draftTeams) {
+            if (team.logo_url) {
+                try {
+                    const filePath = path.isAbsolute(team.logo_url)
+                        ? team.logo_url
+                        : path.join(process.cwd(), team.logo_url);
+                    const mimeType = team.file_mimetype || 'image/png';
+                    const base64Image = await convertFileToBase64(filePath, mimeType);
+                    team.logo_url = base64Image;
+                } catch (err) {
+                    console.error(`Failed to convert logo_url to base64 for team order ${team.draft_order}`, err);
+                }
+            }
+        }
 
         return sendSuccess(res, {
             message: '시즌 정보가 조회되었습니다.',
-            seasonInfo : seasonInfo.rows[0]
+            seasonInfo: seasonInfo.rows[0],
+            teamList,
+            draftTeams
         });
     } catch (error) {
         return sendServerError(res, error, '시즌 정보 조회 중 문제가 발생했습니다. 다시 시도해주세요.');
     }
-}
+};
