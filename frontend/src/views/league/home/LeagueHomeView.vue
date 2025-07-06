@@ -71,7 +71,7 @@
                         시즌 일정
                     </v-card-title>
                     <v-divider></v-divider>
-                    <div class="d-flex flex-column align-center position-relative pt-6 pb-10 mx-10">
+                    <div class="d-flex flex-column align-center position-relative mt-6 mb-2 pt-6 pb-10 mx-10">
                         <!-- 타임라인 바 -->
                         <div ref="barRef" class="position-relative timeline-bar my-4" style="height: 8px; background: #e0e0e0; width: 100%; border-radius: 4px;">
                             <div
@@ -82,11 +82,14 @@
                                     left: `calc(${item.percent}%)`,
                                     transform: 'translateX(-50%)',
                                     textAlign: 'center',
-                                    top: '-28px'
+                                    bottom: '-7px'
                                 }"
                             > 
                                 <div class="text-caption font-weight-bold">
                                     {{ item.label }}
+                                </div>
+                                <div class="text-caption font-weight-bold" v-if="item.key!=='today'">
+                                    {{ item.ddayText }}
                                 </div>
                                 <v-icon
                                     :color="item.key === 'today' ? 'blue' : (item.key === 'draft' ? 'green' : 'red')"
@@ -303,7 +306,7 @@ setInterval(() => today.value = new Date(), 1000 * 60)
 
 function getDDayText(target) {
     const diff = differenceInDays(target, today.value)
-    if (diff === 0) return '오늘'
+    if (diff === 0) return 'D-Day'
     return diff > 0 ? `D-${diff}` : `D+${Math.abs(diff)}`
 }
 
@@ -373,7 +376,7 @@ const datePercents = computed(() => {
     adjusted.forEach(item => {
         item.percent = (item.px / newMaxPx) * 100
     })
-    console.log(adjusted)
+    
     return adjusted
 })
 
