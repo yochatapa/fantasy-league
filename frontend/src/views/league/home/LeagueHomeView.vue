@@ -587,14 +587,20 @@ const goToNotices = () => {
 
 const selectDraftSlot = async (order) => {
     try {
-        await commonFetch(`/api/league/${encodeURIComponent(orgLeagueId)}/season/${encodeURIComponent(encryptData(currentSeasonInfo.value.season_id))}/draft-order`,{
+        const orderRes = await commonFetch(`/api/league/${encodeURIComponent(orgLeagueId)}/season/${encodeURIComponent(encryptData(currentSeasonInfo.value.season_id))}/draft-order`,{
             method : "POST"
             , body : {
                 order : order
             }            
-        })   
+        })
+
+        if(orderRes.success){
+            
+        }
     } catch (error) {
-        
+        alert("드래프트 순서를 바꾸는 도중 문제가 발생하였습니다.","error");
+    }finally{
+
     }
 }
 </script>

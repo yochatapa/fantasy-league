@@ -669,17 +669,50 @@ export const setDraftOrder = async(req,res) => {
     leagueId = decryptData(decodeURIComponent(leagueId));
     seasonId = decryptData(decodeURIComponent(seasonId));
 
+    const accessToken = req.headers['authorization']?.split(' ')[1];  // 'Bearer <token>' 형식에서 토큰 추출
+
+    if(!accessToken){
+        return sendBadRequest(res, '토큰이 제공되지 않았습니다.');
+    }
+
+    const user = jwt.verify(accessToken, process.env.JWT_SECRET);
+
     try {
         await withTransaction(async (client)=>{
+            const { rows : userTeamInfo } = await client.query(`
+                SELECT
+                    lst.id AS team_id,
+                    lsdt.draft_order
+                FROM league_season_team lst
+                LEFT JOIN league_season_draft_teams lsdt
+                    ON lst.id = lsdt.team_id
+                    AND lst.league_id = lsdt.league_id
+                    AND lst.season_id = lsdt.season_id
+                WHERE
+                    lst.league_id = $1
+                    AND lst.season_id = $2
+                    AND lst.user_id = $3
+            `,[leagueId, seasonId, user.userId]);
 
+            const team_id = userTeamInfo[0].team_id
+
+            await client.query(`
+                UPDATE league_season_draft_teams
+                SET 
+                    draft_order = $1
+                WHERE 
+                    league_id = $2
+                AND season_id = $3
+                AND team_id = $4
+            `,[order, leagueId, seasonId, team_id])
         })
         return sendSuccess(res, {
-            message: '시즌 정보가 조회되었습니다.',
+            message: '드래프트 순서 정보가 저장되었습니다.',
             leagueId,
             seasonId,
             order
         });
     } catch (error) {
-        return sendServerError(res, error, '시즌 정보 조회 중 문제가 발생했습니다. 다시 시도해주세요.');
+        return sendServerError(res, error, '드래프트 순서 정보 저장 중 문제가 발생했습니다. 다시 시도해주세요.');
     }
 }
