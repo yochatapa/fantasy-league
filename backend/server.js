@@ -6,6 +6,7 @@ import process from 'process';
 import app from './app.js';
 import http from 'http';
 import { setupSocket } from './utils/socket.js';
+import './scheduler/draftScheduler.js';
 
 const PORT = 3000;
 
