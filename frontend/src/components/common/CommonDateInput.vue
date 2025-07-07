@@ -31,7 +31,7 @@ import { ref, watch, onMounted } from 'vue';
 import { formatDate } from '@/utils/common/dateUtils.js';
 
 const props = defineProps({
-    modelValue: String,
+    modelValue: [String, Date, null],
     label: String,
     min: String,
     max: String,

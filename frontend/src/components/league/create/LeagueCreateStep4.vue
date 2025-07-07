@@ -17,7 +17,15 @@
         required
     />
 
-    <v-menu
+    <CommonDateInput
+        v-model="seasonStartDate"
+        label="시즌 시작일"
+        :rules="[v => !!v || '시즌 시작일을 설정해 주세요.']"
+        required
+        :min="formatDate(today)"
+        :max="formatDate(endOfYear)"
+    />
+    <!-- <v-menu
         v-model="seasonStartMenu"
         :close-on-content-click="false"
         transition="scale-transition"
@@ -40,9 +48,18 @@
             :max="endOfYear"
             @update:model-value="onSeasonStartDateSelect"
         />
-    </v-menu>
+    </v-menu> -->
 
-    <v-menu
+    <CommonDateInput
+        v-model="draftDate"
+        label="드래프트 일자"
+        :rules="[v => !!v || '경기일자를 입력해주세요.']"
+        :required="!isDraftDateDisabled"
+        :min="formatDate(seasonStartDate)"
+        :max="formatDate(endOfYear)"
+    />
+
+    <!-- <v-menu
         v-model="draftDateMenu"
         :close-on-content-click="false"
         transition="scale-transition"
@@ -66,7 +83,7 @@
             :max="endOfYear"
             @update:model-value="onDraftDateSelect"
         />
-    </v-menu>
+    </v-menu> -->
 
     <v-form ref="form"></v-form>
 </template>
@@ -74,7 +91,9 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
 import { formatDate } from '@/utils/common/dateUtils.js';
+import CommonDateInput from '@/components/common/CommonDateInput.vue';
 
+// props & emits
 const props = defineProps({
     draftMethod: String,
     isPublic: Boolean,
@@ -92,41 +111,67 @@ const emit = defineEmits([
     'update:draftDate',
 ]);
 
+// local states
 const isPublic = ref(props.isPublic);
 const maxTeams = ref(props.maxTeams);
 const playoffTeams = ref(props.playoffTeams);
 const seasonStartDate = ref(props.seasonStartDate ? new Date(props.seasonStartDate) : null);
 const draftDate = ref(props.draftDate ? new Date(props.draftDate) : null);
 
-// emit when local state changes
-watch(isPublic, (newValue) => emit('update:isPublic', newValue));
-watch(maxTeams, (newValue) => emit('update:maxTeams', Number(newValue)));
-watch(playoffTeams, (newValue) => emit('update:playoffTeams', Number(newValue)));
-watch(seasonStartDate, (newValue) => {
-    emit('update:seasonStartDate', newValue);
-    if (props.draftMethod !== 'custom' && newValue) {
-        draftDate.value = new Date(newValue);
-    } else if (props.draftMethod !== 'custom' && !newValue) {
-        draftDate.value = null;
+// utils
+const isSameDate = (a, b) => {
+    return a?.getTime?.() === b?.getTime?.();
+};
+
+// emit on change (but only if value actually changed)
+watch(isPublic, (val) => emit('update:isPublic', val));
+watch(maxTeams, (val) => emit('update:maxTeams', Number(val)));
+watch(playoffTeams, (val) => emit('update:playoffTeams', Number(val)));
+
+watch(seasonStartDate, (val) => {
+    if (!isSameDate(val, new Date(props.seasonStartDate))) {
+        emit('update:seasonStartDate', val);
+    }
+    // 자동으로 draftDate 설정
+    if (props.draftMethod !== 'custom') {
+        if (!isSameDate(val, draftDate.value)) {
+            draftDate.value = val ? new Date(val) : null;
+        }
     }
 });
-watch(draftDate, (newValue) => emit('update:draftDate', newValue));
 
-// react to prop changes
-watch(() => props.isPublic, (newValue) => { isPublic.value = newValue; });
-watch(() => props.maxTeams, (newValue) => { maxTeams.value = newValue; });
-watch(() => props.playoffTeams, (newValue) => { playoffTeams.value = newValue; });
-watch(() => props.seasonStartDate, (newValue) => { seasonStartDate.value = newValue ? new Date(newValue) : null; });
-watch(() => props.draftDate, (newValue) => { draftDate.value = newValue ? new Date(newValue) : null; });
+watch(draftDate, (val) => {
+    if (!isSameDate(val, new Date(props.draftDate))) {
+        emit('update:draftDate', val);
+    }
+});
 
-// menu open 상태
-const seasonStartMenu = ref(false);
-const draftDateMenu = ref(false);
+// sync props → local state (단, 값이 다를 때만)
+watch(() => props.isPublic, (val) => {
+    if (isPublic.value !== val) isPublic.value = val;
+});
+watch(() => props.maxTeams, (val) => {
+    if (maxTeams.value !== val) maxTeams.value = val;
+});
+watch(() => props.playoffTeams, (val) => {
+    if (playoffTeams.value !== val) playoffTeams.value = val;
+});
+watch(() => props.seasonStartDate, (val) => {
+    const newVal = val ? new Date(val) : null;
+    if (!isSameDate(seasonStartDate.value, newVal)) {
+        seasonStartDate.value = newVal;
+    }
+});
+watch(() => props.draftDate, (val) => {
+    const newVal = val ? new Date(val) : null;
+    if (!isSameDate(draftDate.value, newVal)) {
+        draftDate.value = newVal;
+    }
+});
 
-// 드래프트 일자 활성화 여부
+// computed
 const isDraftDateDisabled = computed(() => props.draftMethod === 'custom');
 
-// 오늘 ~ 올해 마지막 날짜
 const today = computed(() => {
     const date = new Date();
     return new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -139,29 +184,18 @@ const endOfYear = computed(() => {
 const seasonStartDateFormatted = computed(() => formatDate(seasonStartDate.value));
 const draftDateFormatted = computed(() => formatDate(draftDate.value));
 
-const onSeasonStartDateSelect = () => {
-    seasonStartMenu.value = false;
-};
-const onDraftDateSelect = () => {
-    draftDateMenu.value = false;
-};
-
-// 최대 팀 수 옵션 4~30
+// options
 const maxTeamsOptions = Array.from({ length: 27 }, (_, i) => i + 4);
-
-// 플레이오프 팀 수 옵션 (최대 팀 수보다 작은 수들)
 const playoffTeamsOptions = computed(() => {
     const max = maxTeams.value ? maxTeams.value - 1 : 3;
     const start = 2;
-    const count = Math.max(0, max - start + 1); // 2부터 max까지 몇 개 필요한지 계산
+    const count = Math.max(0, max - start + 1);
     return Array.from({ length: count }, (_, i) => i + start);
 });
 
-
-// v-form 유효성 검사용
+// form validation
 import { ref as vueRef } from 'vue';
 const form = vueRef(null);
-
 const validateStep = async () => {
     if (!form.value) return true;
     const { valid } = await form.value.validate();
