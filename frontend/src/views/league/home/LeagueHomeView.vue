@@ -593,14 +593,22 @@ const selectDraftSlot = async (order) => {
                 order : order
             }            
         })
-
-        if(orderRes.success){
-            
+        
+        if(!orderRes.success && orderRes?.data?.code === -1){
+            alert(orderRes.message,"error")
         }
     } catch (error) {
         alert("드래프트 순서를 바꾸는 도중 문제가 발생하였습니다.","error");
     }finally{
+        await getDraftOrder();
+    }
+}
 
+const getDraftOrder = async () => {
+    const seasonRes = await commonFetch(`/api/league/${encodeURIComponent(orgLeagueId)}/season/${encodeURIComponent(encryptData(seasonInfo.value[0].season_id))}/info`);
+
+    if(seasonRes.success){
+        draftTeams.value = seasonRes.data.draftTeams
     }
 }
 </script>

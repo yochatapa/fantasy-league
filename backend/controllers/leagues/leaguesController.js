@@ -696,6 +696,23 @@ export const setDraftOrder = async(req,res) => {
 
             const team_id = userTeamInfo[0].team_id
 
+            const { rows : orderInfo } = await client.query(`
+                SELECT
+                    *
+                FROM league_season_draft_teams
+                WHERE 
+                    draft_order = $1
+                AND league_id = $2
+                AND season_id = $3
+            `,[order, leagueId, seasonId]);
+            
+            if(orderInfo.length>0){
+                return sendBadRequest(res, {
+                    message : '변경할 수 없는 드래프트 순서입니다.',
+                    code : -1
+                });
+            }
+
             await client.query(`
                 UPDATE league_season_draft_teams
                 SET 
