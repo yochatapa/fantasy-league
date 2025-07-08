@@ -30,6 +30,7 @@
                 v-model:playoffTeams="playoffTeams"
                 v-model:seasonStartDate="seasonStartDate"
                 v-model:draftDate="draftDate"
+                v-model:draftTime="draftTime"
             />
           </v-stepper-window-item>
           <v-stepper-window-item class="pa-1" :value="5">
@@ -67,6 +68,8 @@ const userStore = useUserStore();
 const user = userStore.user;
 const { mobile } = useDisplay();
 
+const tomorrow = ref(new Date(new Date().getTime() + 86400000).toISOString().split('T')[0].split('-').join('.'));
+const twoDaysLater = ref(new Date(new Date().getTime() + (86400000 * 2)).toISOString().split('T')[0].split('-').join('.'));
 const step = ref(1); // Step 1부터 시작
 const leagueName = ref(user.nickname?user.nickname+"의 리그":"");    // 리그명 상태 관리
 const leagueType = ref('');                                         // 예: 'head-to-head', 'season'
@@ -75,8 +78,9 @@ const draftMethod = ref('');                                        // 드래프
 const isPublic = ref(true);                                         // 리그 공개 여부
 const maxTeams = ref(8);                                            // 최대 팀 수
 const playoffTeams = ref(4);                                        // 플레이오프 팀 수
-const seasonStartDate = ref(new Date());                            // 시즌 시작일
-const draftDate = ref(new Date());                                  // 드래프트 일자
+const seasonStartDate = ref(twoDaysLater.value);                        // 시즌 시작일
+const draftDate = ref(tomorrow.value);                              // 드래프트 일자
+const draftTime = ref('12:00');                                     // 드래프트 시간
 
 const step1Ref = ref(null);
 const step2Ref = ref(null);
@@ -134,13 +138,23 @@ const handleNext = async () => {
             return false;
         }
 
+        if (draftMethod.value !== 'custom' && !draftDate.value) {
+            alert('드래프트 일자를 설정해 주세요.', 'error');
+            return false;
+        }
+
+        if (draftMethod.value !== 'custom' && !draftTime.value) {
+            alert('드래프트 시간을 설정해 주세요.', 'error');
+            return false;
+        }
+
         if (!seasonStartDate.value) {
             alert('시즌 시작일을 설정해 주세요.', 'error');
             return false;
         }
 
-        if (draftMethod.value !== 'custom' && !draftDate.value) {
-            alert('드래프트 일자를 설정해 주세요.', 'error');
+        if (draftMethod.value !== 'custom' && new Date(draftDate.value).getTime() > new Date(seasonStartDate.value).getTime()) {
+            alert('시즌 시작일이 드래프트 일보다 빠를 수 없습니다.', 'error');
             return false;
         }
         
@@ -153,9 +167,8 @@ const handleNext = async () => {
 - 드래프트 방식: ${DRAFT_METHODS.filter((row)=>row.id === draftMethod.value)[0].label}
 - 리그 공개 여부: ${isPublic.value ? '공개' : '비공개'}
 - 최대 팀 수: ${maxTeams.value}팀
-- 플레이오프 팀 수: ${playoffTeams.value}팀
+- 플레이오프 팀 수: ${playoffTeams.value}팀${draftMethod.value !== 'custom' ? '\n- 드래프트 일자: ' + dayjs(draftDate.value).format('YYYY.MM.DD') + ' ' + draftTime.value : ''}
 - 시즌 시작일: ${dayjs(seasonStartDate.value).format('YYYY.MM.DD')}
-${draftMethod.value !== 'custom' ? '- 드래프트 일자: ' + dayjs(draftDate.value).format('YYYY.MM.DD') : ''}
         
 이대로 진행할까요?`;
 
@@ -166,7 +179,7 @@ ${draftMethod.value !== 'custom' ? '- 드래프트 일자: ' + dayjs(draftDate.v
             {
                 method: 'POST',
                 body: {
-                    leagueName        : leagueName.value
+                    leagueName          : leagueName.value
                     , leagueType        : leagueType.value
                     , leagueFormat      : leagueFormat.value
                     , draftMethod       : draftMethod.value
@@ -174,7 +187,8 @@ ${draftMethod.value !== 'custom' ? '- 드래프트 일자: ' + dayjs(draftDate.v
                     , maxTeams          : maxTeams.value
                     , playoffTeams      : playoffTeams.value
                     , seasonStartDate   : seasonStartDate.value
-                    , draftDate         : draftDate.value
+                    , draftDate         : (draftMethod.value !== 'custom' ? draftDate.value : null)
+                    , draftTime         : (draftMethod.value !== 'custom' ? draftTime.value : null)
                 }
             }
         );

@@ -124,3 +124,9 @@ const handleBlur = () => {
     }
 };
 </script>
+
+<style scoped>
+:deep(.v-overlay__content) {
+    min-width: auto !important;
+}
+</style>

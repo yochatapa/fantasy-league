@@ -5,7 +5,7 @@ import { encryptData, decryptData } from '../../utils/crypto.js';
 import { generateUniqueCode } from '../../utils/randomCodeGenerator.js';
 
 export const createLeague = async (req, res) => {
-    const { leagueName, leagueType, leagueFormat, draftMethod, isPublic, maxTeams, playoffTeams, seasonStartDate, draftDate } = req.body;
+    const { leagueName, leagueType, leagueFormat, draftMethod, isPublic, maxTeams, playoffTeams, seasonStartDate, draftDate, draftTime } = req.body;
 
     // 필요한 값들이 존재하는지 확인
     // if (!leagueName || !leagueType || !leagueFormat || !seasonStartDate || !draftDate) {
@@ -136,21 +136,23 @@ export const createLeague = async (req, res) => {
                     league_id,
                     season_id,
                     draft_start_date,
+                    draft_start_time,
                     draft_type,
                     draft_timer,
                     allow_auto_draft,
                     created_at,
                     updated_at
                 )
-                VALUES ($1, $2, $3, $4, $5, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+                VALUES ($1, $2, $3, $4, $5, $6, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
             `;
 
             await client.query(insertDraftMaster, [
                 leagueId,
-                seasonId,    // $2
-                draftDate,   // $3
-                draftMethod, // $4
-                30           // $5
+                seasonId,   
+                draftDate,  
+                draftTime, 
+                draftMethod,
+                30          
             ]);
 
             // league_season_draft_teams 테이블에 1번 픽 팀 등록
@@ -526,7 +528,7 @@ export const getSeasonInfo = async (req, res) => {
                 ls.max_teams,
                 ls.playoff_teams,
                 ls.foreign_player_limit,
-                TO_CHAR(ls.start_date, 'YYYY.MM.DD HH24:MI') AS start_date,
+                TO_CHAR(ls.start_date, 'YYYY.MM.DD') AS start_date,
                 ls.allow_trades,
                 TO_CHAR(ls.trade_deadline, 'YYYY.MM.DD HH24:MI') AS trade_deadline,
                 ls.waiver_clear_days,
@@ -537,7 +539,8 @@ export const getSeasonInfo = async (req, res) => {
                 ls.season_status,
 
                 -- draft information
-                TO_CHAR(d.draft_start_date, 'YYYY.MM.DD HH24:MI') AS draft_start_date,
+                TO_CHAR(d.draft_start_date, 'YYYY.MM.DD') AS draft_start_date,
+                TO_CHAR(d.draft_start_time, 'HH24:MI') AS draft_start_time,
                 d.draft_end_date,
                 d.draft_type,
                 d.draft_timer,

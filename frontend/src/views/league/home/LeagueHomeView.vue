@@ -362,8 +362,8 @@ function getDDayText(target) {
 }
 
 // 날짜 객체
-const draftDate = computed(() => parseDate(currentSeasonInfo.value.draft_start_date))
-const startDate = computed(() => parseDate(currentSeasonInfo.value.start_date))
+const draftDate = computed(() => parseDate(currentSeasonInfo.value.draft_start_date+' '+currentSeasonInfo.value.draft_start_time))
+const startDate = computed(() => parseDate(currentSeasonInfo.value.start_date + " 00:00"))
 
 const MIN_PIXEL_GAP = 100
 

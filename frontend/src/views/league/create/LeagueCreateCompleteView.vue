@@ -45,18 +45,18 @@
             </v-row>
             <v-divider />
 
+            <template v-if="leagueInfo.draftMethod !== 'custom'">
+                <v-row align="center" class="py-4">
+                    <v-col cols="4" class="text-left font-weight-medium">드래프트 일시</v-col>
+                    <v-col cols="8" class="text-left">{{ leagueInfo.draft_start_date }} {{ leagueInfo.draft_start_time }}</v-col>
+                </v-row>
+                <v-divider />
+            </template>
+
             <v-row align="center" class="py-4">
                 <v-col cols="4" class="text-left font-weight-medium">시즌 시작일</v-col>
-                <v-col cols="8" class="text-left">{{ leagueInfo.formattedSeasonStartDate }}</v-col>
-            </v-row>
-
-            <template v-if="leagueInfo.draftMethod !== 'custom'">
-                <v-divider />
-                <v-row align="center" class="py-4">
-                    <v-col cols="4" class="text-left font-weight-medium">드래프트 일자</v-col>
-                    <v-col cols="8" class="text-left">{{ leagueInfo.formattedDraftDate }}</v-col>
-                </v-row>
-            </template>
+                <v-col cols="8" class="text-left">{{ leagueInfo.start_date }}</v-col>
+            </v-row>            
         </v-container>
 
         <v-btn 
