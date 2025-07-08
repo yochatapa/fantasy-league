@@ -435,7 +435,7 @@ const datePercents = computed(() => {
 // 링크 복사
 const copyLink = () => {
     copy(window.location.origin+`/league/join?inviteCode=${encodeURIComponent(encryptData(leagueInfo.value.invite_code))}`);
-    alert("초대코드가 복사되었습니다.")
+    alert("초대 링크가 복사되었습니다.")
 };
 
 // 매치 데이터

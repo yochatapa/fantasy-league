@@ -59,11 +59,11 @@ try {
 
 const handleJoin = async () => {
     if (!inviteCode.value){
-        return alert("초대코드를 입력하지 않았습니다.", "error")
+        return alert("초대 코드를 입력하지 않았습니다.", "error")
     };
 
     if(inviteCode.value.length!==6){
-        return alert("초대코드의 길이가 올바르지 않습니다.", "error")
+        return alert("초대 코드의 길이가 올바르지 않습니다.", "error")
     }
     
     if(!isLoggedIn.value){
