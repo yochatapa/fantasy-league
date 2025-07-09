@@ -28,6 +28,7 @@
 
 <script setup>
 import { ref, watch, onMounted } from 'vue';
+import dayjs from 'dayjs';
 import { formatDate } from '@/utils/common/dateUtils.js';
 
 const props = defineProps({
@@ -46,60 +47,67 @@ const input = ref('');
 const menu = ref(false);
 const innerValue = ref(props.modelValue || '');
 
-// ✅ 날짜 형식 체크 함수
+// ✅ 날짜 유효성 검사
 const isValidDate = (dateStr) => {
-    return !isNaN(Date.parse(dateStr));
+    return dayjs(dateStr, 'YYYY.MM.DD', true).isValid() || dayjs(dateStr).isValid();
 };
 
-// ✅ min/max 범위 체크 함수
+// ✅ min/max 범위 체크
 const isWithinRange = (dateStr) => {
     if (!isValidDate(dateStr)) return false;
 
-    const date = new Date(dateStr);
-    const minDate = props.min ? new Date(props.min) : null;
-    const maxDate = props.max ? new Date(props.max) : null;
+    const date = dayjs(dateStr);
+    const minDate = props.min ? dayjs(props.min) : null;
+    const maxDate = props.max ? dayjs(props.max) : null;
 
-    if (minDate && date < minDate) return false;
-    if (maxDate && date > maxDate) return false;
+    if (minDate && date.isBefore(minDate)) return false;
+    if (maxDate && date.isAfter(maxDate)) return false;
 
     return true;
 };
 
-// ✅ 부모로부터 값이 변경될 때 동기화
+// ✅ modelValue 감시
 watch(() => props.modelValue, (newVal) => {
-    innerValue.value = newVal || '';
-    input.value = formatDate(newVal);
+    if (!newVal) {
+        innerValue.value = '';
+        input.value = '';
+        return;
+    }
 
-    if (newVal && !isWithinRange(newVal)) {
+    if (!isWithinRange(newVal)) {
         innerValue.value = '';
         input.value = '';
         emit('update:modelValue', '');
+    } else {
+        innerValue.value = newVal;
+        input.value = formatDate(newVal);
     }
 });
 
-// ✅ 🚀 onMounted에서 초기값 동기화
+// ✅ onMounted 초기값 처리
 onMounted(() => {
-    if (props.modelValue) {
+    if (props.modelValue && isWithinRange(props.modelValue)) {
         innerValue.value = props.modelValue;
         input.value = formatDate(props.modelValue);
     }
 });
 
-// ✅ DatePicker 값이 변경될 때 처리
+// ✅ date-picker 변경 처리
 const handleDatePickerChange = (newVal) => {
     if (newVal && isWithinRange(newVal)) {
-        const formattedDate = formatDate(newVal);
-        emit('update:modelValue', formattedDate);
-        input.value = formattedDate;
+        const formatted = formatDate(newVal);
+        emit('update:modelValue', formatted);
+        input.value = formatted;
+        innerValue.value = formatted;
     } else {
-        innerValue.value = '';
-        input.value = '';
         emit('update:modelValue', '');
+        input.value = '';
+        innerValue.value = '';
     }
     menu.value = false;
 };
 
-// ✅ blur 시 유효성 검사 및 날짜 변환
+// ✅ blur 처리: 숫자 8자리(예: 20250708) 입력 후 자동 포맷
 const handleBlur = () => {
     const digits = input.value.replace(/[^\d]/g, '');
     if (digits.length === 8) {
@@ -107,7 +115,7 @@ const handleBlur = () => {
         const mm = digits.slice(4, 6);
         const dd = digits.slice(6, 8);
         const formatted = `${yyyy}.${mm}.${dd}`;
-        
+
         if (isValidDate(formatted) && isWithinRange(formatted)) {
             emit('update:modelValue', formatted);
             innerValue.value = formatted;

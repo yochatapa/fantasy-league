@@ -136,21 +136,19 @@ export const createLeague = async (req, res) => {
                     league_id,
                     season_id,
                     draft_start_date,
-                    draft_start_time,
                     draft_type,
                     draft_timer,
                     allow_auto_draft,
                     created_at,
                     updated_at
                 )
-                VALUES ($1, $2, $3, $4, $5, $6, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+                VALUES ($1, $2, $3, $4, $5, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
             `;
 
             await client.query(insertDraftMaster, [
                 leagueId,
                 seasonId,   
                 draftDate,  
-                draftTime, 
                 draftMethod,
                 30          
             ]);
@@ -539,8 +537,8 @@ export const getSeasonInfo = async (req, res) => {
                 ls.season_status,
 
                 -- draft information
-                TO_CHAR(d.draft_start_date, 'YYYY.MM.DD') AS draft_start_date,
-                TO_CHAR(d.draft_start_time, 'HH24:MI') AS draft_start_time,
+                draft_start_date,
+                -- TO_CHAR(d.draft_start_time, 'HH24:MI') AS draft_start_time,
                 d.draft_end_date,
                 d.draft_type,
                 d.draft_timer,

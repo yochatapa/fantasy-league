@@ -25,7 +25,7 @@
         <v-col cols="12" md="6" v-if="draftMethod !== 'custom'">
             <CommonDateInput
                 v-model="draftDate"
-                label="드래프트 일자"
+                :label="`드래프트 일자 (${timezone})`"
                 :rules="[v => !!v || '경기일자를 입력해주세요.']"
                 :required="!isDraftDateDisabled"
                 :min="formatDate(tomorrow)"
@@ -35,7 +35,7 @@
         <v-col cols="12" md="6" v-if="draftMethod !== 'custom'">
             <CommonTimeInput
                 v-model="draftTime"
-                label="드래프트 시간"
+                :label="`드래프트 시간 (${timezone})`"
                 :is12Hour="true"
                 :required="true"
             />
@@ -43,10 +43,10 @@
         <v-col cols="12">
             <CommonDateInput
                 v-model="seasonStartDate"
-                label="시즌 시작일"
+                label="시즌 시작일 (Asia/Seoul)"
                 :rules="[v => !!v || '시즌 시작일을 설정해 주세요.']"
                 required
-                :min="formatDate(new Date((typeof draftDate === 'string'?new Date(draftDate):draftDate)?.getTime() + 86400000))"
+                :min="formatDate(dayjs(draftDate).add(1, 'day'))"
                 :max="formatDate(endOfYear)"
             />
         </v-col>
@@ -109,6 +109,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue';
+import dayjs from 'dayjs';
 import { formatDate } from '@/utils/common/dateUtils.js';
 import CommonDateInput from '@/components/common/CommonDateInput.vue';
 import CommonTimeInput from '@/components/common/CommonTimeInput.vue';
@@ -134,20 +135,22 @@ const emit = defineEmits([
 ]);
 
 // local states
-const tomorrow = ref(new Date(new Date().getTime() + 86400000).toISOString().split('T')[0].split('-').join('.'));
-const twoDaysLater = ref(new Date(new Date().getTime() + (86400000 * 2)).toISOString().split('T')[0].split('-').join('.'));
-const draftMethod = computed(()=>props.draftMethod)
+const tomorrow = ref(formatDate(dayjs().add(1, 'day')));
+const twoDaysLater = ref(formatDate(dayjs().add(2, 'day')));
+const draftMethod = computed(() => props.draftMethod);
 const isPublic = ref(props.isPublic);
 const maxTeams = ref(props.maxTeams);
 const playoffTeams = ref(props.playoffTeams);
-const seasonStartDate = ref(props.seasonStartDate ? new Date(props.seasonStartDate) : twoDaysLater.value);
-const draftDate = ref(draftMethod !== 'custom'?(props.draftDate ? new Date(props.draftDate) : tomorrow.value):tomorrow.value);
-const draftTime = ref(draftMethod !== 'custom'?props.draftTime:'12:00');
+const seasonStartDate = ref(props.seasonStartDate ? dayjs(props.seasonStartDate).toDate() : dayjs().add(2, 'day').toDate());
+const draftDate = ref(draftMethod.value !== 'custom'
+    ? (props.draftDate ? dayjs(props.draftDate).toDate() : dayjs().add(1, 'day').toDate())
+    : dayjs().add(1, 'day').toDate()
+);
+const draftTime = ref(draftMethod.value !== 'custom' ? props.draftTime : '12:00');
+const timezone = ref(Intl.DateTimeFormat().resolvedOptions().timeZone);
 
 // utils
-const isSameDate = (a, b) => {
-    return a?.getTime?.() === b?.getTime?.();
-};
+const isSameDate = (a, b) => dayjs(a).isSame(b, 'day');
 
 // emit on change (but only if value actually changed)
 watch(isPublic, (val) => emit('update:isPublic', val));
@@ -155,34 +158,37 @@ watch(maxTeams, (val) => emit('update:maxTeams', Number(val)));
 watch(playoffTeams, (val) => emit('update:playoffTeams', Number(val)));
 
 watch(seasonStartDate, (val) => {
-    if (!isSameDate(val, new Date(props.seasonStartDate))) {
+    if (!isSameDate(val, props.seasonStartDate)) {
         emit('update:seasonStartDate', val);
     }
 });
 
 watch(draftDate, (val) => {
-    if (!isSameDate(val, new Date(props.draftDate))) {
+    if (!isSameDate(val, props.draftDate)) {
         emit('update:draftDate', val);
     }
-    // 자동으로 draftDate 설정
+
+    // draftDate 기준으로 seasonStartDate 자동 설정
     if (props.draftMethod !== 'custom') {
-        const prevDate = new Date((typeof val === 'string'?new Date(val):val)?.getTime() + 86400000)
-        if (!isSameDate(prevDate, seasonStartDate.value)) {
-            seasonStartDate.value = val ? prevDate : null;
+        const nextDay = dayjs(val).add(1, 'day').toDate();
+        if (!isSameDate(nextDay, seasonStartDate.value)) {
+            seasonStartDate.value = val ? nextDay : null;
         }
     }
 });
 
 watch(draftTime, (val) => {
-    if (!isSameDate(val, new Date(props.draftTime))) {
+    if (val !== props.draftTime) {
         emit('update:draftTime', val);
     }
 });
 
-watch(()=>draftMethod.value,(val)=>{
-    draftDate.value = val !== 'custom'?(props.draftDate ? new Date(props.draftDate) : tomorrow.value):tomorrow.value;
-    draftTime.value = val !== 'custom'?props.draftTime:'12:00';
-})
+watch(() => draftMethod.value, (val) => {
+    draftDate.value = val !== 'custom'
+        ? (props.draftDate ? dayjs(props.draftDate).toDate() : dayjs().add(1, 'day').toDate())
+        : dayjs().add(1, 'day').toDate();
+    draftTime.value = val !== 'custom' ? props.draftTime : '12:00';
+});
 
 // sync props → local state (단, 값이 다를 때만)
 watch(() => props.isPublic, (val) => {
@@ -195,13 +201,13 @@ watch(() => props.playoffTeams, (val) => {
     if (playoffTeams.value !== val) playoffTeams.value = val;
 });
 watch(() => props.seasonStartDate, (val) => {
-    const newVal = val ? new Date(val) : null;
+    const newVal = val ? dayjs(val).toDate() : null;
     if (!isSameDate(seasonStartDate.value, newVal)) {
         seasonStartDate.value = newVal;
     }
 });
 watch(() => props.draftDate, (val) => {
-    const newVal = val ? new Date(val) : null;
+    const newVal = val ? dayjs(val).toDate() : null;
     if (!isSameDate(draftDate.value, newVal)) {
         draftDate.value = newVal;
     }
@@ -210,14 +216,8 @@ watch(() => props.draftDate, (val) => {
 // computed
 const isDraftDateDisabled = computed(() => props.draftMethod === 'custom');
 
-const today = computed(() => {
-    const date = new Date();
-    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
-});
-const endOfYear = computed(() => {
-    const date = new Date();
-    return new Date(date.getFullYear(), 11, 31);
-});
+const today = computed(() => dayjs().startOf('day').toDate());
+const endOfYear = computed(() => dayjs().endOf('year').toDate());
 
 // options
 const maxTeamsOptions = Array.from({ length: 27 }, (_, i) => i + 4);
