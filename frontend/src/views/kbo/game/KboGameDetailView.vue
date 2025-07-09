@@ -451,6 +451,7 @@ import PlayerStatsTable from '@/components/kbo/PlayerStatsTable.vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useDisplay } from 'vuetify';
 import { io } from 'socket.io-client';
+import dayjs from 'dayjs';
 
 const socket = io(`${import.meta.env.VITE_API_URL}`);  // 서버 주소
 
