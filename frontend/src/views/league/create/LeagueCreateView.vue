@@ -68,7 +68,7 @@ const user = userStore.user;
 const { mobile } = useDisplay();
 
 const tomorrow = ref(dayjs().add(1, 'day').format('YYYY.MM.DD'));
-const twoDaysLater = ref(dayjs().add(2, 'day').format('YYYY.MM.DD'));
+const threeDaysLater = ref(dayjs().add(3, 'day').format('YYYY.MM.DD'));
 const step = ref(1);
 const leagueName = ref(user.nickname ? user.nickname + "의 리그" : "");
 const leagueType = ref('');
@@ -77,10 +77,11 @@ const draftMethod = ref('');
 const isPublic = ref(true);
 const maxTeams = ref(8);
 const playoffTeams = ref(4);
-const seasonStartDate = ref(dayjs(twoDaysLater.value, 'YYYY.MM.DD').toDate());
+const seasonStartDate = ref(dayjs(threeDaysLater.value, 'YYYY.MM.DD').toDate());
 const draftDate = ref(dayjs(tomorrow.value, 'YYYY.MM.DD').toDate());
 draftDate.value = draftMethod.value !== 'custom' ? draftDate.value : null;
 const draftTime = ref('12:00');
+const timezone = ref(Intl.DateTimeFormat().resolvedOptions().timeZone);
 
 const step1Ref = ref(null);
 const step2Ref = ref(null);
@@ -160,7 +161,7 @@ const handleNext = async () => {
 - 드래프트 방식: ${DRAFT_METHODS.find((row) => row.id === draftMethod.value)?.label}
 - 리그 공개 여부: ${isPublic.value ? '공개' : '비공개'}
 - 최대 팀 수: ${maxTeams.value}팀
-- 플레이오프 팀 수: ${playoffTeams.value}팀${draftMethod.value !== 'custom' ? '\n- 드래프트 일자: ' + dayjs(draftDate.value).format('YYYY.MM.DD') + ' ' + draftTime.value : ''}
+- 플레이오프 팀 수: ${playoffTeams.value}팀${draftMethod.value !== 'custom' ? '\n- 드래프트 일자: ' + dayjs(draftDate.value).format('YYYY.MM.DD') + ' ' + draftTime.value + ` (${timezone.value})`: ''}
 - 시즌 시작일: ${dayjs(seasonStartDate.value).format('YYYY.MM.DD')}
 
 이대로 진행할까요?`;

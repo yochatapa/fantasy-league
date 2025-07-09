@@ -110,10 +110,11 @@ watch(draftDate, (val) => {
         emit('update:draftDate', val);
     }
 
+    // 드래프트 날짜 기준 시즌 시작일 2일 뒤로 자동 세팅
     if (props.draftMethod !== 'custom') {
-        const nextDay = dayjs(val).add(1, 'day');
-        if (!isSameDate(nextDay, seasonStartDate.value)) {
-            seasonStartDate.value = val ? nextDay : null;
+        const twoDaysLater = dayjs(val).add(2, 'day');
+        if (!isSameDate(twoDaysLater, seasonStartDate.value)) {
+            seasonStartDate.value = val ? twoDaysLater : null;
         }
     }
 });
@@ -158,7 +159,8 @@ const isDraftDateDisabled = computed(() => props.draftMethod === 'custom');
 const today = computed(() => dayjs().startOf('day'));
 const endOfYear = computed(() => dayjs().endOf('year'));
 const draftDateMin = computed(() => dayjs().add(1, 'day').format('YYYY-MM-DD'));
-const seasonStartDateMin = computed(() => draftDate.value.add(1, 'day').format('YYYY-MM-DD'));
+// 여기서 2일 뒤로 변경
+const seasonStartDateMin = computed(() => draftDate.value.add(2, 'day').format('YYYY-MM-DD'));
 
 const maxTeamsOptions = Array.from({ length: 27 }, (_, i) => i + 4);
 const playoffTeamsOptions = computed(() => {
