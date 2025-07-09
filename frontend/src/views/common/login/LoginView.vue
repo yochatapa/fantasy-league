@@ -167,7 +167,7 @@ const login = async () => {
                 if(!!!route.query.type) router.push('/');
                 else{
                     if(route.query.type === "league-join" && !!route.query.code){
-                        router.push(`/league/join?inviteCode=${route.query.code}`);
+                        router.push(`/league/join?inviteCode=${encodeURIComponent(decodeURIComponent(route.query.code))}`);
                     }else router.push('/');
                 }
             } else {
