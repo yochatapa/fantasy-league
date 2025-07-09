@@ -316,7 +316,6 @@ import { commonFetch } from '@/utils/common/commonFetch';
 import { LEAGUE_TYPES, LEAGUE_FORMATS, DRAFT_METHODS } from '@/utils/code/code';
 import { encryptData } from '@/utils/common/crypto.js';
 import { formatDate, parseDate, differenceInDays } from '@/utils/common/dateUtils.js';
-import dayjs from 'dayjs';
 
 const { copy } = useClipboard();
 const { mobile } = useDisplay();
