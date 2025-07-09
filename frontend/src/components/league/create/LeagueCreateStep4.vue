@@ -28,8 +28,8 @@
                 :label="`드래프트 일자 (${timezone})`"
                 :rules="[v => !!v || '경기일자를 입력해주세요.']"
                 :required="!isDraftDateDisabled"
-                :min="formatDate(tomorrow)"
-                :max="formatDate(endOfYear)"
+                :min="draftDateMin"
+                :max="endOfYear.format('YYYY-MM-DD')"
             />
         </v-col>
         <v-col cols="12" md="6" v-if="draftMethod !== 'custom'">
@@ -46,63 +46,11 @@
                 label="시즌 시작일 (Asia/Seoul)"
                 :rules="[v => !!v || '시즌 시작일을 설정해 주세요.']"
                 required
-                :min="formatDate(dayjs(draftDate).add(1, 'day'))"
-                :max="formatDate(endOfYear)"
+                :min="seasonStartDateMin"
+                :max="endOfYear.format('YYYY-MM-DD')"
             />
         </v-col>
     </v-row>
-    
-
-    <!-- <v-menu
-        v-model="seasonStartMenu"
-        :close-on-content-click="false"
-        transition="scale-transition"
-        offset-y
-        min-width="290px"
-    >
-        <template #activator="{ props: menuProps }">
-            <v-text-field
-                v-model="seasonStartDateFormatted"
-                label="시즌 시작일"
-                readonly
-                v-bind="menuProps"
-                :rules="[v => !!v || '시즌 시작일을 설정해 주세요.']"
-                required
-            />
-        </template>
-        <v-date-picker
-            v-model="seasonStartDate"
-            :min="today"
-            :max="endOfYear"
-            @update:model-value="onSeasonStartDateSelect"
-        />
-    </v-menu> -->
-
-    <!-- <v-menu
-        v-model="draftDateMenu"
-        :close-on-content-click="false"
-        transition="scale-transition"
-        offset-y
-        min-width="290px"
-    >
-        <template #activator="{ props: menuProps }">
-            <v-text-field
-                v-model="draftDateFormatted"
-                label="드래프트 일자"
-                readonly
-                v-bind="menuProps"
-                :disabled="isDraftDateDisabled"
-                :rules="isDraftDateDisabled ? [] : [v => !!v || '드래프트 일자를 설정해 주세요.']"
-                :required="!isDraftDateDisabled"
-            />
-        </template>
-        <v-date-picker
-            v-model="draftDate"
-            :min="today"
-            :max="endOfYear"
-            @update:model-value="onDraftDateSelect"
-        />
-    </v-menu> -->
 
     <v-form ref="form"></v-form>
 </template>
@@ -114,14 +62,13 @@ import { formatDate } from '@/utils/common/dateUtils.js';
 import CommonDateInput from '@/components/common/CommonDateInput.vue';
 import CommonTimeInput from '@/components/common/CommonTimeInput.vue';
 
-// props & emits
 const props = defineProps({
     draftMethod: String,
     isPublic: Boolean,
     maxTeams: Number,
     playoffTeams: Number,
-    seasonStartDate: [String, Date, null],
-    draftDate: [String, Date, null],
+    seasonStartDate: [String, Object, null],
+    draftDate: [String, Object, null],
     draftTime: [String, null]
 });
 
@@ -134,25 +81,20 @@ const emit = defineEmits([
     'update:draftTime',
 ]);
 
-// local states
-const tomorrow = ref(formatDate(dayjs().add(1, 'day')));
-const twoDaysLater = ref(formatDate(dayjs().add(2, 'day')));
 const draftMethod = computed(() => props.draftMethod);
 const isPublic = ref(props.isPublic);
 const maxTeams = ref(props.maxTeams);
 const playoffTeams = ref(props.playoffTeams);
-const seasonStartDate = ref(props.seasonStartDate ? dayjs(props.seasonStartDate).toDate() : dayjs().add(2, 'day').toDate());
+const seasonStartDate = ref(props.seasonStartDate ? dayjs(props.seasonStartDate) : dayjs().add(2, 'day'));
 const draftDate = ref(draftMethod.value !== 'custom'
-    ? (props.draftDate ? dayjs(props.draftDate).toDate() : dayjs().add(1, 'day').toDate())
-    : dayjs().add(1, 'day').toDate()
+    ? (props.draftDate ? dayjs(props.draftDate) : dayjs().add(1, 'day'))
+    : dayjs().add(1, 'day')
 );
 const draftTime = ref(draftMethod.value !== 'custom' ? props.draftTime : '12:00');
 const timezone = ref(Intl.DateTimeFormat().resolvedOptions().timeZone);
 
-// utils
 const isSameDate = (a, b) => dayjs(a).isSame(b, 'day');
 
-// emit on change (but only if value actually changed)
 watch(isPublic, (val) => emit('update:isPublic', val));
 watch(maxTeams, (val) => emit('update:maxTeams', Number(val)));
 watch(playoffTeams, (val) => emit('update:playoffTeams', Number(val)));
@@ -168,9 +110,8 @@ watch(draftDate, (val) => {
         emit('update:draftDate', val);
     }
 
-    // draftDate 기준으로 seasonStartDate 자동 설정
     if (props.draftMethod !== 'custom') {
-        const nextDay = dayjs(val).add(1, 'day').toDate();
+        const nextDay = dayjs(val).add(1, 'day');
         if (!isSameDate(nextDay, seasonStartDate.value)) {
             seasonStartDate.value = val ? nextDay : null;
         }
@@ -185,12 +126,11 @@ watch(draftTime, (val) => {
 
 watch(() => draftMethod.value, (val) => {
     draftDate.value = val !== 'custom'
-        ? (props.draftDate ? dayjs(props.draftDate).toDate() : dayjs().add(1, 'day').toDate())
-        : dayjs().add(1, 'day').toDate();
+        ? (props.draftDate ? dayjs(props.draftDate) : dayjs().add(1, 'day'))
+        : dayjs().add(1, 'day');
     draftTime.value = val !== 'custom' ? props.draftTime : '12:00';
 });
 
-// sync props → local state (단, 값이 다를 때만)
 watch(() => props.isPublic, (val) => {
     if (isPublic.value !== val) isPublic.value = val;
 });
@@ -201,25 +141,25 @@ watch(() => props.playoffTeams, (val) => {
     if (playoffTeams.value !== val) playoffTeams.value = val;
 });
 watch(() => props.seasonStartDate, (val) => {
-    const newVal = val ? dayjs(val).toDate() : null;
+    const newVal = val ? dayjs(val) : null;
     if (!isSameDate(seasonStartDate.value, newVal)) {
         seasonStartDate.value = newVal;
     }
 });
 watch(() => props.draftDate, (val) => {
-    const newVal = val ? dayjs(val).toDate() : null;
+    const newVal = val ? dayjs(val) : null;
     if (!isSameDate(draftDate.value, newVal)) {
         draftDate.value = newVal;
     }
 });
 
-// computed
 const isDraftDateDisabled = computed(() => props.draftMethod === 'custom');
 
-const today = computed(() => dayjs().startOf('day').toDate());
-const endOfYear = computed(() => dayjs().endOf('year').toDate());
+const today = computed(() => dayjs().startOf('day'));
+const endOfYear = computed(() => dayjs().endOf('year'));
+const draftDateMin = computed(() => dayjs().add(1, 'day').format('YYYY-MM-DD'));
+const seasonStartDateMin = computed(() => draftDate.value.add(1, 'day').format('YYYY-MM-DD'));
 
-// options
 const maxTeamsOptions = Array.from({ length: 27 }, (_, i) => i + 4);
 const playoffTeamsOptions = computed(() => {
     const max = maxTeams.value ? maxTeams.value - 1 : 3;
@@ -228,7 +168,6 @@ const playoffTeamsOptions = computed(() => {
     return Array.from({ length: count }, (_, i) => i + start);
 });
 
-// form validation
 import { ref as vueRef } from 'vue';
 const form = vueRef(null);
 const validateStep = async () => {

@@ -32,7 +32,7 @@ import dayjs from 'dayjs';
 import { formatDate } from '@/utils/common/dateUtils.js';
 
 const props = defineProps({
-    modelValue: [String, Object, null], // Object는 dayjs 객체 대응
+    modelValue: [String, Date, Object, null], // Object는 dayjs 객체 대응
     label: String,
     min: String,
     max: String,
