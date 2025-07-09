@@ -313,7 +313,7 @@ const birthDateInput = ref('');
 const currentYear = new Date().getFullYear();
 const yearOptions = Array.from({ length: currentYear - 1982 + 1 }, (_, i) => 1982 + i);
 
-const today = new Date().toISOString().split('T')[0]; //YYYY-MM-DD
+const today = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().split('T')[0]; //YYYY-MM-DD
 const birthDateMenu = ref(false);
 
 const form = ref({
