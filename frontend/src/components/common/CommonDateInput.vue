@@ -32,7 +32,7 @@ import dayjs from 'dayjs';
 import { formatDate } from '@/utils/common/dateUtils.js';
 
 const props = defineProps({
-    modelValue: [String, Date, null],
+    modelValue: [String, Object, null], // Object는 dayjs 객체 대응
     label: String,
     min: String,
     max: String,
@@ -45,69 +45,80 @@ const emit = defineEmits(['update:modelValue']);
 
 const input = ref('');
 const menu = ref(false);
-const innerValue = ref(props.modelValue || '');
+const innerValue = ref('');
 
-// ✅ 날짜 유효성 검사
-const isValidDate = (dateStr) => {
-    return dayjs(dateStr, 'YYYY.MM.DD', true).isValid() || dayjs(dateStr).isValid();
+// modelValue를 dayjs 객체로 변환하는 함수
+const toDayjs = (val) => {
+    if (!val) return null;
+    if (dayjs.isDayjs(val)) return val;
+    if (val instanceof Date) return dayjs(val);
+    if (typeof val === 'string') return dayjs(val);
+    return null;
 };
 
-// ✅ min/max 범위 체크
-const isWithinRange = (dateStr) => {
-    if (!isValidDate(dateStr)) return false;
+// 날짜 유효성 검사
+const isValidDate = (dateVal) => {
+    const d = toDayjs(dateVal);
+    return d && d.isValid();
+};
 
-    const date = dayjs(dateStr);
+// min/max 범위 체크
+const isWithinRange = (dateVal) => {
+    if (!isValidDate(dateVal)) return false;
+
+    const date = toDayjs(dateVal);
     const minDate = props.min ? dayjs(props.min) : null;
     const maxDate = props.max ? dayjs(props.max) : null;
 
-    if (minDate && date.isBefore(minDate)) return false;
-    if (maxDate && date.isAfter(maxDate)) return false;
+    if (minDate && date.isBefore(minDate, 'day')) return false;
+    if (maxDate && date.isAfter(maxDate, 'day')) return false;
 
     return true;
 };
 
-// ✅ modelValue 감시
-watch(() => props.modelValue, (newVal) => {
-    if (!newVal) {
+const updateInputAndInnerValue = (val) => {
+    if (!val) {
         innerValue.value = '';
         input.value = '';
         return;
     }
-
-    if (!isWithinRange(newVal)) {
+    const d = toDayjs(val);
+    if (!d || !d.isValid() || !isWithinRange(d)) {
         innerValue.value = '';
         input.value = '';
-        emit('update:modelValue', '');
-    } else {
-        innerValue.value = newVal;
-        input.value = formatDate(newVal);
+        emit('update:modelValue', null);
+        return;
     }
+    innerValue.value = d.format('YYYY-MM-DD');
+    input.value = formatDate(d);
+};
+
+// modelValue 감시
+watch(() => props.modelValue, (newVal) => {
+    updateInputAndInnerValue(newVal);
 });
 
-// ✅ onMounted 초기값 처리
+// onMounted 초기값 처리
 onMounted(() => {
-    if (props.modelValue && isWithinRange(props.modelValue)) {
-        innerValue.value = props.modelValue;
-        input.value = formatDate(props.modelValue);
-    }
+    updateInputAndInnerValue(props.modelValue);
 });
 
-// ✅ date-picker 변경 처리
+// date-picker 변경 처리
 const handleDatePickerChange = (newVal) => {
     if (newVal && isWithinRange(newVal)) {
-        const formatted = formatDate(newVal);
-        emit('update:modelValue', formatted);
-        input.value = formatted;
-        innerValue.value = formatted;
+        const d = toDayjs(newVal);
+        emit('update:modelValue', d); // dayjs 객체로 emit
+        input.value = formatDate(d);
+        innerValue.value = d.format('YYYY-MM-DD');
     } else {
-        emit('update:modelValue', '');
+        emit('update:modelValue', null);
         input.value = '';
         innerValue.value = '';
     }
     menu.value = false;
 };
 
-// ✅ blur 처리: 숫자 8자리(예: 20250708) 입력 후 자동 포맷
+// blur 처리: 숫자 8자리 입력 후 자동 포맷
 const handleBlur = () => {
     const digits = input.value.replace(/[^\d]/g, '');
     if (digits.length === 8) {
@@ -117,24 +128,19 @@ const handleBlur = () => {
         const formatted = `${yyyy}.${mm}.${dd}`;
 
         if (isValidDate(formatted) && isWithinRange(formatted)) {
-            emit('update:modelValue', formatted);
-            innerValue.value = formatted;
+            const d = toDayjs(formatted);
+            emit('update:modelValue', d);
+            innerValue.value = d.format('YYYY-MM-DD');
             input.value = formatted;
         } else {
-            emit('update:modelValue', '');
+            emit('update:modelValue', null);
             innerValue.value = '';
             input.value = '';
         }
     } else {
-        emit('update:modelValue', '');
+        emit('update:modelValue', null);
         innerValue.value = '';
         input.value = '';
     }
 };
 </script>
-
-<style scoped>
-:deep(.v-overlay__content) {
-    min-width: auto !important;
-}
-</style>

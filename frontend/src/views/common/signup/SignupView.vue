@@ -468,7 +468,7 @@ const handleServerError = (error) => {
 
 onMounted(async ()=>{
     try {
-        const response = await commonFetch(`/api/kbo/team/list?year=${new Date().getUTCFullYear()}`);
+        const response = await commonFetch(`/api/kbo/team/list?year=${dayjs().utc().year()}`);
         
         if(response.success){
             kboTeams.value = response.data.teamList

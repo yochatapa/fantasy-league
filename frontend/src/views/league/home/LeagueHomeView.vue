@@ -316,6 +316,7 @@ import { commonFetch } from '@/utils/common/commonFetch';
 import { LEAGUE_TYPES, LEAGUE_FORMATS, DRAFT_METHODS } from '@/utils/code/code';
 import { encryptData } from '@/utils/common/crypto.js';
 import { formatDate, parseDate, differenceInDays } from '@/utils/common/dateUtils.js';
+import dayjs from 'dayjs';
 
 const { copy } = useClipboard();
 const { mobile } = useDisplay();
@@ -351,15 +352,11 @@ window.addEventListener('resize', () => {
     }
 })
 
-// today (1분마다 갱신)
-const today = ref(new Date())
-setInterval(() => today.value = new Date(), 1000 * 60)
+const today = ref(dayjs());
 
-function getDDayText(target) {
-    const diff = differenceInDays(target, today.value)
-    if (diff === 0) return 'D-Day'
-    return diff > 0 ? `D-${diff}` : `D+${Math.abs(diff)}`
-}
+setInterval(() => {
+  today.value = dayjs();
+}, 1000 * 60);
 
 // 날짜 객체
 const draftDate = computed(() => parseDate(currentSeasonInfo.value.draft_start_date+' '+currentSeasonInfo.value.draft_start_time))

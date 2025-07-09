@@ -6,6 +6,7 @@ import path from 'path'; // 경로 처리 모듈
 import convertFileToBase64 from '../utils/convertFileToBase64.js'; // apiResponse에서 임포트
 import { decryptData } from '../utils/crypto.js';
 import { v4 as uuidv4 } from 'uuid';
+import dayjs from 'dayjs';
 
 dotenv.config();
 
@@ -42,10 +43,12 @@ export const verifyToken = async (req, res, next) => {
                 return sendInvalidTokenRequest(res);
             }
 
-            const refreshTokenExpiresAt = new Date(result.rows[0].expires_at);
-            const now = new Date();
-            const remainingTime = refreshTokenExpiresAt - now;
+            const refreshTokenExpiresAt = dayjs(result.rows[0].expires_at);
+            const now = dayjs();
+            const remainingTime = refreshTokenExpiresAt.diff(now);  // ms 단위 차이
+
             let newRefreshToken = refreshToken;
+
             // 남은 시간이 7일 이하일 경우 새 refreshToken 발급 및 갱신
             if (remainingTime <= 7 * 24 * 60 * 60 * 1000) {
                 newRefreshToken = jwt.sign(
@@ -53,11 +56,6 @@ export const verifyToken = async (req, res, next) => {
                     process.env.JWT_SECRET,
                     { expiresIn: '14d' }
                 );
-
-                /*await client.query(
-                    `UPDATE refresh_tokens SET expires_at = NOW() WHERE token = $1`,
-                    [refreshToken]
-                );*/
 
                 await client.query(
                     `INSERT INTO refresh_tokens (token, user_id, expires_at)

@@ -264,11 +264,12 @@ import { useRouter, useRoute } from 'vue-router';
 import { useDisplay } from 'vuetify';
 import { commonFetch } from '@/utils/common/commonFetch';
 import { encryptData } from '@/utils/common/crypto';
+import dayjs from 'dayjs';
 
 const router = useRouter();
 const route = useRoute();
 const { mobile } = useDisplay();
-const today = ref(new Date().toLocaleString());
+const today = ref(dayjs().format('YYYY-MM-DD'));
 
 const players = ref([]);
 const loading = ref(false);
@@ -278,14 +279,14 @@ const totalItems = ref(0);
 const filterExpanded = ref(false);
 
 const filters = ref({
-    name: '', // 이름 필터 추가
+    name: '',
     teamIds: [],
     positions: [],
-    birthDateFrom: '',
-    birthDateTo: '',
+    birthDateFrom: null,
+    birthDateTo: null,
     isRetiredList: [],
-    activeYears: [], // 활동 연도 필터 추가
-    isForeigners: [], // 외국인 선수 여부 필터 추가
+    activeYears: [],
+    isForeigners: [],
 });
 
 const teamOptions = ref([]);
@@ -298,7 +299,7 @@ const foreignerOptions = [
     { title: '외국인', value: true },
     { title: '국내', value: false },
 ];
-const activeYearOptions = ref([]); // 활동 연도 옵션
+const activeYearOptions = ref([]);
 
 const headers = [
     { title: '번호', value: 'row_number', width: 80, align: 'center' },
@@ -308,8 +309,8 @@ const headers = [
     { title: '유형', value: 'player_type', align: 'center' },
     { title: '소속팀', value: 'team_name', align: 'center' },
     { title: '등번호', value: 'last_uniform_number', align: 'center' },
-    { title: '외국인', value: 'is_foreign', align: 'center' }, // 외국인 선수 여부 컬럼 추가
-    { title: '활동 연도', value: 'active_years', align: 'center' }, // 활동 연도 컬럼 추가
+    { title: '외국인', value: 'is_foreign', align: 'center' },
+    { title: '활동 연도', value: 'active_years', align: 'center' },
     { title: '활동여부', value: 'is_retired', align: 'center' },
 ];
 
@@ -334,10 +335,10 @@ const fetchPlayerList = async () => {
             params.append('isRetiredList', filters.value.isRetiredList.join(','));
         }
         if (filters.value.birthDateFrom) {
-            params.append('birthDateFrom', filters.value.birthDateFrom);
+            params.append('birthDateFrom', dayjs(filters.value.birthDateFrom).format('YYYY-MM-DD'));
         }
         if (filters.value.birthDateTo) {
-            params.append('birthDateTo', filters.value.birthDateTo);
+            params.append('birthDateTo', dayjs(filters.value.birthDateTo).format('YYYY-MM-DD'));
         }
         if (filters.value.activeYears.length > 0) {
             params.append('activeYears', filters.value.activeYears.join(','));
@@ -360,10 +361,6 @@ const fetchPlayerList = async () => {
     }
 };
 
-const formatDate = (date) => {
-    return date ? new Date(date).toLocaleDateString() : '-';
-};
-
 const goToAddPlayer = () => {
     router.push("/admin/player/add");
 };
@@ -373,8 +370,8 @@ const resetFilters = () => {
         name: '',
         teamIds: [],
         positions: [],
-        birthDateFrom: '',
-        birthDateTo: '',
+        birthDateFrom: null,
+        birthDateTo: null,
         isRetiredList: [],
         activeYears: [],
         isForeigners: [],
@@ -417,8 +414,8 @@ const fetchTeamOptions = async () => {
 };
 
 const fetchActiveYearOptions = () => {
-    const currentYear = new Date().getFullYear();
-    const startYear = 1982; // 예시 시작 연도
+    const currentYear = dayjs().year();
+    const startYear = 1982;
     const years = [];
     for (let i = currentYear; i >= startYear; i--) {
         years.push(i);
@@ -430,11 +427,8 @@ const handleRowClick = (e, { item }) => {
     router.push(`/admin/player/add?playerId=${encodeURIComponent(encryptData(item.id))}`);
 };
 
-// ✅ 2. page 또는 itemsPerPage 변경 시
 watch([page, itemsPerPage], () => {
     fetchPlayerList();
-    
-    // router.replace로 URL 쿼리 업데이트 (뒤로가기 히스토리 X)
     router.replace({
         query: {
             ...route.query,

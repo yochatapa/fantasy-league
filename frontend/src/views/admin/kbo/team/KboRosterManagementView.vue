@@ -91,16 +91,16 @@
                                         <CommonDateInput
                                             v-model="joined_date"
                                             label="등록일"
-                                            :min="selectedDate.getUTCFullYear()+'0101'"
-                                            :max="selectedDate.getUTCFullYear()+'1231'"
+                                            :min="selectedDate.format('YYYY') + '0101'"
+                                            :max="selectedDate.format('YYYY') + '1231'"
                                             :rules="[v => !!v || '등록일을 선택해주세요.']"
                                             required
                                         />
                                         <CommonDateInput
                                             v-model="left_date"
                                             label="말소일"
-                                            :min="selectedDate.getUTCFullYear()+'0101'"
-                                            :max="selectedDate.getUTCFullYear()+'1231'"
+                                            :min="selectedDate.format('YYYY') + '0101'"
+                                            :max="selectedDate.format('YYYY') + '1231'"
                                         />
                                     </v-col>
                                 </v-row>
@@ -125,30 +125,29 @@ import { ref, onMounted, watch, computed } from 'vue';
 import CommonDateInput from '@/components/common/CommonDateInput.vue';
 import { commonFetch } from '@/utils/common/commonFetch';
 import { useRouter, useRoute } from 'vue-router';
-import { useDisplay } from 'vuetify';
 import { encryptData, decryptData } from '@/utils/common/crypto';
-import { formatDate } from '@/utils/common/dateUtils.js';
+import dayjs from 'dayjs';
 
 const route = useRoute();
 const router = useRouter();
 
 const teamId = computed(() => route.query.teamId);
 
-const selectedDate = ref(new Date());
-const formattedDate = ref(formatDate(selectedDate.value));
+const selectedDate = ref(dayjs());
+const formattedDate = computed(() => selectedDate.value.format('YYYY-MM-DD'));
 const calendarOpen = ref(false);
 
 const rosterList = ref([]);
 const playerList = ref([]);
 
 const player = ref(null);
-const joined_date = ref(formattedDate.value);
+const joined_date = ref(dayjs());
 const left_date = ref(null);
 const valid = ref(false);
 
-watch(()=>selectedDate.value, (newVal)=>{
-    formattedDate.value = formatDate(newVal)
-})
+watch(() => selectedDate.value, async () => {
+    await getRoster(selectedDate.value);
+});
 
 const getPlayerList = async (year) => {
     try {
@@ -158,107 +157,108 @@ const getPlayerList = async (year) => {
         const queryString = params.toString();
         const response = await commonFetch(`/api/admin/player/list?${queryString}`);
 
-        if(response.success){
+        if (response.success) {
             playerList.value = response.data.playerList.map((player) => {
                 return {
-                    ...player
-                    , visibleName : `(${player.current_uniform_number}) (${player.primary_position}) ${player.name}`
+                    ...player,
+                    visibleName: `(${player.current_uniform_number}) (${player.primary_position}) ${player.name}`
                 };
             });
-        }else{
-            throw new Error()
+        } else {
+            throw new Error();
         }
     } catch (error) {
-        alert("선수 목록 조회 중 에러가 발생하였습니다.\n 다시 한 번 시도해주세요.", "error")
+        alert("선수 목록 조회 중 에러가 발생하였습니다.\n 다시 한 번 시도해주세요.", "error");
     }
-}
+};
 
 const getRoster = async (date) => {
     try {
-        const response = await commonFetch(`/api/admin/roster/list?date=${formatDate(date)}&teamId=${decryptData(teamId.value)}`);
+        const response = await commonFetch(`/api/admin/roster/list?date=${dayjs(date).format('YYYY-MM-DD')}&teamId=${decryptData(teamId.value)}`);
 
-        if(response.success){
+        if (response.success) {
             rosterList.value = response.data.rosterList;
-        }else{
-            throw new Error()
+        } else {
+            throw new Error();
         }
     } catch (error) {
-        alert("로스터 조회 중 에러가 발생하였습니다.\n 다시 한 번 시도해주세요.", "error")
+        alert("로스터 조회 중 에러가 발생하였습니다.\n 다시 한 번 시도해주세요.", "error");
     }
-}
+};
 
 const addRoster = async () => {
-    try {
-        const response = await commonFetch(`/api/admin/roster/create`,{
-            method : 'POST',
-            body : {
-                playerId : player.value
-                , joinedDate : joined_date.value
-                , leftDate : left_date.value
-                , teamId : decryptData(teamId.value)
-                , seasonYear : selectedDate.value.getUTCFullYear()
+    try { console.log(joined_date.value)
+        const response = await commonFetch(`/api/admin/roster/create`, {
+            method: 'POST',
+            body: {
+                playerId: player.value,
+                joinedDate: joined_date.value.format('YYYY-MM-DD'),
+                leftDate: left_date.value ? left_date.value.format('YYYY-MM-DD') : null,
+                teamId: decryptData(teamId.value),
+                seasonYear: selectedDate.value.year()
             }
         });
 
-        if(response.success){
+        if (response.success) {
             alert("성공적으로 추가되었습니다.");
             await getRoster(selectedDate.value);
             player.value = null;
-            joined_date.value = formattedDate.value;
+            joined_date.value = dayjs(selectedDate.value);
             left_date.value = null;
-        }else{
-            throw new Error()
+        } else {
+            throw new Error();
         }
     } catch (error) {
-        alert("로스터 저장 중 에러가 발생하였습니다.\n 다시 한 번 시도해주세요.", "error")
+        console.error(error)
+        alert("로스터 저장 중 에러가 발생하였습니다.\n 다시 한 번 시도해주세요.", "error");
     }
-}
+};
 
 const deactiveRoster = async (id) => {
     try {
-        const response = await commonFetch(`/api/admin/roster/deactive`,{
-            method : 'PUT',
-            body : {
-                rosterId : id
-                , leftDate : formattedDate.value
+        const response = await commonFetch(`/api/admin/roster/deactive`, {
+            method: 'PUT',
+            body: {
+                rosterId: id,
+                leftDate: formattedDate.value
             }
         });
 
-        if(response.success){
+        if (response.success) {
             alert("성공적으로 말소되었습니다.");
             await getRoster(selectedDate.value);
-        }else{
-            throw new Error()
+        } else {
+            throw new Error();
         }
     } catch (error) {
-        alert("로스터 말소 중 에러가 발생하였습니다.\n 다시 한 번 시도해주세요.", "error")
+        alert("로스터 말소 중 에러가 발생하였습니다.\n 다시 한 번 시도해주세요.", "error");
     }
-}
+};
 
 const deleteRoster = async (id) => {
     try {
-        const response = await commonFetch(`/api/admin/roster/delete`,{
-            method : 'DELETE',
-            body : {
-                rosterId : id
+        const response = await commonFetch(`/api/admin/roster/delete`, {
+            method: 'DELETE',
+            body: {
+                rosterId: id
             }
         });
 
-        if(response.success){
+        if (response.success) {
             alert("성공적으로 삭제되었습니다.");
             await getRoster(selectedDate.value);
-        }else{
-            throw new Error()
+        } else {
+            throw new Error();
         }
     } catch (error) {
-        alert("로스터 삭제 중 에러가 발생하였습니다.\n 다시 한 번 시도해주세요.", "error")
+        alert("로스터 삭제 중 에러가 발생하였습니다.\n 다시 한 번 시도해주세요.", "error");
     }
-}
+};
 
-onMounted(async ()=>{
-    Promise.all([
-        getPlayerList(selectedDate.value.getUTCFullYear())
-        , getRoster(selectedDate.value)
-    ])
-})
+onMounted(async () => {
+    await Promise.all([
+        getPlayerList(selectedDate.value.year()),
+        getRoster(selectedDate.value)
+    ]);
+});
 </script>

@@ -51,6 +51,7 @@ import { commonFetch } from '@/utils/common/commonFetch';
 import { formatDate } from '@/utils/common/dateUtils.js';
 import { useRoute, useRouter } from 'vue-router';
 import { encryptData } from '@/utils/common/crypto';
+import dayjs from 'dayjs';
 import 'swiper/css'
 import 'swiper/css/pagination'
 import 'swiper/css/navigation'
@@ -58,12 +59,10 @@ import 'swiper/css/navigation'
 const gameVisible = ref(false);
 const gameSchedule = ref([])
 
-const today = formatDate(new Date());
-
 const router = useRouter();
 const route = useRoute();
 
-const selectedDate = ref(route.query.date?new Date(route.query.date):new Date());
+const selectedDate = ref(route.query.date ? dayjs(route.query.date).toDate() : dayjs().toDate());
 const formattedDate = ref(route.query.date??formatDate(selectedDate.value));
 const calendarOpen = ref(false);
 

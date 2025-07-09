@@ -851,6 +851,56 @@
                         </v-card-text>
                     </v-card>
                 </v-col>
+                <v-col cols="12" md="8" v-if="selectedMatchup.status === 'suspended' && selectedMatchup.game_id === selectedMatchup.last_suspended_game_id">
+                    <v-card class="h-100">
+                        <v-card-title>서스펜디드 설정</v-card-title>
+                        <v-divider></v-divider>
+                        <v-card-text>
+                            <v-container>
+                                <!-- 팀 선택 -->
+                                <v-row>
+                                    <v-col cols="12" md="4" class="py-0">
+                                        <v-select
+                                            v-model="suspendedStadium"
+                                            :items="STADIUMS"
+                                            item-value="code"
+                                            item-title="name"
+                                            label="경기장"
+                                            :required="true"
+                                        />
+                                    </v-col>
+                                    <v-col cols="12" md="4" class="py-0">
+                                        <CommonDateInput
+                                            v-model="suspendedGameDate"
+                                            label="경기 일자"
+                                            :min="tomorrow"
+                                            :rules="[v => !!v || '경기일자를 입력해주세요.']"
+                                            :required="true"
+                                        />
+                                    </v-col>
+                                    <v-col cols="12" md="4" class="py-0 d-flex">
+                                        <v-text-field
+                                            v-model="suspendedGameTime"
+                                            label="경기 시간"
+                                            type="time"
+                                            :required="true"
+                                        />
+                                    </v-col>     
+                                    <v-col cols="12">
+                                        <v-btn
+                                            :disabled="!canAddSuspendedMatchup"
+                                            @click="addSuspendedMatchup"
+                                            color="primary"
+                                            block
+                                        >
+                                            서스펜디드 경기 추가
+                                        </v-btn>
+                                    </v-col>
+                                </v-row>
+                            </v-container>
+                        </v-card-text>
+                    </v-card>
+                </v-col>
                 <v-col cols="12" md="4" v-if="['scheduled','playball'].includes(selectedMatchup.status)">
                     <v-card class="h-100">
                         <v-card-title>라인업</v-card-title>
@@ -1084,56 +1134,6 @@
                     :getPlayerId="getPlayerId"
                     :cols="12"
                 />
-                <v-col cols="12" md="8" v-if="selectedMatchup.status === 'suspended' && selectedMatchup.game_id === selectedMatchup.last_suspended_game_id">
-                    <v-card class="h-100">
-                        <v-card-title>서스펜디드 설정</v-card-title>
-                        <v-divider></v-divider>
-                        <v-card-text>
-                            <v-container>
-                                <!-- 팀 선택 -->
-                                <v-row>
-                                    <v-col cols="12" md="4" class="py-0">
-                                        <v-select
-                                            v-model="suspendedStadium"
-                                            :items="STADIUMS"
-                                            item-value="code"
-                                            item-title="name"
-                                            label="경기장"
-                                            :required="true"
-                                        />
-                                    </v-col>
-                                    <v-col cols="12" md="4" class="py-0">
-                                        <CommonDateInput
-                                            v-model="suspendedGameDate"
-                                            label="경기 일자"
-                                            :min="tomorrow"
-                                            :rules="[v => !!v || '경기일자를 입력해주세요.']"
-                                            :required="true"
-                                        />
-                                    </v-col>
-                                    <v-col cols="12" md="4" class="py-0 d-flex">
-                                        <v-text-field
-                                            v-model="suspendedGameTime"
-                                            label="경기 시간"
-                                            type="time"
-                                            :required="true"
-                                        />
-                                    </v-col>     
-                                    <v-col cols="12">
-                                        <v-btn
-                                            :disabled="!canAddSuspendedMatchup"
-                                            @click="addSuspendedMatchup"
-                                            color="primary"
-                                            block
-                                        >
-                                            서스펜디드 경기 추가
-                                        </v-btn>
-                                    </v-col>
-                                </v-row>
-                            </v-container>
-                        </v-card-text>
-                    </v-card>
-                </v-col>
             </v-row>
         </v-col>
         <v-col cols="12" v-else>
@@ -1155,6 +1155,7 @@ import BaseballStadium from '@/components/kbo/BaseballStadium.vue';
 import PlayerStatsTable from '@/components/kbo/PlayerStatsTable.vue';
 import { useRouter, useRoute } from 'vue-router';
 import CommonDateInput from '@/components/common/CommonDateInput.vue';
+import dayjs from 'dayjs';
 
 const router = useRouter();
 const route = useRoute();
@@ -1162,7 +1163,7 @@ const route = useRoute();
 const { mobile } = useDisplay();
 const isMobile = computed(() => mobile.value);
 
-const selectedDate = ref(route.query.date?new Date(route.query.date):new Date());
+const selectedDate = ref(route.query.date ? dayjs(route.query.date) : dayjs());
 const formattedDate = ref(route.query.date??formatDate(selectedDate.value));
 const calendarOpen = ref(false);
 const isExpanded = ref(true);
@@ -1194,7 +1195,11 @@ const stadium = ref(null);
 const gameTime = ref('18:30');
 const gameType = ref('normal');
 
-const tomorrow = ref(new Date(new Date(formattedDate.value.replace(/\./g, '-')).getTime() + 86400000).toISOString().split('T')[0].split('-').join('.'));
+const tomorrow = ref(
+  dayjs(formattedDate.value.replace(/\./g, '-'))
+    .add(1, 'day')
+    .format('YYYY.MM.DD')
+);
 
 const suspendedStadium = ref(null)
 const suspendedGameDate = ref(tomorrow.value)
@@ -1443,7 +1448,11 @@ watch(()=>selectedMatchup.value, (newVal) => {
 
 watch(()=>selectedDate.value, (newVal)=>{
     formattedDate.value = formatDate(newVal)
-    tomorrow.value = new Date(new Date(formattedDate.value.replace(/\./g, '-')).getTime() + 86400000).toISOString().split('T')[0].split('-').join('.')
+    tomorrow.value = ref(
+    dayjs(formattedDate.value.replace(/\./g, '-'))
+        .add(1, 'day')
+        .format('YYYY.MM.DD')
+    );
     suspendedGameDate.value = tomorrow.value
 })
 
@@ -1566,19 +1575,26 @@ watch(
 )
 
 const updateMatchups = async (newVal) => {
-    isExpanded.value = true
-    router.replace(`/admin/game/management?date=${formatDate(newVal)}`)
+    isExpanded.value = true;
+
+    const selectedDay = dayjs(newVal);
+    const formattedDate = formatDate(selectedDay);
+    const year = selectedDay.utc().year();
+
+    router.replace(`/admin/game/management?date=${formattedDate}`);
+
     try {
         Promise.all([
-            getTeamList(newVal.getUTCFullYear())
-            , getGameList(formatDate(newVal))
-        ]).then(([teamYn, gameYn])=>{
-            if(gameYn){
-
+            getTeamList(year),
+            getGameList(formattedDate)
+        ]).then(([teamYn, gameYn]) => {
+            if (gameYn) {
+                // 추가 로직 필요 시 작성
             }
-        })
+        });
     } catch (error) {
-        alert("화면 조회 중 문제가 발생하였습니다.\n 다시 한 번 시도해주세요.","error");
+        console.error(error);
+        alert("화면 조회 중 문제가 발생하였습니다.\n 다시 한 번 시도해주세요.", "error");
     }
 };
 
@@ -1634,7 +1650,7 @@ const addSuspendedMatchup = async () => {try {
         if(response.success){
             alert("서스펜디드 경기가 성공적으로 생성되었습니다.")
             router.replace(`/admin/game/management?date=${suspendedGameDate.value}`)
-            selectedDate.value = new Date(suspendedGameDate.value)
+            selectedDate.value = dayjs(suspendedGameDate.value).toDate();
             await getGameList(suspendedGameDate.value);
             suspendedStadium.value = null;
             suspendedGameDate.value = tomorrow.value;
@@ -2274,9 +2290,12 @@ const setOut = async (battingNumberYn=true, confirmYn=true, countYn=true) => {
         if(current_inning_half === "top") gameCurrentInfo.value.inning_half = "bottom"
         else {
             // 무승부
-            if(gameCurrentInfo.value.inning === ((Number(formattedDate.value.substr(0,4))??new Date().getUTCFullYear())<2025?12:11) && gameCurrentInfo.value.inning_half === "bottom"){
+            const currentYear = dayjs(formattedDate.value, 'YYYY.MM.DD').year() || dayjs().year();
+            const maxInning = currentYear < 2025 ? 12 : 11;
+
+            if (gameCurrentInfo.value.inning === maxInning && gameCurrentInfo.value.inning_half === 'bottom') {
                 await setGameOver();
-                return
+                return;
             }
             gameCurrentInfo.value.inning++;
             currentInning.value = gameCurrentInfo.value.inning

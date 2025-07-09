@@ -145,6 +145,8 @@ export const createLeague = async (req, res) => {
                 VALUES ($1, $2, $3, $4, $5, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
             `;
 
+            console.log("draftDate",draftDate)
+
             await client.query(insertDraftMaster, [
                 leagueId,
                 seasonId,   
@@ -717,7 +719,8 @@ export const setDraftOrder = async(req,res) => {
             await client.query(`
                 UPDATE league_season_draft_teams
                 SET 
-                    draft_order = $1
+                    draft_order = $1,
+                    updated_at = CURRENT_TIMESTAMP
                 WHERE 
                     league_id = $2
                 AND season_id = $3
