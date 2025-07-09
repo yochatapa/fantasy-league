@@ -77,8 +77,8 @@ const draftMethod = ref('');
 const isPublic = ref(true);
 const maxTeams = ref(8);
 const playoffTeams = ref(4);
-const seasonStartDate = ref(dayjs(threeDaysLater.value, 'YYYY.MM.DD').toDate());
-const draftDate = ref(dayjs(tomorrow.value, 'YYYY.MM.DD').toDate());
+const seasonStartDate = ref(dayjs(threeDaysLater.value, 'YYYY.MM.DD'));
+const draftDate = ref(dayjs(tomorrow.value, 'YYYY.MM.DD'));
 draftDate.value = draftMethod.value !== 'custom' ? draftDate.value : null;
 const draftTime = ref('12:00');
 const timezone = ref(Intl.DateTimeFormat().resolvedOptions().timeZone);
@@ -187,7 +187,7 @@ const handleNext = async () => {
                 isPublic: isPublic.value,
                 maxTeams: maxTeams.value,
                 playoffTeams: playoffTeams.value,
-                seasonStartDate: seasonStartDate.value,
+                seasonStartDate: dayjs(seasonStartDate.value).format('YYYY.MM.DD'),
                 draftDate: draftDateTimeISO
             }
         });
