@@ -71,6 +71,8 @@ const job = schedule.scheduleJob('0 * * * * *', async () => {
                     draft_start_date
                 ]);
 
+                const draft_room_id = draft_rooms[0]?.id
+
                 const io = getIO();
 
                 io.to(`${league_id}_${season_id}`).emit('createDraftRoom', {
@@ -80,6 +82,64 @@ const job = schedule.scheduleJob('0 * * * * *', async () => {
                 });
 
                 console.log(`🎯 draft_room 생성됨: league_id=${league_id}, season_id=${season_id}`);
+
+                // 1. 리그명 조회
+                const { rows: leagueRows } = await client.query(`
+                    SELECT league_name
+                    FROM league_master
+                    WHERE league_id = $1
+                `, [league_id]);
+
+                const leagueName = leagueRows[0]?.league_name || '해당';
+
+                // 2. 소속 유저 조회
+                const { rows: users } = await client.query(`
+                    SELECT user_id
+                    FROM league_season_team
+                    WHERE league_id = $1 AND season_id = $2
+                `, [league_id, season_id]);
+
+                // 3. 알림 저장 + 개별 소켓 emit
+                const now = dayjs();
+                const formattedStart = dayjs(draft_start_date).format('YYYY-MM-DD HH:mm');
+                const messageText = `${leagueName} 리그의 드래프트가 ${formattedStart}에 진행됩니다!\n이제 드래프트 룸에 입장할 수 있습니다.`;
+
+                const insertValues = [];
+                const insertParams = [];
+
+                users.forEach(({ user_id }, index) => {
+                    const paramIndex = index * 8;
+                    insertValues.push(`($${paramIndex + 1}, $${paramIndex + 2}, $${paramIndex + 3}, $${paramIndex + 4}, $${paramIndex + 5}, $${paramIndex + 6}, $${paramIndex + 7}, $${paramIndex + 8})`);
+
+                    insertParams.push(
+                        user_id,                 // user_id
+                        'draft',                 // type
+                        '드래프트 시작 알림',     // title
+                        messageText,            // message
+                        'unread',                // status
+                        null,                    // url
+                        draft_room_id,          // related_id
+                        'draft_room'            // related_type
+                    );
+
+                    // 소켓 알림 emit
+                    io.to(`user_${user_id}`).emit('notification', {
+                        type: 'draft',
+                        title: '드래프트 시작 알림',
+                        message: messageText,
+                        related_id: draft_room_id,
+                        related_type: 'draft_room',
+                        timestamp: now.toISOString()
+                    });
+                });
+
+                // 4. 알림 bulk insert
+                await client.query(`
+                    INSERT INTO notifications (
+                        user_id, type, title, message,
+                        status, url, related_id, related_type
+                    ) VALUES ${insertValues.join(',')}
+                `, insertParams);
             });
         }
     } catch (error) {
