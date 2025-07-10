@@ -651,11 +651,21 @@ export const getSeasonInfo = async (req, res) => {
             }
         }
 
+        const draftRoomQuery = `
+            SELECT *
+            FROM draft_rooms
+            WHERE league_id = $1 AND season_id = $2
+            LIMIT 1;
+        `;
+        const { rows: draftRoomRows } = await query(draftRoomQuery, param);
+        const draftRoom = draftRoomRows[0] || null;
+
         return sendSuccess(res, {
             message: '시즌 정보가 조회되었습니다.',
             seasonInfo: seasonInfo.rows[0],
             teamList,
-            draftTeams
+            draftTeams,
+            draftRoom
         });
     } catch (error) {
         return sendServerError(res, error, '시즌 정보 조회 중 문제가 발생했습니다. 다시 시도해주세요.');

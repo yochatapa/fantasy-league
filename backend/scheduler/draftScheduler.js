@@ -1,6 +1,7 @@
 import schedule from 'node-schedule';
 import { query, withTransaction } from '../db.js'; // DB 연결 모듈
 import dayjs from 'dayjs'
+import { getIO } from '../utils/socket.js';
 
 // 매 분 0초에 실행 (초 분 시 일 월 요일)
 const job = schedule.scheduleJob('0 * * * * *', async () => {
@@ -49,7 +50,7 @@ const job = schedule.scheduleJob('0 * * * * *', async () => {
                 const { draft_start_date, draft_timer: dbDraftTimer } = draftConfigResult.rows[0];
 
                 // draft_rooms 생성
-                await client.query(`
+                const { rows : draft_rooms } = await client.query(`
                     INSERT INTO draft_rooms (
                         league_id,
                         season_id,
@@ -61,6 +62,7 @@ const job = schedule.scheduleJob('0 * * * * *', async () => {
                         updated_at
                     )
                     VALUES ($1, $2, 'waiting', $3, $4, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                    RETURNING id
                 `, [
                     league_id,
                     season_id,
@@ -68,6 +70,16 @@ const job = schedule.scheduleJob('0 * * * * *', async () => {
                     dbDraftTimer,
                     draft_start_date
                 ]);
+
+                const io = getIO();
+
+                io.emit(league_id+"_"+season_id, {
+                    type: 'createDraftRoom',
+                    data: { 
+                        draft_room_id : draft_rooms[0].id
+                    },
+                    message : "드래프트 룸이 성공적으로 생성되었습니다."
+                });
 
                 console.log(`🎯 draft_room 생성됨: league_id=${league_id}, season_id=${season_id}`);
             });

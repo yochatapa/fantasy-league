@@ -134,7 +134,8 @@
             <v-col cols="12">
                 <v-card>
                     <v-card-title class="d-flex justify-space-between align-center">
-                        드래프트 순번
+                        <span>드래프트 순번</span>
+                        <v-btn color="primary" v-if="draftRoom && draftRoom?.status !== 'completed'">입장</v-btn>
                     </v-card-title>
                     <v-divider></v-divider>
                     <v-card-text>
@@ -307,7 +308,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import dayjs from 'dayjs';
 import { useRoute, useRouter } from 'vue-router';
 import { useClipboard } from '@vueuse/core';
@@ -316,6 +317,10 @@ import { commonFetch } from '@/utils/common/commonFetch';
 import { LEAGUE_TYPES, LEAGUE_FORMATS } from '@/utils/code/code';
 import { encryptData } from '@/utils/common/crypto.js';
 import { formatDate, parseDate } from '@/utils/common/dateUtils.js';
+import { io } from 'socket.io-client';
+
+const socket = ref(null); // 소켓 인스턴스
+const currentSocketRoom = ref(null); // 현재 방 ID
 
 const { copy } = useClipboard();
 const { mobile } = useDisplay();
@@ -335,6 +340,7 @@ const seasonInfo = ref([]);
 const currentSeasonInfo = ref(null);
 const filteredSeasonYears = ref([]);
 const draftTeams = ref([]);
+const draftRoom = ref(null);
 
 const seasonYear = ref(null);
 watch([seasonInfo, seasonYear], () => {
@@ -477,6 +483,7 @@ const loadLeagueInfo = async () => {
                     seasonDataYn.value = true;
                     currentSeasonInfo.value = seasonRes.data.seasonInfo;
                     draftTeams.value = seasonRes.data.draftTeams;
+                    draftRoom.value = seasonRes.data.draftRoom
                 }
             }
         } else {
@@ -545,6 +552,68 @@ const getDraftOrder = async () => {
         draftTeams.value = seasonRes.data.draftTeams;
     }
 };
+
+// ✅ league_id와 season_id 변경 시 소켓 재연결
+const connectSocketRoom = (leagueId, seasonId) => {
+    const newRoom = `${leagueId}_${seasonId}`;
+
+    if (currentSocketRoom.value === newRoom) return;
+
+    if (socket.value) {
+        if (currentSocketRoom.value) {
+            socket.value.emit('leaveRoom', currentSocketRoom.value);
+            console.log(`Left room`);
+        }
+    } else {
+        socket.value = io(`${import.meta.env.VITE_API_URL}`);
+    }
+
+    socket.value.emit('joinRoom', newRoom);
+    currentSocketRoom.value = newRoom;
+    console.log(`Joined room`);
+
+    // ✅ 이벤트 리스너 등록
+    onSocketEvents();
+};
+
+const onSocketEvents = () => {
+    if (!socket.value || !currentSocketRoom.value) return;
+
+    // // 기존 이벤트 off
+    // socket.value.off(currentSocketRoom.value);
+
+    // // 서버가 room 이름(예: "1_5")으로 emit하는 경우를 받음
+    // socket.value.on(currentSocketRoom.value, (payload) => {
+    //     if (payload?.type === 'createDraftRoom') {
+    //         console.log('[소켓] createDraftRoom 수신:', payload);
+
+    //         // 여기서 추가적인 처리도 가능
+    //         alert(payload.message || '드래프트 룸이 생성되었습니다.');
+
+    //         // 예: draftTeams 다시 불러오기 등
+    //         getDraftOrder();
+    //     }
+    // });
+};
+
+watch(
+    [() => leagueInfo.value?.league_id, () => currentSeasonInfo.value?.season_id],
+    ([newLeagueId, newSeasonId]) => {
+        if (newLeagueId && newSeasonId) {
+            connectSocketRoom(newLeagueId, newSeasonId);
+            onSocketEvents(); // ✅ 여기서 호출
+        }
+    }
+);
+
+// ✅ 컴포넌트 언마운트 시 소켓 정리
+onBeforeUnmount(() => {
+    if (socket.value && currentSocketRoom.value) {
+        socket.value.emit('leaveRoom', currentSocketRoom.value);
+        socket.value.disconnect();
+        console.log('Socket disconnected on unmount');
+    }
+});
 </script>
 
 <style scoped>
