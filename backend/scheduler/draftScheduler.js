@@ -73,12 +73,10 @@ const job = schedule.scheduleJob('0 * * * * *', async () => {
 
                 const io = getIO();
 
-                io.emit(league_id+"_"+season_id, {
-                    type: 'createDraftRoom',
-                    data: { 
-                        draft_room_id : draft_rooms[0].id
-                    },
-                    message : "드래프트 룸이 성공적으로 생성되었습니다."
+                io.to(`${league_id}_${season_id}`).emit('createDraftRoom', {
+                    draft_room_id: draft_rooms[0].id,
+                    starts_at: draft_start_date,
+                    message: "드래프트 룸이 성공적으로 생성되었습니다."
                 });
 
                 console.log(`🎯 draft_room 생성됨: league_id=${league_id}, season_id=${season_id}`);
@@ -86,5 +84,41 @@ const job = schedule.scheduleJob('0 * * * * *', async () => {
         }
     } catch (error) {
         console.error('드래프트 시작 대상 조회/생성 중 에러:', error);
+    }
+});
+
+const alertJob = schedule.scheduleJob('0 * * * * *', async () => {
+    console.log(`[${dayjs().format('YYYY.MM.DD HH:mm:ss')}] 드래프트 10분 전 알림 체크 중...`);
+
+    const now = dayjs();
+    const tenMinutesLater = now.add(10, 'minute');
+
+    try {
+        const alertQuery = `
+            SELECT dr.id AS draft_room_id, dr.league_id, dr.season_id, dr.started_at
+            FROM draft_rooms dr
+            WHERE dr.status = 'waiting'
+            AND dr.started_at BETWEEN NOW() AND $1
+        `;
+
+        const { rows } = await query(alertQuery, [tenMinutesLater.toDate()]);
+        for (const row of rows) {
+            const { league_id, season_id, draft_room_id, started_at } = row;
+
+            const io = getIO();
+
+            io.to(`${league_id}_${season_id}`).emit('draftAlert', {
+                type: 'draftSoon',
+                data: {
+                    draft_room_id,
+                    starts_at: started_at,
+                    message: '드래프트 시작까지 10분 남았습니다. 준비하세요!'
+                }
+            });
+
+            console.log(`⏰ 10분 전 알림 전송: league_id=${league_id}, season_id=${season_id}`);
+        }
+    } catch (error) {
+        console.error('10분 전 알림 처리 중 에러:', error);
     }
 });

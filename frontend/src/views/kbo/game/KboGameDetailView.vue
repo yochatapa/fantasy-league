@@ -965,38 +965,45 @@ const setCurrentGamedayInfo = async (pushData) => {
     currentInning.value = gameCurrentInfo.value.inning
 }
 
-onMounted(async ()=>{
-    await getGameDetailInfo(gameId)    
+if (!socket.connected) {
+    socket.connect();
+}
 
-    socket.on('connect', () => {
-        console.log('Socket connected');
-    });
+socket.once('connect', () => {
+    console.log('Socket connected:', socket.id);
+    socket.emit('joinRoom', String(gameId));
+});
+
+onMounted(async () => {
+    await getGameDetailInfo(gameId);
 
     socket.on('connect_error', (err) => {
         console.error('Socket connection error:', err.message);
     });
 
-    socket.on(gameId, async (resData) => {
-        console.log('Socket data received');
-        // messages.value.push(data);
-        if(!!!resData) return console.error("데이터 수신 중 오류가 발생하였습니다.");
-
-        switch(resData?.type){
-            case "currentInfo" :
-                setCurrentGamedayInfo(resData.data)
-                break;
-            case "rosterChange" :
-                await getGameDetailInfo(selectedMatchup.value.game_id,false)
-                break;
-        }
-
-        console.log(resData.message);
+    // currentInfo 수신
+    socket.on('currentInfo', (resData) => {
+        console.log('[소켓] currentInfo 수신:', resData);
+        if (!resData) return console.error("currentInfo 데이터 없음");
+        setCurrentGamedayInfo(resData.data);
+        console.log("메시지:", resData.message);
     });
-})
+
+    // rosterChange 수신
+    socket.on('rosterChange', async (resData) => {
+        console.log('[소켓] rosterChange 수신:', resData);
+        if (!resData) return console.error("rosterChange 데이터 없음");
+        await getGameDetailInfo(selectedMatchup.value.game_id, false);
+        console.log("메시지:", resData.message);
+    });
+});
 
 onUnmounted(() => {
+    socket.emit('leaveRoom', String(gameId));
     socket.off('connect');
-    socket.off(gameId);
+    socket.off('connect_error');
+    socket.off('currentInfo');
+    socket.off('rosterChange');
 });
 </script>
 

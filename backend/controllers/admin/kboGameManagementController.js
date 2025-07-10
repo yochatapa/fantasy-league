@@ -603,10 +603,9 @@ export const createKboGameRoster = async (req, res) => {
 
             const io = getIO();
 
-            io.emit(game_id, {
-                type: 'rosterChange',
-                data: { game_roster_id : game_roster_id },
-                message : "게임 로스터가 성공적으로 업데이트되었습니다."
+            io.to(String(game_id)).emit('rosterChange', {
+                data: { game_roster_id },
+                message: "게임 로스터가 성공적으로 업데이트되었습니다."
             });
 
             return sendSuccess(res, {
@@ -713,8 +712,7 @@ export const createKboCurrentInfo = async(req,res) => {
             ])
 
             const io = getIO();
-            io.emit(game_id, {
-                type: 'currentInfo',
+            io.to(String(game_id)).emit('currentInfo', {
                 data: { 
                     game_id, type, inning, inning_half, strike, 
                     ball, out, away_pitch_count, home_pitch_count, away_current_pitch_count, 

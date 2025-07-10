@@ -316,7 +316,7 @@ import { useDisplay } from 'vuetify';
 import { commonFetch } from '@/utils/common/commonFetch';
 import { LEAGUE_TYPES, LEAGUE_FORMATS } from '@/utils/code/code';
 import { encryptData } from '@/utils/common/crypto.js';
-import { formatDate, parseDate } from '@/utils/common/dateUtils.js';
+import { formatDate } from '@/utils/common/dateUtils.js';
 import { io } from 'socket.io-client';
 
 const socket = ref(null); // 소켓 인스턴스
@@ -483,7 +483,7 @@ const loadLeagueInfo = async () => {
                     seasonDataYn.value = true;
                     currentSeasonInfo.value = seasonRes.data.seasonInfo;
                     draftTeams.value = seasonRes.data.draftTeams;
-                    draftRoom.value = seasonRes.data.draftRoom
+                    draftRoom.value = seasonRes.data.draftRoom;
                 }
             }
         } else {
@@ -553,47 +553,67 @@ const getDraftOrder = async () => {
     }
 };
 
-// ✅ league_id와 season_id 변경 시 소켓 재연결
+// 소켓 이벤트 리스너 등록 함수
+const registerSocketEvents = () => {
+    if (!socket.value) return;
+
+    // 중복 등록 방지용 이벤트 제거
+    socket.value.off('createDraftRoom');
+    socket.value.off('draftAlert');
+
+    socket.value.on('createDraftRoom', (payload) => {
+        console.log('[소켓] createDraftRoom 수신:', payload);
+        //alert(payload.message || '드래프트 룸이 생성되었습니다.');
+        //getDraftOrder();
+    });
+
+    socket.value.on('draftAlert', (payload) => {
+        console.log('[소켓] draftAlert 수신:', payload);
+        //alert(payload.message || '드래프트 시작까지 얼마 남지 않았습니다!');
+    });
+
+    // 모든 이벤트를 콘솔에 찍어 디버깅 도움
+    socket.value.onAny((event, ...args) => {
+        console.log(`[소켓][onAny] 이벤트명: ${event}, 데이터:`, args);
+    });
+};
+
+// 소켓 연결 및 방 입장 함수
 const connectSocketRoom = (leagueId, seasonId) => {
     const newRoom = `${leagueId}_${seasonId}`;
 
     if (currentSocketRoom.value === newRoom) return;
 
-    if (socket.value) {
-        if (currentSocketRoom.value) {
-            socket.value.emit('leaveRoom', currentSocketRoom.value);
-            console.log(`Left room`);
-        }
-    } else {
-        socket.value = io(`${import.meta.env.VITE_API_URL}`);
+    if (!socket.value) {
+        socket.value = io(`${import.meta.env.VITE_API_URL}`, {
+            autoConnect: false,
+        });
     }
 
-    socket.value.emit('joinRoom', newRoom);
+    // 기존 방에서 나가기
+    if (currentSocketRoom.value) {
+        socket.value.emit('leaveRoom', currentSocketRoom.value);
+        console.log(`Left room ${currentSocketRoom.value}`);
+    }
+
     currentSocketRoom.value = newRoom;
-    console.log(`Joined room`);
 
-    // ✅ 이벤트 리스너 등록
-    onSocketEvents();
-};
+    if (!socket.value.connected) {
+        socket.value.connect();
 
-const onSocketEvents = () => {
-    if (!socket.value || !currentSocketRoom.value) return;
+        socket.value.once('connect', () => {
+            console.log('Socket connected:', socket.value.id);
+            socket.value.emit('joinRoom', newRoom);
+            console.log(`Requested to join room: ${newRoom}`);
 
-    // // 기존 이벤트 off
-    // socket.value.off(currentSocketRoom.value);
+            registerSocketEvents();
+        });
+    } else {
+        socket.value.emit('joinRoom', newRoom);
+        console.log(`Requested to join room: ${newRoom}`);
 
-    // // 서버가 room 이름(예: "1_5")으로 emit하는 경우를 받음
-    // socket.value.on(currentSocketRoom.value, (payload) => {
-    //     if (payload?.type === 'createDraftRoom') {
-    //         console.log('[소켓] createDraftRoom 수신:', payload);
-
-    //         // 여기서 추가적인 처리도 가능
-    //         alert(payload.message || '드래프트 룸이 생성되었습니다.');
-
-    //         // 예: draftTeams 다시 불러오기 등
-    //         getDraftOrder();
-    //     }
-    // });
+        registerSocketEvents();
+    }
 };
 
 watch(
@@ -601,12 +621,11 @@ watch(
     ([newLeagueId, newSeasonId]) => {
         if (newLeagueId && newSeasonId) {
             connectSocketRoom(newLeagueId, newSeasonId);
-            onSocketEvents(); // ✅ 여기서 호출
+            // onSocketEvents() 호출은 registerSocketEvents()로 대체됨
         }
     }
 );
 
-// ✅ 컴포넌트 언마운트 시 소켓 정리
 onBeforeUnmount(() => {
     if (socket.value && currentSocketRoom.value) {
         socket.value.emit('leaveRoom', currentSocketRoom.value);
@@ -615,6 +634,7 @@ onBeforeUnmount(() => {
     }
 });
 </script>
+
 
 <style scoped>
 h1 {
