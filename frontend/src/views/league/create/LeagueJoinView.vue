@@ -67,7 +67,7 @@ const handleJoin = async () => {
     }
     
     if(!isLoggedIn.value){
-        router.push(`/login?type=league-join&code=${route.query.inviteCode}`);
+        router.push(`/login?type=league-join&code=${encodeURIComponent(route.query.inviteCode)}`);
         return alert("로그인이 먼저 필요합니다.");
     }
     

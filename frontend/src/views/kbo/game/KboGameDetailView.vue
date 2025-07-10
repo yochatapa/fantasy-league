@@ -451,6 +451,7 @@ import PlayerStatsTable from '@/components/kbo/PlayerStatsTable.vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useDisplay } from 'vuetify';
 import { io } from 'socket.io-client';
+import dayjs from 'dayjs';
 
 const socket = io(`${import.meta.env.VITE_API_URL}`);  // 서버 주소
 
@@ -474,14 +475,10 @@ try {
     router.push("/");
 }
 
-const selectedDate = ref(route.query.date?new Date(route.query.date):new Date());
+const selectedDate = ref(route.query.date ? dayjs(route.query.date) : dayjs());
 const formattedDate = ref(route.query.date??formatDate(selectedDate.value));
-const calendarOpen = ref(false);
 const isExpanded = ref(true);
 
-const toggleExpand = () => {
-    isExpanded.value = !isExpanded.value;
-};
 const selectedMatchup = ref(null);
 const selectedLineup = ref([null,null])
 
@@ -492,7 +489,6 @@ const runner_3b = ref(1);
 const errorPlayer = ref(null);
 
 const teamList = ref([]);
-const gameList = ref([]);
 const lineupList = ref(new Array(10).fill(null).map(() => ({ away: [], home: [] })))
 const awayTeamInfo = ref([]);
 const homeTeamInfo = ref([]);
@@ -506,32 +502,9 @@ const stadium = ref(null);
 const gameTime = ref('18:30');
 const gameType = ref('normal');
 
-const tomorrow = ref(new Date(new Date(formattedDate.value.replace(/\./g, '-')).getTime() + 86400000).toISOString().split('T')[0].split('-').join('.'));
-
-const suspendedStadium = ref(null)
-const suspendedGameDate = ref(tomorrow.value)
-const suspendedGameTime = ref('18:30')
+const tomorrow = ref(dayjs(formattedDate.value.replace(/\./g, '-')).add(1, 'day').format('YYYY.MM.DD'));
 
 const lineupYn = computed(()=>lineupList.value.filter(ll => ll.away.length > 0 && ll.home.length >0).length=== 10);
-
-const canAddMatchup = computed(() => {
-    return (
-        selectedAwayTeam.value &&
-        selectedHomeTeam.value &&
-        stadium.value &&
-        gameTime.value &&
-        gameType.value &&
-        selectedAwayTeam.value !== selectedHomeTeam.value
-    );
-});
-
-const canAddSuspendedMatchup = computed(()=>{
-    return (
-        suspendedStadium.value &&
-        suspendedGameDate.value &&
-        suspendedGameTime.value
-    );
-})
 
 const inningStats = ref({
     home: [],
@@ -711,7 +684,7 @@ watch(()=>selectedMatchup.value, (newVal) => {
 
 watch(()=>selectedDate.value, (newVal)=>{
     formattedDate.value = formatDate(newVal)
-    tomorrow.value = new Date(new Date(formattedDate.value.replace(/\./g, '-')).getTime() + 86400000).toISOString().split('T')[0].split('-').join('.')
+    tomorrow.value = dayjs(formattedDate.value.replace(/\./g, '-')).add(1, 'day').format('YYYY.MM.DD');
     suspendedGameDate.value = tomorrow.value
 })
 

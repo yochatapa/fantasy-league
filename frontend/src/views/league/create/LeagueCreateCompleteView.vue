@@ -48,7 +48,7 @@
             <template v-if="leagueInfo.draftMethod !== 'custom'">
                 <v-row align="center" class="py-4">
                     <v-col cols="4" class="text-left font-weight-medium">드래프트 일시</v-col>
-                    <v-col cols="8" class="text-left">{{ leagueInfo.draft_start_date }} {{ leagueInfo.draft_start_time }}</v-col>
+                    <v-col cols="8" class="text-left">{{ formatDateTime(leagueInfo.draft_start_date) }}</v-col>
                 </v-row>
                 <v-divider />
             </template>
@@ -86,6 +86,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { encryptData, decryptData } from '@/utils/common/crypto.js';
 import { commonFetch } from '@/utils/common/commonFetch';
 import { tr } from 'vuetify/locale';
+import { formatDate, formatDateTime } from '@/utils/common/dateUtils.js';
 
 const route = useRoute();
 const router = useRouter();

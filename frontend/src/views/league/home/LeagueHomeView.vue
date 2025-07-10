@@ -313,9 +313,9 @@ import { useRoute, useRouter } from 'vue-router';
 import { useClipboard } from '@vueuse/core';
 import { useDisplay } from 'vuetify';
 import { commonFetch } from '@/utils/common/commonFetch';
-import { LEAGUE_TYPES, LEAGUE_FORMATS, DRAFT_METHODS } from '@/utils/code/code';
+import { LEAGUE_TYPES, LEAGUE_FORMATS } from '@/utils/code/code';
 import { encryptData } from '@/utils/common/crypto.js';
-import { formatDate, parseDate, differenceInDays } from '@/utils/common/dateUtils.js';
+import { formatDate, parseDate } from '@/utils/common/dateUtils.js';
 
 const { copy } = useClipboard();
 const { mobile } = useDisplay();
@@ -337,70 +337,83 @@ const filteredSeasonYears = ref([]);
 const draftTeams = ref([]);
 
 const seasonYear = ref(null);
-watch([seasonInfo,seasonYear],()=>{filteredSeasonYears.value = seasonInfo.value.filter((sy)=>sy.season_year!==seasonYear.value);})
+watch([seasonInfo, seasonYear], () => {
+    filteredSeasonYears.value = seasonInfo.value.filter((sy) => sy.season_year !== seasonYear.value);
+});
 
 const isLoadedData = ref(false);
 const seasonDataYn = ref(false);
 
-const barRef = ref(null)
-const barWidth = ref(0)
+const barRef = ref(null);
+const barWidth = ref(0);
 
 window.addEventListener('resize', () => {
     if (barRef.value) {
-        barWidth.value = barRef.value.offsetWidth
+        barWidth.value = barRef.value.offsetWidth;
     }
-})
+});
 
-// today (1분마다 갱신)
-const today = ref(new Date())
-setInterval(() => today.value = new Date(), 1000 * 60)
+const today = ref(dayjs());
+setInterval(() => {
+    today.value = dayjs();
+}, 1000 * 60);
 
-function getDDayText(target) {
-    const diff = differenceInDays(target, today.value)
-    if (diff === 0) return 'D-Day'
-    return diff > 0 ? `D-${diff}` : `D+${Math.abs(diff)}`
-}
+const draftDate = computed(() => {
+    if (!currentSeasonInfo.value || !currentSeasonInfo.value.draft_start_date) return null;
+    return dayjs(currentSeasonInfo.value.draft_start_date);
+});
 
-// 날짜 객체
-const draftDate = computed(() => parseDate(currentSeasonInfo.value.draft_start_date+' '+currentSeasonInfo.value.draft_start_time))
-const startDate = computed(() => parseDate(currentSeasonInfo.value.start_date + " 00:00"))
+const startDate = computed(() => {
+    if (!currentSeasonInfo.value || !currentSeasonInfo.value.start_date) return null;
+    return dayjs(currentSeasonInfo.value.start_date, 'YYYY.MM.DD');
+});
 
-const MIN_PIXEL_GAP = 100
+const MIN_PIXEL_GAP = 100;
+
+const getDDayText = (date) => {
+    const diff = dayjs(date).startOf('day').diff(today.value.startOf('day'), 'day');
+    if (diff > 0) return `D-${diff}`;
+    if (diff < 0) return `D+${Math.abs(diff)}`;
+    return 'D-Day';
+};
 
 const datePercents = computed(() => {
-    if (!barWidth.value) barWidth.value = barRef.value?.offsetWidth
-    if (!barWidth.value) return []
+    if (!barWidth.value) barWidth.value = barRef.value?.offsetWidth;
+    if (!barWidth.value || !currentSeasonInfo.value) return [];
+
+    const draft = draftDate.value;
+    const start = startDate.value;
+
+    if (!draft?.isValid() || !start?.isValid()) return [];
 
     const all = [
         { key: 'today', label: '오늘', date: today.value },
-        { key: 'draft', label: '드래프트', date: draftDate.value },
-        { key: 'start', label: '시즌 시작', date: startDate.value }
-    ]
+        { key: 'draft', label: '드래프트', date: draft },
+        { key: 'start', label: '시즌 시작', date: start }
+    ];
 
-    // 날짜+시간까지 완전 동일할 때만 병합
-    const merged = []
+    const merged = [];
     for (const item of all) {
-        const existing = merged.find(m => m.date.getTime() === item.date.getTime())
+        const existing = merged.find(m => m.date.valueOf() === item.date.valueOf());
         if (existing) {
-            existing.key += `,${item.key}`
-            existing.label += `, ${item.label}`
+            existing.key += `,${item.key}`;
+            existing.label += `, ${item.label}`;
         } else {
-            merged.push({ ...item })
+            merged.push({ ...item });
         }
     }
 
-    // 날짜순 정렬
-    merged.sort((a, b) => a.date.getTime() - b.date.getTime())
+    merged.sort((a, b) => a.date.valueOf() - b.date.valueOf());
 
-    const min = merged[0].date.getTime()
-    const max = merged[merged.length - 1].date.getTime()
-    const total = max - min || 1
+    const min = merged[0].date.valueOf();
+    const max = merged[merged.length - 1].date.valueOf();
+    const total = max - min || 1;
 
     const raw = merged.map(entry => {
-        const percent = ((entry.date.getTime() - min) / total) * 100
-        const px = (percent / 100) * barWidth.value
-        const hour = entry.date.getHours()
-        const minute = entry.date.getMinutes()
+        const percent = ((entry.date.valueOf() - min) / total) * 100;
+        const px = (percent / 100) * barWidth.value;
+        const hour = entry.date.hour();
+        const minute = entry.date.minute();
 
         return {
             ...entry,
@@ -409,172 +422,94 @@ const datePercents = computed(() => {
             ddayText: getDDayText(entry.date),
             formatted: formatDate(entry.date),
             time: `${hour}:${minute.toString().padStart(2, '0')}`
-        }
-    })
+        };
+    });
 
-    // 최소 픽셀 간격 보정
-    const adjusted = [raw[0]]
+    const adjusted = [raw[0]];
     for (let i = 1; i < raw.length; i++) {
-        const prev = adjusted[i - 1]
-        const current = { ...raw[i] }
+        const prev = adjusted[i - 1];
+        const current = { ...raw[i] };
         if (current.px - prev.px < MIN_PIXEL_GAP) {
-            current.px = prev.px + MIN_PIXEL_GAP
+            current.px = prev.px + MIN_PIXEL_GAP;
         }
-        adjusted.push(current)
+        adjusted.push(current);
     }
 
-    const newMaxPx = adjusted[adjusted.length - 1].px
+    const newMaxPx = adjusted[adjusted.length - 1].px;
     adjusted.forEach(item => {
-        item.percent = (item.px / newMaxPx) * 100
-    })
-    
-    return adjusted
-})
+        item.percent = (item.px / newMaxPx) * 100;
+    });
 
+    return adjusted;
+});
 
-// 링크 복사
 const copyLink = () => {
-    copy(window.location.origin+`/league/join?inviteCode=${encodeURIComponent(encryptData(leagueInfo.value.invite_code))}`);
-    alert("초대 링크가 복사되었습니다.")
+    copy(window.location.origin + `/league/join?inviteCode=${encodeURIComponent(encryptData(leagueInfo.value.invite_code))}`);
+    alert("초대 링크가 복사되었습니다.");
 };
 
-// 매치 데이터
-const matches = ref([
-    {
-        myTeam: '나',
-        myScore: 10,
-        opponentScore: 5,
-        opponentTeam: '상대A',
-        myImage: 'https://via.placeholder.com/40x40.png?text=나',
-        opponentImage: 'https://via.placeholder.com/40x40.png?text=상대A',
-        myRank: 3,
-        opponentRank: 5,
-        isMe: true
-    },
-    {
-        myTeam: '팀B',
-        myScore: 8,
-        opponentScore: 9,
-        opponentTeam: '팀C',
-        myImage: 'https://via.placeholder.com/40x40.png?text=B',
-        opponentImage: 'https://via.placeholder.com/40x40.png?text=C',
-        myRank: 4,
-        opponentRank: 2,
-        isMe: false
-    },
-    {
-        myTeam: '팀D',
-        myScore: 7,
-        opponentScore: 7,
-        opponentTeam: '팀E',
-        myImage: 'https://via.placeholder.com/40x40.png?text=D',
-        opponentImage: 'https://via.placeholder.com/40x40.png?text=E',
-        myRank: 6,
-        opponentRank: 1,
-        isMe: false
-    },
-]);
+const matches = ref([]);
+const waiverList = ref([]);
+const rankings = ref([]);
 
-// Waiver 기록 데이터
-const waiverList = ref([
-    { team: '나', type: 'add', player: '손흥민' },
-    { team: '나', type: 'drop', player: '박지성' },
-    { team: '팀B', type: 'add', player: '이강인' }
-]);
-
-const rankings = ref([
-    { rank: 1, name: 'Team Alpha', wins: 8, losses: 1 },
-    { rank: 2, name: 'Team Bravo', wins: 7, losses: 2 },
-    { rank: 3, name: 'Team Charlie', wins: 6, losses: 3 },
-    { rank: 4, name: 'Team Delta', wins: 6, losses: 3 },
-    { rank: 5, name: 'Team Echo', wins: 5, losses: 4 },
-    { rank: 6, name: 'Team Foxtrot', wins: 5, losses: 4 },
-    { rank: 7, name: 'Team Golf', wins: 4, losses: 5 },
-    { rank: 8, name: 'Team Hotel', wins: 3, losses: 6 },
-    { rank: 9, name: 'Team India', wins: 2, losses: 7 },
-    { rank: 10, name: 'Team Juliet', wins: 1, losses: 8 },
-]);
-
-// 리그 정보를 가져오는 함수
 const loadLeagueInfo = async () => {
     try {
-        // fetchLeagueInfo는 서버에서 리그 정보를 받아오는 API 호출 함수입니다.
         const response = await commonFetch(`/api/league/${encodeURIComponent(orgLeagueId)}/info`, {
-            method : 'GET'
+            method: 'GET'
         });
 
-        if(response.success){
+        if (response.success) {
             const data = response.data.leagueInfo;
-            
+
             leagueInfo.value = {
                 ...data,
                 leagueTypeLabel: LEAGUE_TYPES.find(item => item.id === data.league_type)?.label || '',
                 leagueFormatLabel: LEAGUE_FORMATS.find(item => item.id === data.league_format)?.label || '',
-                // draftTypeLabel: DRAFT_METHODS.find(item => item.id === data.draft_type)?.label || '',
-                // formattedSeasonStartDate: dayjs(data.start_date).format('YYYY.MM.DD'),
-                // formattedDraftDate: dayjs(data.draft_start_date).format('YYYY.MM.DD'),
             };
 
-            seasonInfo.value = response.data.seasonInfo
+            seasonInfo.value = response.data.seasonInfo;
 
-            if(seasonInfo.value?.length>0){
+            if (seasonInfo.value?.length > 0) {
                 seasonYear.value = seasonInfo.value[0].season_year;
                 const seasonRes = await commonFetch(`/api/league/${encodeURIComponent(orgLeagueId)}/season/${encodeURIComponent(encryptData(seasonInfo.value[0].season_id))}/info`);
 
-                if(seasonRes.success){
+                if (seasonRes.success) {
                     seasonDataYn.value = true;
-                    currentSeasonInfo.value = seasonRes.data.seasonInfo
-                    draftTeams.value = seasonRes.data.draftTeams
+                    currentSeasonInfo.value = seasonRes.data.seasonInfo;
+                    draftTeams.value = seasonRes.data.draftTeams;
                 }
             }
-        }else{
+        } else {
             alert("리그 정보 조회 도중 문제가 발생하였습니다.");
             router.push("/");
         }
 
-        
     } catch (error) {
         console.error('리그 정보 조회 실패:', error);
-    }finally{
+    } finally {
         isLoadedData.value = true;
     }
 };
 
-// 열림 여부
 const isDetailsOpen = ref(false);
 
 onMounted(() => {
     if (!isMobile.value) {
         isDetailsOpen.value = true;
     }
-
     loadLeagueInfo();
 });
 
-// 모바일/PC 전환 감지
 watch(isMobile, (newVal) => {
-    if (!newVal) {
-        isDetailsOpen.value = true;
-    } else {
-        isDetailsOpen.value = false;
-    }
+    isDetailsOpen.value = !newVal;
 });
 
-// 내 경기와 추가 경기 분리
 const displayMatches = computed(() => {
-    if (isMobile.value && !isDetailsOpen.value) {
-        return matches.value.filter(match => match.isMe);
-    } else {
-        return matches.value.filter(match => match.isMe);
-    }
+    return matches.value.filter(match => match.isMe);
 });
 
 const additionalMatches = computed(() => {
-    if (isMobile.value && !isDetailsOpen.value) {
-        return matches.value.filter(match => !match.isMe);
-    } else {
-        return matches.value.filter(match => !match.isMe);
-    }
+    return matches.value.filter(match => !match.isMe);
 });
 
 const toggleDetails = () => {
@@ -582,35 +517,34 @@ const toggleDetails = () => {
 };
 
 const goToNotices = () => {
-    console.log("hihi")
-}
+    console.log("hihi");
+};
 
 const selectDraftSlot = async (order) => {
     try {
-        const orderRes = await commonFetch(`/api/league/${encodeURIComponent(orgLeagueId)}/season/${encodeURIComponent(encryptData(currentSeasonInfo.value.season_id))}/draft-order`,{
-            method : "POST"
-            , body : {
-                order : order
-            }            
-        })
-        
-        if(!orderRes.success && orderRes?.data?.code === -1){
-            alert(orderRes.message,"error")
+        const orderRes = await commonFetch(`/api/league/${encodeURIComponent(orgLeagueId)}/season/${encodeURIComponent(encryptData(currentSeasonInfo.value.season_id))}/draft-order`, {
+            method: "POST",
+            body: {
+                order: order
+            }
+        });
+
+        if (!orderRes.success && orderRes?.data?.code === -1) {
+            alert(orderRes.message, "error");
         }
     } catch (error) {
-        alert("드래프트 순서를 바꾸는 도중 문제가 발생하였습니다.","error");
-    }finally{
+        alert("드래프트 순서를 바꾸는 도중 문제가 발생하였습니다.", "error");
+    } finally {
         await getDraftOrder();
     }
-}
+};
 
 const getDraftOrder = async () => {
     const seasonRes = await commonFetch(`/api/league/${encodeURIComponent(orgLeagueId)}/season/${encodeURIComponent(encryptData(seasonInfo.value[0].season_id))}/info`);
-
-    if(seasonRes.success){
-        draftTeams.value = seasonRes.data.draftTeams
+    if (seasonRes.success) {
+        draftTeams.value = seasonRes.data.draftTeams;
     }
-}
+};
 </script>
 
 <style scoped>

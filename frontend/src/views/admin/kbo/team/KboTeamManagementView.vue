@@ -45,7 +45,7 @@
                         <span v-else>-</span>
                     </template>
                     <template #item.id="{ item }">
-                        <v-btn color="secondary" @click.native.stop="goToRosterManagement(item.id)">로스터 관리</v-btn>
+                        <v-btn color="secondary" v-if="item.status === 'active'" @click.native.stop="goToRosterManagement(item.id)">로스터 관리</v-btn>
                     </template>
                 </v-data-table-server>
                 

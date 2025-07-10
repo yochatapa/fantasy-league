@@ -4,7 +4,7 @@
             <v-card-title class="text-h6 mb-4 font-weight-bold">
                 {{ isEditMode ? '선수 정보 수정' : '선수 정보 등록' }}
             </v-card-title>
-
+            
             <v-card-text>
                 <v-form @submit.prevent="submitForm" ref="formRef" v-model="formValid">
                     <v-row no-gutters>
@@ -290,11 +290,12 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import dayjs from 'dayjs';
+
 import CommonDateInput from '@/components/common/CommonDateInput.vue';
+import FileUploader from '@/components/common/FileUploader.vue';
 import { commonFetch, getNewFormData } from '@/utils/common/commonFetch';
-import { formatDate } from '@/utils/common/dateUtils.js';
 import { POSITIONS } from '@/utils/code/code.js';
-import FileUploader from '@/components/common/FileUploader.vue'; // FileUploader 컴포넌트 import
 
 const route = useRoute();
 const router = useRouter();
@@ -308,17 +309,14 @@ const isInitialLoad = ref(true);
 const mainImageUploader = ref(null);
 const seasonImageUploader = ref(null);
 
-// 연도 옵션: 1982년부터 현재 연도까지
-const birthDateInput = ref('');
-const currentYear = new Date().getFullYear();
+const currentYear = dayjs().year();
 const yearOptions = Array.from({ length: currentYear - 1982 + 1 }, (_, i) => 1982 + i);
 
-const today = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().split('T')[0]; //YYYY-MM-DD
-const birthDateMenu = ref(false);
+const today = dayjs().format('YYYY-MM-DD');
 
 const form = ref({
     name: '',
-    birth_date: '',
+    birth_date: '',        // 'YYYY.MM.DD' 문자열로 관리
     player_type: null,
     primary_position: null,
     is_retired: false,
@@ -329,39 +327,33 @@ const form = ref({
     weight: null,
     contract_bonus: null,
     is_foreign: false,
-    main_profile_image: null, // 대표 이미지 데이터 저장
+    main_profile_image: null, 
     seasons: [],
 });
 
 const initialMainProfileImage = ref(null);
 const initialSeasonImages = ref([]);
 
-const getFirstDayOfYear = (year) => {
-    return `${year}.01.01`;
-}
+const getFirstDayOfYear = (year) => `${year}.01.01`;
+const getLastDayOfYear = (year) => `${year}.12.31`;
 
-const getLastDayOfYear = (year) => {
-    return `${year}.12.31`;
-}
-
-const activeSeasons = computed(() => {
-    return form.value.seasons.filter(season => season.flag === 'I' || season.flag === 'U');
-});
+const activeSeasons = computed(() => form.value.seasons.filter(season => season.flag === 'I' || season.flag === 'U'));
 
 const seasonStartEndDateOptions = computed(() => {
-    return form.value.seasons.map((season, index) => {
-        const year = season.year || new Date().getFullYear();
-        const minDate = getFirstDayOfYear(year);
-        const maxDate = getLastDayOfYear(year);
-        const defaultStartDate = getFirstDayOfYear(year);
-        const defaultEndDate = getLastDayOfYear(year);
-        return { minDate, maxDate, defaultStartDate, defaultEndDate };
+    return form.value.seasons.map(season => {
+        const year = season.year || dayjs().year();
+        return {
+            minDate: getFirstDayOfYear(year),
+            maxDate: getLastDayOfYear(year),
+            defaultStartDate: getFirstDayOfYear(year),
+            defaultEndDate: getLastDayOfYear(year),
+        };
     });
 });
 
 const filteredPositions = computed(() => {
     if (form.value.player_type === 'P') {
-        return POSITIONS.filter(pos => pos.code === 'SP' || pos.code === 'RP');
+        return POSITIONS.filter(pos => ['SP', 'RP'].includes(pos.code));
     } else if (form.value.player_type === 'B') {
         return POSITIONS.filter(pos => !['SP', 'RP'].includes(pos.code));
     }
@@ -371,24 +363,20 @@ const filteredPositions = computed(() => {
 watch(() => form.value.player_type, () => {
     const validPositions = filteredPositions.value.map(pos => pos.code);
 
-    // ✅ 기존의 primary_position이 필터링된 포지션에 있으면 유지
     if (!validPositions.includes(form.value.primary_position)) {
         form.value.primary_position = null;
     }
 
-    // ✅ 시즌에 있는 포지션들도 유효한 값만 남김
     form.value.seasons.forEach(season => {
         if (Array.isArray(season.position)) {
             season.position = season.position.filter(pos => validPositions.includes(pos));
-        } else {
-            if (!validPositions.includes(season.position)) {
-                season.position = null;
-            }
+        } else if (!validPositions.includes(season.position)) {
+            season.position = null;
         }
     });
 });
 
-const teamOptionsPerSeason = ref([]); // 각 시즌마다 팀 옵션 리스트
+const teamOptionsPerSeason = ref([]);
 
 const fetchTeamsByYear = async (year) => {
     const res = await commonFetch(`/api/admin/team/list?year=${year}`, { method: 'GET' });
@@ -405,38 +393,47 @@ const fetchPlayer = async () => {
     const res = await commonFetch(`/api/admin/player/${encodeURIComponent(playerId.value)}`, { method: 'GET' });
     if (res.success) {
         const { playerInfo, seasons, mainProfileImage, seasonImages } = res.data;
+
+        // birth_date: ISO 문자열 → 'YYYY.MM.DD' 포맷 변환
+        const birthDateFormatted = playerInfo.birth_date ? dayjs(playerInfo.birth_date).format('YYYY.MM.DD') : '';
+
         form.value = {
             ...playerInfo,
+            birth_date: birthDateFormatted,
             main_profile_image: mainProfileImage ? [mainProfileImage] : null,
             seasons: seasons.map((season, index) => ({
                 ...season,
                 flag: 'U',
-                profile_image: seasonImages?.[index] ? [seasonImages?.[index]] : null,
+                // start_date, end_date ISO → 'YYYY.MM.DD' 포맷 변환
+                start_date: season.start_date ? dayjs(season.start_date).format('YYYY.MM.DD') : getFirstDayOfYear(season.year || currentYear),
+                end_date: season.end_date ? dayjs(season.end_date).format('YYYY.MM.DD') : getLastDayOfYear(season.year || currentYear),
+                profile_image: seasonImages?.[index] ? [seasonImages[index]] : null,
             })),
         };
 
-        if(playerInfo.file_id)
+        if (playerInfo.file_id) {
             initialMainProfileImage.value = [{
-                    file_id             : playerInfo.file_id
-                    , sn                : playerInfo.sn
-                    , original_name     : playerInfo.original_name
-                    , size              : playerInfo.size
-                    , path              : playerInfo.profile_image
-                    , mimetype          : playerInfo.mimetype
-                }]
+                file_id: playerInfo.file_id,
+                sn: playerInfo.sn,
+                original_name: playerInfo.original_name,
+                size: playerInfo.size,
+                path: playerInfo.profile_image,
+                mimetype: playerInfo.mimetype,
+            }];
+        }
 
         initialSeasonImages.value = seasons.map((season) => {
             if (season.file_id) {
                 return [{
-                    file_id        : season.file_id,
-                    sn             : season.sn,
-                    original_name  : season.original_name,
-                    size           : season.size,
-                    path           : season.profile_image,
-                    mimetype       : season.mimetype
+                    file_id: season.file_id,
+                    sn: season.sn,
+                    original_name: season.original_name,
+                    size: season.size,
+                    path: season.profile_image,
+                    mimetype: season.mimetype,
                 }];
             }
-            return []; // file_id가 없으면 빈 배열
+            return [];
         });
 
         await fetchAllTeamOptionsForSeasons();
@@ -451,9 +448,9 @@ onMounted(async () => {
 });
 
 const addSeason = async () => {
-    const year = new Date().getFullYear();
+    const year = dayjs().year();
     const newSeason = {
-        year: year,
+        year,
         team_id: null,
         position: null,
         uniform_number: null,
@@ -463,11 +460,11 @@ const addSeason = async () => {
         end_date: getLastDayOfYear(year),
         flag: 'I',
         profile_image: null,
-        is_active : true
+        is_active: true,
     };
     form.value.seasons.push(newSeason);
 
-    const teamList = await fetchTeamsByYear(newSeason.year);
+    const teamList = await fetchTeamsByYear(year);
     teamOptionsPerSeason.value.push(teamList);
     initialSeasonImages.value.push(null);
 };
@@ -503,27 +500,40 @@ watch(
 );
 
 const updateSeasonDetails = async (index, newYear) => {
-    if (isInitialLoad.value) {
-        return;
-    }
+    if (isInitialLoad.value) return;
+
     const currentTeamId = form.value.seasons[index].team_id;
     form.value.seasons[index].year = newYear;
+
     const teamList = await fetchTeamsByYear(newYear);
     teamOptionsPerSeason.value[index] = teamList;
 
-    const isExistingTeamInNewList = teamList.some(team => team.id === currentTeamId);
-    if (!isExistingTeamInNewList) {
+    if (!teamList.some(team => team.id === currentTeamId)) {
         form.value.seasons[index].team_id = null;
     }
 
     form.value.seasons[index].start_date = getFirstDayOfYear(newYear);
-    form.value.seasons[index].end_date = getLastDayOfYear(newYear); 
+    form.value.seasons[index].end_date = getLastDayOfYear(newYear);
 };
 
 const submitForm = async () => {
     if (!formRef.value?.validate()) return;
 
-    const formData = getNewFormData(form.value);
+    const formData = getNewFormData({
+        ...form.value,
+        birth_date: form.value.birth_date
+            ? dayjs(form.value.birth_date).format('YYYY.MM.DD')
+            : null,
+        seasons: form.value.seasons.map(season => ({
+            ...season,
+            start_date: season.start_date
+                ? dayjs(season.start_date).format('YYYY.MM.DD')
+                : null,
+            end_date: season.end_date
+                ? dayjs(season.end_date).format('YYYY.MM.DD')
+                : null,
+        })),
+    });
 
     const method = isEditMode.value ? 'PUT' : 'POST';
     const url = isEditMode.value
@@ -540,12 +550,13 @@ const submitForm = async () => {
             alert(isEditMode.value ? '선수 정보가 수정되었습니다.' : '선수 정보가 등록되었습니다.');
             router.push('/admin/player/management');
         } else {
-            alert(res.message || `선수 정보 ${isEditMode.value?'수정':'저장'}에 실패하였습니다.`, 'error');
+            alert(res.message || `선수 정보 ${isEditMode.value ? '수정' : '저장'}에 실패하였습니다.`, 'error');
         }
     } catch (err) {
         alert('서버에서 에러가 발생하였습니다.\n다시 시도해주세요.', 'error');
     }
 };
+
 
 const deleteForm = async () => {
     if (!playerId.value) {
@@ -553,24 +564,23 @@ const deleteForm = async () => {
         return;
     }
 
-    const confirmed = await confirm('정말 이 선수를 삭제하시겠습니까?');
-
-    if (!confirmed) return; 
+    const confirmed = confirm('정말 이 선수를 삭제하시겠습니까?');
+    if (!confirmed) return;
 
     try {
         const res = await commonFetch(
             `/api/admin/player/delete`,
             {
                 method: 'DELETE',
-                body : {
-                    playerId : playerId.value
+                body: {
+                    playerId: playerId.value
                 }
             }
         );
 
         if (res.success) {
-            router.push('/admin/player/management');
             alert('선수 정보가 삭제되었습니다.');
+            router.push('/admin/player/management');
         } else {
             alert(res.message || '선수 정보 삭제에 실패했습니다.', "error");
         }

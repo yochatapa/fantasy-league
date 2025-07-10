@@ -78,13 +78,14 @@ import { useRoute, useRouter } from 'vue-router';
 import { commonFetch, getNewFormData } from '@/utils/common/commonFetch';
 import { STADIUMS } from '@/utils/code/code.js';
 import FileUploader from '@/components/common/FileUploader.vue';
+import dayjs from 'dayjs';
 
 const route = useRoute();
 const router = useRouter();
 
 const teamId = computed(() => route.query.teamId);
 const isEditMode = computed(() => !!teamId.value);
-const currentYear = new Date().getFullYear();
+const currentYear = dayjs().year();
 
 const form = ref({
     name: '',

@@ -9,6 +9,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { rootCertificates } from 'tls';
 import convertFileToBase64 from '../../utils/convertFileToBase64.js'; // apiResponse에서 임포트
 
+import dayjs from 'dayjs';
+
 const finalUploadsBaseDir = path.join(process.cwd(), 'uploads');
 
 export const getTeamRosterList = async (req, res) => {
@@ -167,11 +169,11 @@ export const getTeamRosterDetail = async (req, res) => {
         return sendBadRequest(res, "로스터 정보가 잘못되었습니다.");
     }
 
-    if(!date){
-        const newDate = new Date();
-        date = newDate.getUTCFullYear() + "."
-                + (newDate.getMonth + 1) + "."
-                + newDate.getDay();
+    if (!date) {
+        const newDate = dayjs();
+        date = newDate.utc().year() + "." +
+            (newDate.utc().month() + 1) + "." +  // month()는 0~11, 그래서 +1
+            newDate.utc().date();                 // getDay()는 요일(0~6)이라 getDate() 대신 date()로 변경
     }
 
     try {
