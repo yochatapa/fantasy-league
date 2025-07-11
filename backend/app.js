@@ -11,6 +11,7 @@ import leagueRoutes from './routes/leagueRoutes.js';
 import kboRoutes from './routes/kboRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import fileRoutes from './routes/fileRoutes.js';
+import commonRoutes from './routes/commonRoutes.js';
 
 dotenv.config();
 
@@ -39,6 +40,7 @@ app.use('/api/league', leagueRoutes);
 app.use('/api/kbo', kboRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/file', fileRoutes);
+app.use('/api/common', commonRoutes);
 
 if(process.env.SERVE_FRONTEND === 'true'){
     app.get(/^\/(.*)?$/, (req, res) => {
