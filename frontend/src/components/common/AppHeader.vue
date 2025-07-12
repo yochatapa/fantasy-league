@@ -10,39 +10,22 @@
             <!-- 우측 사용자 메뉴 -->
             <div class="d-flex align-center">
                 <template v-if="isLoggedIn">
-                    <v-menu offset-y>
+                    <!-- PC 알림 아이콘 -->
+                    <v-menu offset-y v-if="!isMobile">
                         <template #activator="{ props }">
                             <div v-bind="props" class="mr-3 position-relative cursor-pointer">
                                 <v-icon size="28" color="primary">mdi-bell-outline</v-icon>
                                 <div
                                     v-if="unreadCount > 0"
-                                    class="position-absolute rounded-circle"
-                                    style="top: -4px; right: -4px; width: 10px; height: 10px; background-color: red;"
+                                    class="position-absolute"
+                                    style="top: 2px; right: 2px; width: 8px; height: 8px; background-color: red; border-radius: 50%;"
                                 ></div>
                             </div>
                         </template>
-
-                        <v-card style="min-width: 300px; max-height: 400px; overflow-y: auto;">
-                            <v-list>
-                                <v-list-item
-                                    v-for="n in notifications"
-                                    :key="n.id"
-                                    @click="onClickNotification(n)"
-                                    :class="n.status === 'unread' ? '' : 'bg-grey-lighten-3'"
-                                >
-                                    <v-list-item-title class="text-body-2 font-weight-medium">
-                                        {{ n.title }}
-                                    </v-list-item-title>
-                                    <v-list-item-subtitle class="text-caption">
-                                        {{ n.message }}
-                                    </v-list-item-subtitle>
-                                </v-list-item>
-                                <v-list-item v-if="notifications.length === 0">
-                                    <v-list-item-title class="text-caption text-grey">알림이 없습니다.</v-list-item-title>
-                                </v-list-item>
-                            </v-list>
-                        </v-card>
+                        <NotificationCard />
                     </v-menu>
+
+                    <!-- 사용자 아바타 -->
                     <v-menu offset-y>
                         <template #activator="{ props }">
                             <v-avatar
@@ -59,18 +42,36 @@
                                 <v-icon v-else size="28" color="#666">mdi-account-circle</v-icon>
                             </v-avatar>
                         </template>
-                        <v-card min-width="200" class="pa-2">
-                            <div class="px-2 py-1">
+
+                        <v-card min-width="220" class="pa-2 position-relative">
+                            <!-- 모바일: 알림 벨 아이콘 -->
+                            <template v-if="isMobile">
+                                <div class="position-absolute" style="top: 10px; right: 10px;">
+                                    <v-menu offset-y>
+                                        <template #activator="{ props }">
+                                            <div v-bind="props" class="position-relative cursor-pointer">
+                                                <v-icon size="24" color="primary">mdi-bell-outline</v-icon>
+                                                <div
+                                                    v-if="unreadCount > 0"
+                                                    class="position-absolute"
+                                                    style="top: 2px; right: 2px; width: 6px; height: 6px; background-color: red; border-radius: 50%;"
+                                                ></div>
+                                            </div>
+                                        </template>
+                                        <NotificationCard />
+                                    </v-menu>
+                                </div>
+                            </template>
+
+                            <!-- 사용자 정보 -->
+                            <div class="px-2 py-1 mt-2">
                                 <div class="text-subtitle-1 font-weight-medium">{{ user?.nickname }}</div>
                                 <div class="text-caption text-grey-darken-1">{{ user?.email }}</div>
                             </div>
-                            <v-divider class="my-2"></v-divider>
-                            <v-btn
-                                variant="text"
-                                color="primary"
-                                block
-                                @click="router.push('/profile')"
-                            >
+
+                            <v-divider class="my-2" />
+
+                            <v-btn variant="text" color="primary" block @click="router.push('/profile')">
                                 내 정보 관리
                             </v-btn>
                             <v-btn
@@ -86,6 +87,7 @@
                         </v-card>
                     </v-menu>
                 </template>
+
                 <template v-else>
                     <v-btn variant="flat" color="primary" @click="goToLogin">로그인</v-btn>
                 </template>
@@ -95,24 +97,37 @@
 </template>
 
 <script setup>
+import NotificationCard from './card/NotificationCard.vue'
 import { computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useUserStore } from '@/stores/userStore'
 import { useRoute, useRouter } from 'vue-router'
-import { useNotificationStore } from '@/stores/notificationStore';
+import { useNotificationStore } from '@/stores/notificationStore'
+import { useDisplay } from 'vuetify'
+import dayjs from 'dayjs'
+import relativeTime from 'dayjs/plugin/relativeTime'
 
-const notificationStore = useNotificationStore();
-const { notifications } = storeToRefs(notificationStore);
-const unreadCount = computed(() => notificationStore.unreadCount);
+dayjs.extend(relativeTime)
+
+const { mobile } = useDisplay()
+const isMobile = computed(() => mobile.value)
+
+const notificationStore = useNotificationStore()
+const { notifications } = storeToRefs(notificationStore)
+const unreadCount = computed(() => notificationStore.unreadCount)
 
 onMounted(() => {
-    notificationStore.fetchNotifications(); // 최초 진입 시 알림 불러오기
-});
+    notificationStore.fetchNotifications()
+})
 
 const onClickNotification = async (n) => {
-    await notificationStore.markAsRead(n.id);
-    // TODO: 관련 페이지로 이동 필요시 router.push(`/draft/${n.related_id}`) 등
-};
+    await notificationStore.markAsRead(n.id)
+    // TODO: 알림에 따라 페이지 이동 처리 필요
+}
+
+const formatTime = (timestamp) => {
+    return dayjs(timestamp).fromNow()
+}
 
 const route = useRoute()
 const router = useRouter()
@@ -123,8 +138,7 @@ const goToLogin = () => router.push('/login')
 const logout = () => userStore.logout()
 
 const isAdminRoute = computed(() => route.path.startsWith('/admin'))
-
 const goHome = () => {
-    location.href=`${location.origin}${isAdminRoute.value?'/admin':''}`
+    location.href = `${location.origin}${isAdminRoute.value ? '/admin' : ''}`
 }
 </script>

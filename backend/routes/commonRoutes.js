@@ -5,6 +5,6 @@ const router = express.Router();
 
 router.get('/notifications', verifyToken, getNotificationList);
 
-router.post('/notifications/read', markNotificationAsRead);
+router.post('/notifications/read', verifyToken, markNotificationAsRead);
 
 export default router;
