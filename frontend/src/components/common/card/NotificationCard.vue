@@ -41,11 +41,12 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useNotificationStore } from '@/stores/notificationStore';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
+
 dayjs.extend(relativeTime);
 
 const notificationStore = useNotificationStore();
@@ -55,5 +56,22 @@ const onClickNotification = async (n) => {
     await notificationStore.markAsRead(n.id);
 };
 
-const formatTime = (timestamp) => dayjs(timestamp).fromNow();
+// 현재 시간 ref: 1분마다 갱신
+const now = ref(dayjs());
+let intervalId;
+
+onMounted(() => {
+    intervalId = setInterval(() => {
+        now.value = dayjs();
+    }, 60 * 1000);
+});
+
+onBeforeUnmount(() => {
+    clearInterval(intervalId);
+});
+
+// 템플릿에서 실시간 계산용
+const formatTime = (timestamp) => {
+    return dayjs(timestamp).from(now.value);
+};
 </script>

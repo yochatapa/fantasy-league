@@ -50,7 +50,7 @@ const job = schedule.scheduleJob('0 * * * * *', async () => {
                 const { draft_start_date, draft_timer: dbDraftTimer } = draftConfigResult.rows[0];
 
                 // draft_rooms 생성
-                const { rows : draft_rooms } = await client.query(`
+                const { rows: draft_rooms } = await client.query(`
                     INSERT INTO draft_rooms (
                         league_id,
                         season_id,
@@ -71,14 +71,14 @@ const job = schedule.scheduleJob('0 * * * * *', async () => {
                     draft_start_date
                 ]);
 
-                const draft_room_id = draft_rooms[0]?.id
-
+                const draft_room_id = draft_rooms[0]?.id;
                 const io = getIO();
 
+                // 📢 draftRoom 생성 알림 (broadcast)
                 io.to(`${league_id}_${season_id}`).emit('createDraftRoom', {
-                    draft_room_id: draft_rooms[0].id,
+                    draft_room_id,
                     starts_at: draft_start_date,
-                    message: "드래프트 룸이 성공적으로 생성되었습니다."
+                    message: '드래프트 룸이 성공적으로 생성되었습니다.'
                 });
 
                 console.log(`🎯 draft_room 생성됨: league_id=${league_id}, season_id=${season_id}`);
@@ -99,11 +99,12 @@ const job = schedule.scheduleJob('0 * * * * *', async () => {
                     WHERE league_id = $1 AND season_id = $2
                 `, [league_id, season_id]);
 
-                // 3. 알림 저장 + 개별 소켓 emit
-                const now = dayjs();
+                // 3. 알림 메시지 구성
                 const formattedStart = dayjs(draft_start_date).format('YYYY-MM-DD HH:mm');
                 const messageText = `${leagueName} 리그의 드래프트가 ${formattedStart}에 진행됩니다!\n이제 드래프트 룸에 입장할 수 있습니다.`;
+                const now = dayjs();
 
+                // 4. bulk insert 알림 데이터 구성
                 const insertValues = [];
                 const insertParams = [];
 
@@ -112,34 +113,40 @@ const job = schedule.scheduleJob('0 * * * * *', async () => {
                     insertValues.push(`($${paramIndex + 1}, $${paramIndex + 2}, $${paramIndex + 3}, $${paramIndex + 4}, $${paramIndex + 5}, $${paramIndex + 6}, $${paramIndex + 7}, $${paramIndex + 8})`);
 
                     insertParams.push(
-                        user_id,                 // user_id
-                        'draft',                 // type
-                        '드래프트 시작 알림',     // title
-                        messageText,            // message
-                        'unread',                // status
-                        null,                    // url
-                        draft_room_id,          // related_id
-                        'draft_room'            // related_type
+                        user_id,
+                        'draft',
+                        '드래프트 시작 알림',
+                        messageText,
+                        'unread',
+                        null,
+                        draft_room_id,
+                        'draft_room'
                     );
+                });
 
-                    // 소켓 알림 emit
+                // 5. 알림 저장 및 ID 반환
+                const { rows: notiRows } = await client.query(`
+                    INSERT INTO notifications (
+                        user_id, type, title, message,
+                        status, url, related_id, related_type
+                    ) VALUES ${insertValues.join(',')}
+                    RETURNING id
+                `, insertParams);
+
+                // 6. 유저별로 알림 ID 매칭 후 소켓 전송
+                users.forEach(({ user_id }, idx) => {
+                    const notiId = notiRows[idx]?.id;
+
                     io.to(`user_${user_id}`).emit('notification', {
                         type: 'draft',
                         title: '드래프트 시작 알림',
                         message: messageText,
                         related_id: draft_room_id,
                         related_type: 'draft_room',
-                        timestamp: now.toISOString()
+                        id: notiId,
+                        created_at: now.toISOString()
                     });
                 });
-
-                // 4. 알림 bulk insert
-                await client.query(`
-                    INSERT INTO notifications (
-                        user_id, type, title, message,
-                        status, url, related_id, related_type
-                    ) VALUES ${insertValues.join(',')}
-                `, insertParams);
             });
         }
     } catch (error) {
@@ -147,6 +154,8 @@ const job = schedule.scheduleJob('0 * * * * *', async () => {
     }
 });
 
+
+// 매 초 0초마다 실행 (주의: 중복 알림 방지 로직 포함됨)
 const alertJob = schedule.scheduleJob('0 * * * * *', async () => {
     console.log(`[${dayjs().format('YYYY.MM.DD HH:mm:ss')}] 드래프트 10분 전 알림 체크 중...`);
 
@@ -154,31 +163,102 @@ const alertJob = schedule.scheduleJob('0 * * * * *', async () => {
     const tenMinutesLater = now.add(10, 'minute');
 
     try {
-        const alertQuery = `
-            SELECT dr.id AS draft_room_id, dr.league_id, dr.season_id, dr.started_at
-            FROM draft_rooms dr
-            WHERE dr.status = 'waiting'
-            AND dr.started_at BETWEEN NOW() AND $1
-        `;
+        await withTransaction(async (client) => {
+            const alertQuery = `
+                SELECT dr.id AS draft_room_id, dr.league_id, dr.season_id, dr.started_at
+                FROM draft_rooms dr
+                WHERE dr.status = 'waiting'
+                AND dr.ten_min_alert_sent = false
+                AND dr.started_at BETWEEN NOW() AND $1
+            `;
 
-        const { rows } = await query(alertQuery, [tenMinutesLater.toDate()]);
-        for (const row of rows) {
-            const { league_id, season_id, draft_room_id, started_at } = row;
+            const { rows } = await client.query(alertQuery, [tenMinutesLater.toDate()]);
+            console.log('🔍 알림 대상 draft_rooms:', rows.length);
 
-            const io = getIO();
+            for (const row of rows) {
+                const { league_id, season_id, draft_room_id, started_at } = row;
+                const io = getIO();
 
-            io.to(`${league_id}_${season_id}`).emit('draftAlert', {
-                type: 'draftSoon',
-                data: {
-                    draft_room_id,
-                    starts_at: started_at,
-                    message: '드래프트 시작까지 10분 남았습니다. 준비하세요!'
-                }
-            });
+                // 1. 리그명 조회
+                const { rows: leagueRows } = await client.query(
+                    `SELECT league_name FROM league_master WHERE league_id = $1`,
+                    [league_id]
+                );
+                const leagueName = leagueRows[0]?.league_name || '해당';
 
-            console.log(`⏰ 10분 전 알림 전송: league_id=${league_id}, season_id=${season_id}`);
-        }
+                // 2. 소속 유저 조회
+                const { rows: users } = await client.query(
+                    `SELECT user_id FROM league_season_team WHERE league_id = $1 AND season_id = $2`,
+                    [league_id, season_id]
+                );
+
+                const formattedStart = dayjs(started_at).format('YYYY-MM-DD HH:mm');
+                const messageText = `${leagueName} 리그의 드래프트가 곧 시작됩니다!\n10분 후 ${formattedStart}에 드래프트가 시작됩니다.`;
+                const now = dayjs();
+
+                // 3. 알림 저장 (bulk insert + RETURNING id)
+                const insertValues = [];
+                const insertParams = [];
+
+                users.forEach(({ user_id }, index) => {
+                    const paramIndex = index * 8;
+                    insertValues.push(`($${paramIndex + 1}, $${paramIndex + 2}, $${paramIndex + 3}, $${paramIndex + 4}, $${paramIndex + 5}, $${paramIndex + 6}, $${paramIndex + 7}, $${paramIndex + 8})`);
+                    insertParams.push(
+                        user_id,
+                        'draft',
+                        '드래프트 10분 전 알림',
+                        messageText,
+                        'unread',
+                        null,
+                        draft_room_id,
+                        'draft_room'
+                    );
+                });
+
+                const { rows: notiRows } = await client.query(`
+                    INSERT INTO notifications (
+                        user_id, type, title, message,
+                        status, url, related_id, related_type
+                    ) VALUES ${insertValues.join(',')}
+                    RETURNING id
+                `, insertParams);
+
+                // 4. 유저별 개별 소켓 알림 전송
+                users.forEach(({ user_id }, idx) => {
+                    const notiId = notiRows[idx]?.id;
+
+                    io.to(`user_${user_id}`).emit('notification', {
+                        type: 'draft',
+                        title: '드래프트 10분 전 알림',
+                        message: messageText,
+                        related_id: draft_room_id,
+                        related_type: 'draft_room',
+                        id: notiId,
+                        created_at: now.toISOString()
+                    });
+                });
+
+                // 5. 알림 전송 완료 표시
+                await client.query(`
+                    UPDATE draft_rooms
+                    SET ten_min_alert_sent = TRUE, updated_at = CURRENT_TIMESTAMP
+                    WHERE id = $1
+                `, [draft_room_id]);
+
+                // 6. 방송용 알림 emit (전체 방송)
+                io.to(`${league_id}_${season_id}`).emit('draftAlert', {
+                    type: 'draftSoon',
+                    data: {
+                        draft_room_id,
+                        starts_at: started_at,
+                        message: '드래프트 시작까지 10분 남았습니다. 준비하세요!'
+                    }
+                });
+
+                console.log(`⏰ 드래프트 10분 전 알림 전송 완료: league_id=${league_id}, season_id=${season_id}`);
+            }
+        });
     } catch (error) {
-        console.error('10분 전 알림 처리 중 에러:', error);
+        console.error('❌ 10분 전 알림 처리 중 에러:', error);
     }
 });

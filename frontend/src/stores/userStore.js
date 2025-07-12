@@ -71,7 +71,7 @@ export const useUserStore = defineStore('user', {
                             const notificationStore = useNotificationStore();
 
                             socket.on('notification', (payload) => {
-                                console.log('[소켓 알림 수신]', payload);
+                                console.log('[소켓 알림 수신]');
                                 notificationStore.addNotification({
                                     ...payload,
                                     id: payload.id ?? Date.now(), // 서버에서 id 주면 사용
