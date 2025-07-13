@@ -10,6 +10,7 @@ import LeagueJoinView from '@/views/league/create/LeagueJoinView.vue'
 import LeagueCreateCompleteView from '@/views/league/create/LeagueCreateCompleteView.vue'
 import LeagueLayoutView from '@/views/league/LeagueLayoutView.vue'
 import LeagueHomeView from '@/views/league/home/LeagueHomeView.vue'
+import DraftRoomView from '@/views/league/draft/DraftRoomView.vue'
 
 import AdminLayoutView from '@/views/admin/AdminLayoutView.vue'
 import KboTeamManagementView from '@/views/admin/kbo/team/KboTeamManagementView.vue'
@@ -95,7 +96,14 @@ const router = createRouter({
                             component: LeagueHomeView,
                         }
                     ]
-                }
+                },{
+                    path: 'league/draftroom',
+                    name: 'DraftRoomView',
+                    component: DraftRoomView,
+                    meta : {
+                        requiresAuth : true
+                    }
+                },
             ]
         },
         {

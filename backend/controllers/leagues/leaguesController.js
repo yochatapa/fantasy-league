@@ -199,27 +199,23 @@ export const createLeague = async (req, res) => {
             // league_season_stat_setting 저장 (초기 설정)
             const insertLeagueStatSetting = `
                 INSERT INTO league_season_stat_setting (
-                    league_id
-                    , season_id
-                    , stat
-                    , stat_value
+                    league_id, season_id, stat, stat_value
                 )
                 VALUES 
-                    ($1, $2, 'R', 1)
-                    , ($1, $2, 'H', 1)
-                    , ($1, $2, '2B', 2)
-                    , ($1, $2, 'HR', 4)
-                    , ($1, $2, 'RBI', 1)
-                    , ($1, $2, 'SB', 1)
-                    , ($1, $2, 'E', -1)
-                    , ($1, $2, 'IP', 1)
-                    , ($1, $2, 'W', 5)
-                    , ($1, $2, 'L', -5)
-                    , ($1, $2, 'ER', -1)
-                    , ($1, $2, 'SV', 3)
-                    , ($1, $2, 'HLD', 2)
-                    , ($1, $2, 'HLD', 1)
-                    , ($1, $2, 'K', 1);
+                    ($1, $2, 'runs', 1)
+                    , ($1, $2, 'hits', 1)
+                    , ($1, $2, 'doubles', 2)
+                    , ($1, $2, 'home_runs', 4)
+                    , ($1, $2, 'runs_batted_in', 1)
+                    , ($1, $2, 'stolen_bases', 1)
+                    , ($1, $2, 'errors', -1)
+                    , ($1, $2, 'outs_pitched', 1)
+                    , ($1, $2, 'wins', 5)
+                    , ($1, $2, 'losses', -5)
+                    , ($1, $2, 'earned_runs', -1)
+                    , ($1, $2, 'saves', 3)
+                    , ($1, $2, 'holds', 2)
+                    , ($1, $2, 'strikeouts', 1);
             `;
             await client.query(insertLeagueStatSetting, [leagueId, seasonId]);
 
