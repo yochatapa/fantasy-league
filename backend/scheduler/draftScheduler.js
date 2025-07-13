@@ -101,7 +101,7 @@ const job = schedule.scheduleJob('0 * * * * *', async () => {
 
                 // 3. 알림 메시지 구성
                 const formattedStart = dayjs(draft_start_date).format('YYYY-MM-DD HH:mm');
-                const messageText = `${leagueName} 리그의 드래프트가 ${formattedStart}에 진행됩니다!\n이제 드래프트 룸에 입장할 수 있습니다.`;
+                const messageText = `${leagueName} 리그의 드래프트 룸이 생성되었습니다!\n이제 드래프트 룸에 입장할 수 있습니다.`;
                 const now = dayjs();
 
                 // 4. bulk insert 알림 데이터 구성
@@ -173,7 +173,7 @@ const alertJob = schedule.scheduleJob('0 * * * * *', async () => {
             `;
 
             const { rows } = await client.query(alertQuery, [tenMinutesLater.toDate()]);
-            console.log('🔍 알림 대상 draft_rooms:', rows.length);
+            console.log('🔍 알림 대상 draft_rooms:', rows.length, "tenMinutesLater", tenMinutesLater.format());
 
             for (const row of rows) {
                 const { league_id, season_id, draft_room_id, started_at } = row;
@@ -193,7 +193,7 @@ const alertJob = schedule.scheduleJob('0 * * * * *', async () => {
                 );
 
                 const formattedStart = dayjs(started_at).format('YYYY-MM-DD HH:mm');
-                const messageText = `${leagueName} 리그의 드래프트가 곧 시작됩니다!\n10분 후 ${formattedStart}에 드래프트가 시작됩니다.`;
+                const messageText = `${leagueName} 리그의 드래프트가 10분 후에 시작됩니다!\n 드래프트에 입장해주세요.`;
                 const now = dayjs();
 
                 // 3. 알림 저장 (bulk insert + RETURNING id)
