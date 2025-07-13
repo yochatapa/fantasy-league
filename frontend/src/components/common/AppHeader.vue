@@ -18,7 +18,7 @@
                                 <div
                                     v-if="unreadCount > 0"
                                     class="position-absolute"
-                                    style="top: 2px; right: 2px; width: 8px; height: 8px; background-color: red; border-radius: 50%;"
+                                    style="top: 0px; right: 0px; width: 8px; height: 8px; background-color: red; border-radius: 50%;"
                                 ></div>
                             </div>
                         </template>
@@ -28,19 +28,26 @@
                     <!-- 사용자 아바타 -->
                     <v-menu offset-y>
                         <template #activator="{ props }">
-                            <v-avatar
-                                v-bind="props"
-                                size="36"
-                                class="cursor-pointer"
-                                style="border: 2px solid #ccc;"
-                            >
-                                <v-img
-                                    v-if="user?.profileImage"
-                                    :src="user.profileImage"
-                                    alt="User Image"
-                                />
-                                <v-icon v-else size="28" color="#666">mdi-account-circle</v-icon>
-                            </v-avatar>
+                            <div  class="position-relative">
+                                <v-avatar
+                                    v-bind="props"
+                                    size="36"
+                                    class="cursor-pointer"
+                                    style="border: 2px solid #ccc;"
+                                >
+                                    <v-img
+                                        v-if="user?.profileImage"
+                                        :src="user.profileImage"
+                                        alt="User Image"
+                                    />
+                                    <v-icon v-else size="28" color="#666">mdi-account-circle</v-icon>
+                                </v-avatar>
+                                <div
+                                    v-if="isMobile && unreadCount > 0"
+                                    class="position-absolute"
+                                    style="top: 0px; right: 0px; width: 6px; height: 6px; background-color: red; border-radius: 50%;"
+                                ></div>
+                            </div>
                         </template>
 
                         <v-card min-width="220" class="pa-2 position-relative">
@@ -54,7 +61,7 @@
                                                 <div
                                                     v-if="unreadCount > 0"
                                                     class="position-absolute"
-                                                    style="top: 2px; right: 2px; width: 6px; height: 6px; background-color: red; border-radius: 50%;"
+                                                    style="top: 0px; right: 0px; width: 6px; height: 6px; background-color: red; border-radius: 50%;"
                                                 ></div>
                                             </div>
                                         </template>
