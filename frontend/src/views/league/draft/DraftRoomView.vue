@@ -122,11 +122,13 @@ const route = useRoute();
 const router = useRouter();
 const userStore = useUserStore();
 
-const leagueId = route.query.leagueId;
+const leagueIdEncrypted = route.query.leagueId;
+const leagueId = decryptData(leagueIdEncrypted)
 const seasonIdEncrypted = route.query.seasonId;
 const seasonId = decryptData(seasonIdEncrypted);
 const draftRoomId = `${leagueId}-${seasonId}`;
 
+// 상태 변수들
 const leagueName = ref('');
 const seasonYear = ref('');
 const currentRound = ref(1);
@@ -257,8 +259,9 @@ const pitcherHeaders = computed(() =>
     }))
 );
 
+// 필터링된 선수 리스트
 const filteredPlayers = computed(() => {
-    return allPlayers.value.filter((p) => {
+    return allPlayers.value.filter(p => {
         const matchesTab = p.player_type === activeTab.value;
         const matchesPosition = positionFilter.value.length === 0 || positionFilter.value.includes(p.season_position);
         const matchesSearch = !search.value || p.name.includes(search.value);
@@ -266,38 +269,46 @@ const filteredPlayers = computed(() => {
     });
 });
 
+// 포지션 필터 옵션 (타자/투수 구분)
 const filteredPositionOptions = computed(() => {
     return activeTab.value === 'B'
-        ? POSITIONS.filter((pos) => pos.code !== 'SP' && pos.code !== 'RP')
-        : POSITIONS.filter((pos) => pos.code === 'SP' || pos.code === 'RP');
+        ? POSITIONS.filter(pos => pos.code !== 'SP' && pos.code !== 'RP')
+        : POSITIONS.filter(pos => pos.code === 'SP' || pos.code === 'RP');
 });
 
+// 드래프트 순서, 현재 턴 인덱스, 드래프트 결과
 const draftOrder = ref([]);
 const currentTurnIndex = ref(0);
 const draftResults = ref({});
 
+// 팀 선택 및 팀별 픽 목록
 const selectedTeamId = ref(null);
 const teamOptions = computed(() =>
-    draftOrder.value.map((d) => ({ value: d.teamId, label: d.nickname }))
+    draftOrder.value.map(d => ({ value: d.teamId, label: d.nickname }))
 );
 const selectedTeamPicks = computed(() => draftResults.value[selectedTeamId.value] || []);
 
+// 선택된 선수
 const selectedPlayer = ref(null);
 function onPlayerClick(player) {
     selectedPlayer.value = player;
 }
 
+// socket 변수
 const socket = ref(null);
 
+// 초기 데이터 로드 및 소켓 연결
 onMounted(async () => {
     try {
+        // commonFetch 호출 시 두번째 인자로 method 지정
         const res = await commonFetch(
-            `/api/league/${encodeURIComponent(leagueId)}/season/${encodeURIComponent(seasonIdEncrypted)}/draftroom/info`
+            `/api/league/${encodeURIComponent(leagueIdEncrypted)}/season/${encodeURIComponent(seasonIdEncrypted)}/draftroom/info`,
+            { method: 'GET' }
         );
 
         if (!res.success) {
             alert('드래프트 정보를 불러오는 중 문제가 발생했습니다.');
-            router.push(`/league?leagueId=${encodeURIComponent(leagueId)}`);
+            router.push(`/league?leagueId=${encodeURIComponent(leagueIdEncrypted)}`);
             return;
         }
 
@@ -308,7 +319,7 @@ onMounted(async () => {
         allPlayers.value = data.players;
         enableStats.value = data.enabledStats || [];
 
-        draftOrder.value = data.draftOrder.map((d) => ({
+        draftOrder.value = data.draftOrder.map(d => ({
             teamId: d.team_id,
             draftOrder: d.draft_order,
             isAutoDraft: d.is_auto_draft,
@@ -320,20 +331,22 @@ onMounted(async () => {
 
         draftResults.value = data.draftResults || {};
 
-        const myTeam = draftOrder.value.find((t) => t.nickname === userStore.nickname);
+        const myTeam = draftOrder.value.find(t => t.nickname === userStore.nickname);
         selectedTeamId.value = myTeam?.teamId || draftOrder.value[0]?.teamId;
 
-        socket.value = io(import.meta.env.VITE_SOCKET_URL, {
+        // 소켓 연결
+        socket.value = io(`${import.meta.env.VITE_API_URL}`, {
             transports: ['websocket'],
-            query: { draftRoomId },
         });
 
         socket.value.on('connect', () => {
             console.log('[socket] connected:', socket.value.id);
-            socket.value.emit('draft:joinRoom', { roomId: draftRoomId });
+            // 이벤트 이름 서버와 맞추기
+            console.log("draftRoomId",draftRoomId)
+            socket.value.emit('joinRoom', draftRoomId);
         });
 
-        socket.value.on('draft:update', (data) => {
+        socket.value.on('draft:update', data => {
             remainingTime.value = data.remainingTime;
             currentTurnIndex.value = data.currentIndex;
             currentUser.value = data.currentUser;
@@ -341,12 +354,12 @@ onMounted(async () => {
             draftResults.value = data.draftResults;
         });
 
-        socket.value.on('draft:playerList', (data) => {
+        socket.value.on('draft:playerList', data => {
             allPlayers.value = data.players;
         });
 
-        socket.value.on('draft:order', (order) => {
-            draftOrder.value = order.map((d) => ({
+        socket.value.on('draft:order', order => {
+            draftOrder.value = order.map(d => ({
                 teamId: d.team_id,
                 draftOrder: d.draft_order,
                 isAutoDraft: d.is_auto_draft,
@@ -357,18 +370,19 @@ onMounted(async () => {
             }));
         });
 
-        socket.value.on('disconnect', (reason) => {
+        socket.value.on('disconnect', reason => {
             console.log('[socket] disconnected:', reason);
-            // 연결 끊어지면 홈(리그 목록)으로 이동
-            router.push(`/league/home?leagueId=${encodeURIComponent(leagueId)}&seasonId=${encodeURIComponent(seasonIdEncrypted)}`);
+            router.push(`/league/home?leagueId=${encodeURIComponent(leagueIdEncrypted)}&seasonId=${encodeURIComponent(seasonIdEncrypted)}`);
         });
+
     } catch (error) {
         alert('드래프트 정보를 불러오는 중 오류가 발생했습니다.');
         console.error(error);
-        router.push(`/league?leagueId=${encodeURIComponent(leagueId)}`);
+        router.push(`/league?leagueId=${encodeURIComponent(leagueIdEncrypted)}`);
     }
 });
 
+// 컴포넌트 종료 시 소켓 연결 해제
 onBeforeUnmount(() => {
     socket.value?.disconnect();
 });

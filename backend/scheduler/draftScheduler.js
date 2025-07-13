@@ -2,6 +2,9 @@ import schedule from 'node-schedule';
 import { query, withTransaction } from '../db.js'; // DB 연결 모듈
 import dayjs from 'dayjs'
 import { getIO } from '../utils/socket.js';
+import DraftRoom from '../utils/draft/draftRoom.js';  // draftRoom 위치에 맞게 경로 수정
+
+const activeDraftRooms = new Map();
 
 // 매 분 0초에 실행 (초 분 시 일 월 요일)
 const job = schedule.scheduleJob('0 * * * * *', async () => {
@@ -262,3 +265,123 @@ const alertJob = schedule.scheduleJob('0 * * * * *', async () => {
         console.error('❌ 10분 전 알림 처리 중 에러:', error);
     }
 });
+
+// 드래프트 시작 후 DraftRoom 인스턴스 생성 및 실행
+const startDraftJob = schedule.scheduleJob('* * * * * *', async () => {
+    const now = dayjs();
+
+    try {
+        const { rows: readyRooms } = await query(`
+            SELECT dr.id AS draft_room_id, dr.league_id, dr.season_id, dr.timer_seconds
+            FROM draft_rooms dr
+            WHERE dr.status = 'waiting'
+            AND dr.started_at <= NOW()
+        `);
+        
+        for (const room of readyRooms) {
+            const roomKey = `${room.league_id}_${room.season_id}`;
+            if (activeDraftRooms.has(roomKey)) {
+                continue; // 이미 실행 중이면 생략
+            }
+
+            // 드래프트 순서 조회
+            const { rows: orderRows } = await query(`
+                SELECT 
+                    lst.user_id,
+                    um.nickname,
+                    lst.id AS team_id,
+                    dt.draft_order,
+                    dt.is_auto_draft,
+                    lst.team_name,
+                    lst.logo_url
+                FROM league_season_draft_teams dt
+                JOIN league_season_team lst
+                    ON lst.id = dt.team_id
+                    AND lst.league_id = dt.league_id
+                    AND lst.season_id = dt.season_id
+                JOIN user_master um
+                    ON um.user_id = lst.user_id
+                WHERE dt.league_id = $1
+                AND dt.season_id = $2
+                ORDER BY dt.draft_order;
+            `, [room.league_id, room.season_id]);
+
+            const draftRoomInstance = new DraftRoom({
+                leagueId: room.league_id,
+                seasonId: room.season_id,
+                draftRoomId: room.draft_room_id,
+                draftTimer: room.timer_seconds,
+                draftOrder: orderRows,
+            });
+
+            activeDraftRooms.set(roomKey, draftRoomInstance);
+
+            // draft_rooms 상태 업데이트
+            await query(`
+                UPDATE draft_rooms
+                SET status = 'running', updated_at = CURRENT_TIMESTAMP
+                WHERE id = $1
+            `, [room.draft_room_id]);
+
+            console.log(`🚀 DraftRoom 시작됨: league_id=${room.league_id}, season_id=${room.season_id}`);
+        }
+    } catch (error) {
+        console.error('❌ DraftRoom 시작 중 에러:', error);
+    }
+});
+
+// 서버 시작 시, 진행 중인 draft_rooms 복원 함수
+async function restoreRunningDraftRooms() {
+    console.log('🔁 서버 재시작 감지. 진행 중인 드래프트 복원 시도 중...');
+
+    try {
+        const { rows: runningRooms } = await query(`
+            SELECT dr.id AS draft_room_id, dr.league_id, dr.season_id, dr.timer_seconds
+            FROM draft_rooms dr
+            WHERE dr.status = 'running'
+        `);
+
+        for (const room of runningRooms) {
+            const roomKey = `${room.league_id}_${room.season_id}`;
+            if (activeDraftRooms.has(roomKey)) continue;
+
+            const { rows: orderRows } = await query(`
+                SELECT 
+                    lst.user_id,
+                    um.nickname,
+                    lst.id AS team_id,
+                    dt.draft_order,
+                    dt.is_auto_draft,
+                    lst.team_name,
+                    lst.logo_url
+                FROM league_season_draft_teams dt
+                JOIN league_season_team lst
+                    ON lst.id = dt.team_id
+                    AND lst.league_id = dt.league_id
+                    AND lst.season_id = dt.season_id
+                JOIN user_master um
+                    ON um.user_id = lst.user_id
+                WHERE dt.league_id = $1
+                AND dt.season_id = $2
+                ORDER BY dt.draft_order;
+            `, [room.league_id, room.season_id]);
+
+            const draftRoomInstance = new DraftRoom({
+                leagueId: room.league_id,
+                seasonId: room.season_id,
+                draftRoomId: room.draft_room_id,
+                draftTimer: room.timer_seconds,
+                draftOrder: orderRows,
+            });
+
+            activeDraftRooms.set(roomKey, draftRoomInstance);
+            console.log(`✅ DraftRoom 복원됨: league_id=${room.league_id}, season_id=${room.season_id}`);
+        }
+    } catch (error) {
+        console.error('❌ DraftRoom 복원 중 에러:', error);
+    }
+}
+
+(async () => {
+    await restoreRunningDraftRooms();
+})();
