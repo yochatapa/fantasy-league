@@ -330,13 +330,18 @@ const startDraftJob = schedule.scheduleJob('* * * * * *', async () => {
     }
 });
 
-// 서버 시작 시, 진행 중인 draft_rooms 복원 함수
 async function restoreRunningDraftRooms() {
     console.log('🔁 서버 재시작 감지. 진행 중인 드래프트 복원 시도 중...');
 
     try {
         const { rows: runningRooms } = await query(`
-            SELECT dr.id AS draft_room_id, dr.league_id, dr.season_id, dr.timer_seconds
+            SELECT 
+                dr.id AS draft_room_id,
+                dr.league_id,
+                dr.season_id,
+                dr.timer_seconds,
+                dr.current_pick_order,
+                dr.round
             FROM draft_rooms dr
             WHERE dr.status = 'running'
         `);
@@ -345,6 +350,7 @@ async function restoreRunningDraftRooms() {
             const roomKey = `${room.league_id}_${room.season_id}`;
             if (activeDraftRooms.has(roomKey)) continue;
 
+            // 드래프트 순서 복원
             const { rows: orderRows } = await query(`
                 SELECT 
                     lst.user_id,
@@ -366,12 +372,34 @@ async function restoreRunningDraftRooms() {
                 ORDER BY dt.draft_order;
             `, [room.league_id, room.season_id]);
 
+            // 픽된 선수들 복원
+            const { rows: pickRows } = await query(`
+                SELECT team_id, player_id
+                FROM draft_results
+                WHERE draft_room_id = $1
+            `, [room.draft_room_id]);
+
+            const playersPicked = {};
+            for (const row of pickRows) {
+                if (!playersPicked[row.team_id]) playersPicked[row.team_id] = [];
+                playersPicked[row.team_id].push({ player_id: row.player_id });
+            }
+
+            const totalTeams = orderRows.length;
+            const totalPicksMade = room.current_pick_order || 1;
+
+            const currentIndex = (totalPicksMade) % totalTeams;
+            const currentRound = Math.floor((totalPicksMade) / totalTeams) + 1;
+
             const draftRoomInstance = new DraftRoom({
                 leagueId: room.league_id,
                 seasonId: room.season_id,
                 draftRoomId: room.draft_room_id,
                 draftTimer: room.timer_seconds,
                 draftOrder: orderRows,
+                currentIndex,
+                currentRound,
+                playersPicked
             });
 
             activeDraftRooms.set(roomKey, draftRoomInstance);

@@ -33,6 +33,7 @@ export default class DraftRoom {
 
     async init() {
         await this.loadPositionLimits();
+        await this.loadPickedPlayersDetails();
         this.broadcastUpdate();
         this.startTimer();
     }
@@ -49,16 +50,32 @@ export default class DraftRoom {
         }
     }
 
+    async loadPickedPlayersDetails() {
+        for (const [teamId, picks] of Object.entries(this.playersPicked)) {
+            const detailedPicks = [];
+            for (const pick of picks) {
+                const { rows } = await query(`
+                    SELECT name, primary_position FROM kbo_player_master WHERE id = $1
+                `, [pick.player_id]);
+                if (rows.length > 0) {
+                    detailedPicks.push({
+                        player_id: pick.player_id,
+                        name: rows[0].name,
+                        position: rows[0].primary_position
+                    });
+                }
+            }
+            this.playersPicked[teamId] = detailedPicks;
+        }
+    }
+
     startTimer() {
         this.clearTimer();
         this.remainingTime = this.draftTimer;
 
         this.timer = setInterval(() => {
             this.remainingTime -= 1;
-
-            // 초 변할 때마다 꼭 broadcastUpdate 호출
             this.broadcastUpdate();
-
             if (this.remainingTime <= 0) {
                 this.autoPick();
             }
@@ -73,7 +90,6 @@ export default class DraftRoom {
     }
 
     async nextTurn() {
-        // 현재 유저 저장하기 전 인덱스가 맞는지 확인 (안전)
         const currentUser = this.draftOrder[this.currentIndex];
 
         await withTransaction(async (client) => {
@@ -103,7 +119,7 @@ export default class DraftRoom {
             return;
         }
 
-        this.startTimer(); // 타이머 재시작 (remainingTime 초기화)
+        this.startTimer();
     }
 
     async autoPick() {
@@ -119,6 +135,7 @@ export default class DraftRoom {
             const candidates = await query(`
                 SELECT 
                     p.id AS player_id,
+                    p.name,
                     p.primary_position,
                     (
                         COALESCE(s.hits, 0) + COALESCE(s.walks, 0) + COALESCE(s.hit_by_pitch, 0)
@@ -142,11 +159,8 @@ export default class DraftRoom {
             `, [dayjs().year() - 1]);
 
             if (candidates.rows.length === 0) {
-                console.warn('[AUTO PICK] 후보 선수가 없습니다. 모든 선수 중 한 명을 강제로 선택합니다.');
-
-                // 전체 선수 중 아직 안 뽑힌 선수 중 한 명 조회 (id 오름차순으로 첫 번째 선수)
                 const allNotPicked = await query(`
-                    SELECT id AS player_id, primary_position
+                    SELECT id AS player_id, name, primary_position
                     FROM kbo_player_master
                     WHERE id NOT IN (
                         SELECT player_id FROM draft_results WHERE draft_room_id = $1
@@ -156,16 +170,12 @@ export default class DraftRoom {
                 `, [this.draftRoomId]);
 
                 if (allNotPicked.rows.length === 0) {
-                    // 선수 자체가 없으면 다음 턴 넘어가기
                     console.error('[AUTO PICK] 선택할 수 있는 선수가 아예 없습니다.');
                     await this.nextTurn();
                     return;
                 }
 
                 const forcedPick = allNotPicked.rows[0];
-                
-                // 강제 선택 로직 계속 진행
-                console.log(`[AUTO PICK] 후보 선수가 없으므로 선수 ${forcedPick.player_id} 강제 선택`);
 
                 await this.savePick({
                     userId: currentUser.user_id,
@@ -174,7 +184,11 @@ export default class DraftRoom {
                     isAuto: true
                 });
 
-                this.playersPicked[teamId] = [...(this.playersPicked[teamId] || []), { player_id: forcedPick.player_id }];
+                this.playersPicked[teamId] = [...(this.playersPicked[teamId] || []), {
+                    player_id: forcedPick.player_id,
+                    name: forcedPick.name,
+                    position: forcedPick.primary_position
+                }];
 
                 this.broadcastUpdate();
                 await this.nextTurn();
@@ -185,10 +199,7 @@ export default class DraftRoom {
             const posCount = {};
 
             for (const player of teamPicks) {
-                const { rows } = await query(`
-                    SELECT primary_position FROM kbo_player_master WHERE id = $1
-                `, [player.player_id]);
-                const pos = rows[0]?.primary_position;
+                const pos = player.position;
                 if (pos) posCount[pos] = (posCount[pos] || 0) + 1;
             }
 
@@ -200,8 +211,6 @@ export default class DraftRoom {
 
             const finalPick = chosen || candidates.rows[0];
 
-            console.log(`[AUTO PICK] 유저 ${currentUser.nickname} => 선수 ${finalPick.player_id}`);
-
             await this.savePick({
                 userId: currentUser.user_id,
                 teamId,
@@ -209,10 +218,13 @@ export default class DraftRoom {
                 isAuto: true
             });
 
-            this.playersPicked[teamId] = [...(this.playersPicked[teamId] || []), { player_id: finalPick.player_id }];
+            this.playersPicked[teamId] = [...(this.playersPicked[teamId] || []), {
+                player_id: finalPick.player_id,
+                name: finalPick.name,
+                position: finalPick.primary_position
+            }];
 
             this.broadcastUpdate();
-
             await this.nextTurn();
         } catch (err) {
             console.error('❌ autoPick error:', err);
@@ -221,7 +233,16 @@ export default class DraftRoom {
     }
 
     async pickPlayer({ teamId, player }) {
-        this.playersPicked[teamId] = [...(this.playersPicked[teamId] || []), player];
+        const { rows } = await query(`
+            SELECT name, primary_position FROM kbo_player_master WHERE id = $1
+        `, [player.player_id]);
+        const playerInfo = rows[0];
+
+        this.playersPicked[teamId] = [...(this.playersPicked[teamId] || []), {
+            player_id: player.player_id,
+            name: playerInfo.name,
+            position: playerInfo.primary_position
+        }];
 
         const currentUser = this.draftOrder[this.currentIndex];
 
@@ -235,8 +256,15 @@ export default class DraftRoom {
         this.broadcastUpdate();
         await this.nextTurn();
     }
-
+    
     async savePick({ userId, teamId, playerId, isAuto }) {
+        console.log("log!!!!!!!!!!!!!!!!!", this.draftRoomId,
+                this.currentRound,
+                this.currentIndex + 1,
+                userId,
+                teamId,
+                playerId,
+                isAuto)
         await withTransaction(async (client) => {
             await client.query(`
                 INSERT INTO draft_results (
