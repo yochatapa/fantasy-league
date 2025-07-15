@@ -122,11 +122,26 @@ const route = useRoute();
 const router = useRouter();
 const userStore = useUserStore();
 
+let leagueId = null;
+let seasonId = null;
+let draftRoomId = null;
 const leagueIdEncrypted = route.query.leagueId;
-const leagueId = decryptData(leagueIdEncrypted)
 const seasonIdEncrypted = route.query.seasonId;
-const seasonId = decryptData(seasonIdEncrypted);
-const draftRoomId = `${leagueId}-${seasonId}`;
+
+try {
+    if (!leagueIdEncrypted || !seasonIdEncrypted) {
+        throw new Error('파라미터 누락');
+    }
+
+    leagueId = decryptData(decodeURIComponent(leagueIdEncrypted));
+    seasonId = decryptData(decodeURIComponent(seasonIdEncrypted));
+    draftRoomId = `${leagueId}-${seasonId}`;
+} catch (err) {
+    alert('잘못된 접근입니다. 리그/시즌 정보를 확인할 수 없습니다.');
+    console.error('[decryptData error]', err, leagueIdEncrypted, seasonIdEncrypted);
+    router.push('/league/home?leagueId='+encodeURIComponent(leagueIdEncrypted));
+    throw err; // setup 함수 강제 종료
+}
 
 // 상태 변수들
 const leagueName = ref('');
@@ -308,7 +323,7 @@ onMounted(async () => {
 
         if (!res.success) {
             alert('드래프트 정보를 불러오는 중 문제가 발생했습니다.');
-            router.push(`/league?leagueId=${encodeURIComponent(leagueIdEncrypted)}`);
+            router.push(`/league/home?leagueId=${encodeURIComponent(leagueIdEncrypted)}`);
             return;
         }
 
@@ -378,7 +393,7 @@ onMounted(async () => {
     } catch (error) {
         alert('드래프트 정보를 불러오는 중 오류가 발생했습니다.');
         console.error(error);
-        router.push(`/league?leagueId=${encodeURIComponent(leagueIdEncrypted)}`);
+        router.push(`/league/home?leagueId=${encodeURIComponent(leagueIdEncrypted)}`);
     }
 });
 

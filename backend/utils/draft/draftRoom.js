@@ -11,7 +11,8 @@ export default class DraftRoom {
         draftOrder,
         currentRound = 1,
         currentIndex = 0,
-        playersPicked = {}
+        playersPicked = {},
+        remainingTime = null
     }) {
         this.leagueId       = leagueId;
         this.seasonId       = seasonId;
@@ -23,7 +24,7 @@ export default class DraftRoom {
         this.totalRounds    = draftOrder.length;
         this.maxRounds      = null;
         this.timer          = null;
-        this.remainingTime  = draftTimer;
+        this.remainingTime  = remainingTime ?? draftTimer;
         this.io             = getIO();
         this.playersPicked  = playersPicked;
         this.positionLimits = {}; // 포지션별 제한 정보
@@ -34,8 +35,33 @@ export default class DraftRoom {
     async init() {
         await this.loadPositionLimits();
         await this.loadPickedPlayersDetails();
+        await this.updateDraftRoomState();
         this.broadcastUpdate();
         this.startTimer();
+    }
+
+    async updateDraftRoomState() {
+        const currentUser = this.draftOrder[this.currentIndex];
+
+        await withTransaction(async (client) => {
+            await client.query(`
+                UPDATE draft_rooms
+                SET round = $1,
+                    current_pick_order = $2,
+                    current_user_id = $3,
+                    timer_seconds = $4,
+                    current_timer_seconds = $5,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = $6
+            `, [
+                this.currentRound,
+                this.currentIndex + 1,
+                currentUser.user_id,
+                this.draftTimer,
+                this.remainingTime,
+                this.draftRoomId
+            ]);
+        });
     }
 
     async loadPositionLimits() {
@@ -71,10 +97,9 @@ export default class DraftRoom {
 
     startTimer() {
         this.clearTimer();
-        this.remainingTime = this.draftTimer;
-
-        this.timer = setInterval(() => {
+        this.timer = setInterval(async () => {
             this.remainingTime -= 1;
+            await this.updateDraftRoomState();
             this.broadcastUpdate();
             if (this.remainingTime <= 0) {
                 this.autoPick();
@@ -90,24 +115,6 @@ export default class DraftRoom {
     }
 
     async nextTurn() {
-        const currentUser = this.draftOrder[this.currentIndex];
-
-        await withTransaction(async (client) => {
-            await client.query(`
-                UPDATE draft_rooms
-                SET current_pick_order = $1,
-                    round = $2,
-                    current_user_id = $3,
-                    updated_at = CURRENT_TIMESTAMP
-                WHERE id = $4
-            `, [
-                this.currentIndex + 1,
-                this.currentRound,
-                currentUser.user_id,
-                this.draftRoomId
-            ]);
-        });
-
         this.currentIndex++;
         if (this.currentIndex >= this.draftOrder.length) {
             this.currentIndex = 0;
@@ -119,6 +126,8 @@ export default class DraftRoom {
             return;
         }
 
+        this.remainingTime = this.draftTimer;
+        await this.updateDraftRoomState();
         this.startTimer();
     }
 
@@ -256,15 +265,8 @@ export default class DraftRoom {
         this.broadcastUpdate();
         await this.nextTurn();
     }
-    
+
     async savePick({ userId, teamId, playerId, isAuto }) {
-        console.log("log!!!!!!!!!!!!!!!!!", this.draftRoomId,
-                this.currentRound,
-                this.currentIndex + 1,
-                userId,
-                teamId,
-                playerId,
-                isAuto)
         await withTransaction(async (client) => {
             await client.query(`
                 INSERT INTO draft_results (

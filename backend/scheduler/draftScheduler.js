@@ -277,7 +277,7 @@ const startDraftJob = schedule.scheduleJob('* * * * * *', async () => {
             WHERE dr.status = 'waiting'
             AND dr.started_at <= NOW()
         `);
-        
+
         for (const room of readyRooms) {
             const roomKey = `${room.league_id}_${room.season_id}`;
             if (activeDraftRooms.has(roomKey)) {
@@ -319,9 +319,9 @@ const startDraftJob = schedule.scheduleJob('* * * * * *', async () => {
             // draft_rooms 상태 업데이트
             await query(`
                 UPDATE draft_rooms
-                SET status = 'running', updated_at = CURRENT_TIMESTAMP
-                WHERE id = $1
-            `, [room.draft_room_id]);
+                SET status = 'running', updated_at = CURRENT_TIMESTAMP, current_user_id = $1, current_timer_seconds = $2
+                WHERE id = $3
+            `, [orderRows[0].user_id, room.timer_seconds, room.draft_room_id]);
 
             console.log(`🚀 DraftRoom 시작됨: league_id=${room.league_id}, season_id=${room.season_id}`);
         }
@@ -341,7 +341,8 @@ async function restoreRunningDraftRooms() {
                 dr.season_id,
                 dr.timer_seconds,
                 dr.current_pick_order,
-                dr.round
+                dr.round,
+                dr.current_timer_seconds
             FROM draft_rooms dr
             WHERE dr.status = 'running'
         `);
@@ -388,8 +389,8 @@ async function restoreRunningDraftRooms() {
             const totalTeams = orderRows.length;
             const totalPicksMade = room.current_pick_order || 1;
 
-            const currentIndex = (totalPicksMade) % totalTeams;
-            const currentRound = Math.floor((totalPicksMade) / totalTeams) + 1;
+            const currentIndex = (totalPicksMade - 1) % totalTeams;
+            const currentRound = room.round || Math.floor((totalPicksMade - 1) / totalTeams) + 1;
 
             const draftRoomInstance = new DraftRoom({
                 leagueId: room.league_id,
@@ -399,7 +400,8 @@ async function restoreRunningDraftRooms() {
                 draftOrder: orderRows,
                 currentIndex,
                 currentRound,
-                playersPicked
+                playersPicked,
+                remainingTime: room.current_timer_seconds || room.timer_seconds // 핵심 수정
             });
 
             activeDraftRooms.set(roomKey, draftRoomInstance);
@@ -413,3 +415,4 @@ async function restoreRunningDraftRooms() {
 (async () => {
     await restoreRunningDraftRooms();
 })();
+

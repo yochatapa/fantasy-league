@@ -635,7 +635,7 @@ onBeforeUnmount(() => {
 });
 
 const goToDraftRoom = () => {
-    router.push("/league/draftroom?leagueId="+orgLeagueId+"&seasonId="+encodeURIComponent(encryptData(currentSeasonInfo.value.season_id)))
+    router.push("/league/draftroom?leagueId="+encodeURIComponent(orgLeagueId)+"&seasonId="+encodeURIComponent(encryptData(currentSeasonInfo.value.season_id)))
 }
 </script>
 
