@@ -1,113 +1,151 @@
 <template>
     <v-container fluid>
-        <!-- 상단 정보 -->
-        <v-row class="mb-4" align="center" justify="space-between">
-            <v-col cols="8">
-                <h2>{{ leagueName }} - {{ seasonYear }} 시즌</h2>
-                <div>라운드 {{ currentRound }} / {{ totalRounds }}</div>
-                <div>현재 픽: <strong>{{ currentUser }}</strong></div>
-            </v-col>
-            <v-col cols="4" class="text-right">
-                <v-chip color="red" label>
-                    남은 시간: {{ remainingTime }}초
-                </v-chip>
-            </v-col>
-        </v-row>
+        <!-- 드래프트 진행 중 화면 -->
+        <template v-if="draftStatus !== 'finished' && draftInfoYn">
+            <!-- 상단 정보 -->
+            <v-row class="mb-4" align="center" justify="space-between">
+                <v-col cols="8">
+                    <h2>{{ leagueName }} - {{ seasonYear }} 시즌</h2>
+                    <div>라운드 {{ currentRound }} / {{ maxRounds }}</div>
+                    <div>현재 픽: <strong>{{ currentUser }}</strong></div>
+                </v-col>
+                <v-col cols="4" class="text-right">
+                    <v-chip color="red" label>
+                        남은 시간: {{ remainingTime }}초
+                    </v-chip>
+                </v-col>
+            </v-row>
 
-        <v-row>
-            <!-- 선수 리스트 -->
-            <v-col cols="8">
-                <v-tabs v-model="activeTab">
-                    <v-tab value="B">타자</v-tab>
-                    <v-tab value="P">투수</v-tab>
-                </v-tabs>
+            <v-row>
+                <!-- 선수 리스트 -->
+                <v-col cols="8">
+                    <v-tabs v-model="activeTab">
+                        <v-tab value="B">타자</v-tab>
+                        <v-tab value="P">투수</v-tab>
+                    </v-tabs>
 
-                <v-text-field
-                    v-model="search"
-                    label="선수 검색"
-                    append-inner-icon="mdi-magnify"
-                    hide-details
-                    class="mt-4"
-                />
+                    <v-text-field
+                        v-model="search"
+                        label="선수 검색"
+                        append-inner-icon="mdi-magnify"
+                        hide-details
+                        class="mt-4"
+                    />
 
-                <v-select
-                    v-model="positionFilter"
-                    :items="filteredPositionOptions"
-                    item-title="name"
-                    item-value="code"
-                    label="포지션 필터"
-                    class="mt-2"
-                    hide-details
-                    multiple
-                    chips
-                />
+                    <v-select
+                        v-model="positionFilter"
+                        :items="filteredPositionOptions"
+                        item-title="name"
+                        item-value="code"
+                        label="포지션 필터"
+                        class="mt-2"
+                        hide-details
+                        multiple
+                        chips
+                    />
 
-                <v-data-table
-                    :headers="activeTab === 'B' ? batterHeaders : pitcherHeaders"
-                    :items="filteredPlayers"
-                    class="mt-4"
-                    @click:row="onPlayerClick"
-                    dense
-                    fixed-header
-                    height="500"
+                    <v-data-table
+                        :headers="activeTab === 'B' ? batterHeaders : pitcherHeaders"
+                        :items="filteredPlayers"
+                        class="mt-4"
+                        @click:row="onPlayerClick"
+                        dense
+                        fixed-header
+                        height="500"
+                    >
+                        <template #item.name="{ item }">
+                            <span>{{ item.name }}</span>
+                        </template>
+                        <template #item.team="{ item }">
+                            <span>{{ item.team }}</span>
+                        </template>
+                        <template #item.season_position="{ item }">
+                            <span>{{ item.season_position }}</span>
+                        </template>
+                    </v-data-table>
+                </v-col>
+
+                <!-- 드래프트 결과 + 팀 셀렉트 -->
+                <v-col cols="4">
+                    <v-card class="mb-4">
+                        <v-card-title class="text-h6">드래프트 순서</v-card-title>
+                        <v-divider />
+                        <v-list>
+                            <v-list-item
+                                v-for="(user, idx) in draftOrder"
+                                :key="user.teamId"
+                                :class="{ 'bg-blue-lighten-4': idx === currentTurnIndex }"
+                            >
+                                <v-list-item-title>{{ idx + 1 }}. {{ user.nickname }}</v-list-item-title>
+                            </v-list-item>
+                        </v-list>
+                    </v-card>
+
+                    <v-card>
+                        <v-card-title class="text-h6 d-flex justify-space-between align-center">
+                            드래프트 결과
+                            <v-select
+                                v-model="selectedTeamId"
+                                :items="teamOptions"
+                                item-title="label"
+                                item-value="value"
+                                hide-details
+                                dense
+                                style="max-width: 160px"
+                            />
+                        </v-card-title>
+                        <v-divider />
+                        <v-list style="max-height: 400px; overflow-y: auto;">
+                            <v-list-item
+                                v-for="(player, idx) in selectedTeamPicks"
+                                :key="idx"
+                            >
+                                <v-list-item-title>
+                                    {{ player.name }} ({{ player.position }})
+                                </v-list-item-title>
+                            </v-list-item>
+                        </v-list>
+                    </v-card>
+                </v-col>
+            </v-row>
+        </template>
+
+        <!-- 드래프트 종료 후 결과 화면 -->
+        <template v-else-if="draftInfoYn">
+            <v-row class="mb-4">
+                <v-col>
+                    <h2>{{ leagueName }} - {{ seasonYear }} 시즌</h2>
+                    <div class="text-subtitle-1 font-weight-medium text-success">드래프트가 종료되었습니다.</div>
+                </v-col>
+            </v-row>
+
+            <v-row>
+                <v-col
+                    cols="12"
+                    md="4"
+                    v-for="team in draftOrder"
+                    :key="team.teamId"
                 >
-                    <template #item.name="{ item }">
-                        <span>{{ item.name }}</span>
-                    </template>
-                    <template #item.team="{ item }">
-                        <span>{{ item.team }}</span>
-                    </template>
-                    <template #item.season_position="{ item }">
-                        <span>{{ item.season_position }}</span>
-                    </template>
-                </v-data-table>
-            </v-col>
-
-            <!-- 드래프트 결과 + 팀 셀렉트 -->
-            <v-col cols="4">
-                <v-card class="mb-4">
-                    <v-card-title class="text-h6">드래프트 순서</v-card-title>
-                    <v-divider />
-                    <v-list>
-                        <v-list-item
-                            v-for="(user, idx) in draftOrder"
-                            :key="user.teamId"
-                            :class="{ 'bg-blue-lighten-4': idx === currentTurnIndex }"
-                        >
-                            <v-list-item-title>{{ idx + 1 }}. {{ user.nickname }}</v-list-item-title>
-                        </v-list-item>
-                    </v-list>
-                </v-card>
-
-                <v-card>
-                    <v-card-title class="text-h6 d-flex justify-space-between align-center">
-                        드래프트 결과
-                        <v-select
-                            v-model="selectedTeamId"
-                            :items="teamOptions"
-                            item-title="label"
-                            item-value="value"
-                            hide-details
-                            dense
-                            style="max-width: 160px"
-                        />
-                    </v-card-title>
-                    <v-divider />
-                    <v-list style="max-height: 400px; overflow-y: auto;">
-                        <v-list-item
-                            v-for="(player, idx) in selectedTeamPicks"
-                            :key="idx"
-                        >
-                            <v-list-item-title>
-                                {{ player.name }} ({{ player.position }})
-                            </v-list-item-title>
-                        </v-list-item>
-                    </v-list>
-                </v-card>
-            </v-col>
-        </v-row>
+                    <v-card class="mb-4" elevation="2">
+                        <v-card-title class="text-h6">{{ team.nickname }} 팀</v-card-title>
+                        <v-divider />
+                        <v-list style="max-height: 400px; overflow-y: auto;">
+                            <v-list-item
+                                v-for="(player, idx) in draftResults[team.teamId] || []"
+                                :key="idx"
+                            >
+                                <v-list-item-title>
+                                    {{ player.name }} ({{ player.position }})
+                                </v-list-item-title>
+                            </v-list-item>
+                        </v-list>
+                    </v-card>
+                </v-col>
+            </v-row>
+        </template>
     </v-container>
 </template>
+
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
@@ -125,6 +163,7 @@ const userStore = useUserStore();
 let leagueId = null;
 let seasonId = null;
 let draftRoomId = null;
+
 const leagueIdEncrypted = route.query.leagueId;
 const seasonIdEncrypted = route.query.seasonId;
 
@@ -147,7 +186,7 @@ try {
 const leagueName = ref('');
 const seasonYear = ref('');
 const currentRound = ref(1);
-const totalRounds = ref(10);
+const maxRounds = ref(10);
 const currentUser = ref('');
 const remainingTime = ref(30);
 
@@ -157,6 +196,10 @@ const search = ref('');
 const activeTab = ref('B');
 
 const enableStats = ref([]);
+
+const draftStatus = ref(null);
+
+const draftInfoYn = ref(false);
 
 const rawBatterHeaders = [
     { title: '이름', key: 'name' },
@@ -276,13 +319,21 @@ const pitcherHeaders = computed(() =>
 
 // 필터링된 선수 리스트
 const filteredPlayers = computed(() => {
+    const pickedPlayerIds = new Set(
+        Object.values(draftResults.value)
+            .flat()
+            .map(p => p.player_id)
+    );
+
     return allPlayers.value.filter(p => {
         const matchesTab = p.player_type === activeTab.value;
         const matchesPosition = positionFilter.value.length === 0 || positionFilter.value.includes(p.season_position);
         const matchesSearch = !search.value || p.name.includes(search.value);
-        return matchesTab && matchesPosition && matchesSearch;
+        const isNotPicked = !pickedPlayerIds.has(p.player_id);
+        return matchesTab && matchesPosition && matchesSearch && isNotPicked;
     });
 });
+
 
 // 포지션 필터 옵션 (타자/투수 구분)
 const filteredPositionOptions = computed(() => {
@@ -327,12 +378,15 @@ onMounted(async () => {
             return;
         }
 
+        draftInfoYn.value = true;
+
         const data = res.data;
         leagueName.value = data.league.league_name;
         seasonYear.value = data.season.season_year;
-        totalRounds.value = data.season.total_rounds || 10;
         allPlayers.value = data.players;
         enableStats.value = data.enabledStats || [];
+        draftStatus.value = data.draftRoom?.status;
+        maxRounds.value = data.draftRoom?.max_rounds
 
         draftOrder.value = data.draftOrder.map(d => ({
             teamId: d.team_id,

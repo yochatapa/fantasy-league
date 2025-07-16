@@ -135,7 +135,7 @@
                 <v-card>
                     <v-card-title class="d-flex justify-space-between align-center">
                         <span>드래프트 순번</span>
-                        <v-btn color="primary" v-if="draftRoom && draftRoom?.status !== 'completed'" @click="goToDraftRoom()">입장</v-btn>
+                        <v-btn color="primary" v-if="draftRoom && draftRoom?.status !== 'finished'" @click="goToDraftRoom()">입장</v-btn>
                     </v-card-title>
                     <v-divider></v-divider>
                     <v-card-text>
