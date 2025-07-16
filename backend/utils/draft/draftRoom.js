@@ -12,22 +12,24 @@ export default class DraftRoom {
         currentRound = 1,
         currentIndex = 0,
         playersPicked = {},
-        remainingTime = null
+        remainingTime = null,
+        maxRounds = null
     }) {
-        this.leagueId       = leagueId;
-        this.seasonId       = seasonId;
-        this.draftRoomId    = draftRoomId;
-        this.draftTimer     = draftTimer;
-        this.draftOrder     = draftOrder;
-        this.currentIndex   = currentIndex;
-        this.currentRound   = currentRound;
-        this.totalRounds    = draftOrder.length;
-        this.maxRounds      = null;
-        this.timer          = null;
-        this.remainingTime  = remainingTime ?? draftTimer;
-        this.io             = getIO();
-        this.playersPicked  = playersPicked;
-        this.positionLimits = {}; // 포지션별 제한 정보
+        this.leagueId = leagueId;
+        this.seasonId = seasonId;
+        this.draftRoomId = draftRoomId;
+        this.draftTimer = draftTimer;
+        this.draftOrder = draftOrder;
+        this.currentIndex = currentIndex;
+        this.currentRound = currentRound;
+        this.totalRounds = draftOrder.length;
+        this.maxRounds = maxRounds;
+        this.timer = null;
+        this.remainingTime = remainingTime ?? draftTimer;
+        this.io = getIO();
+        this.playersPicked = playersPicked;
+        this.positionLimits = {};
+        this._isAutoPicking = false;
 
         this.init();
     }
@@ -41,6 +43,11 @@ export default class DraftRoom {
     }
 
     async updateDraftRoomState() {
+        if (this.maxRounds && this.currentRound > this.maxRounds) {
+            console.log('[UPDATE] maxRounds 초과 상태, draft_rooms 업데이트 스킵');
+            return;
+        }
+
         const currentUser = this.draftOrder[this.currentIndex];
 
         await withTransaction(async (client) => {
@@ -97,12 +104,31 @@ export default class DraftRoom {
 
     startTimer() {
         this.clearTimer();
+        if (this.timer) return;
+
+        if (this.maxRounds && this.currentRound > this.maxRounds) {
+            console.log('[TIMER] maxRounds 초과로 타이머 시작 안함');
+            return;
+        }
+
         this.timer = setInterval(async () => {
+            if (this.maxRounds && this.currentRound > this.maxRounds) {
+                console.log('[TIMER] maxRounds 초과 감지, 타이머 종료');
+                this.clearTimer();
+                return;
+            }
+
             this.remainingTime -= 1;
-            await this.updateDraftRoomState();
-            this.broadcastUpdate();
+
+            try {
+                await this.updateDraftRoomState();
+                this.broadcastUpdate();
+            } catch (err) {
+                console.error('❌ Timer loop error:', err);
+            }
+
             if (this.remainingTime <= 0) {
-                this.autoPick();
+                await this.autoPick();
             }
         }, 1000);
     }
@@ -121,7 +147,10 @@ export default class DraftRoom {
             this.currentRound++;
         }
 
+        console.log(`[NEXT TURN] round=${this.currentRound}, index=${this.currentIndex}`);
+
         if (this.maxRounds && this.currentRound > this.maxRounds) {
+            console.log('[NEXT TURN] maxRounds 초과, 드래프트 종료');
             await this.finish();
             return;
         }
@@ -132,6 +161,9 @@ export default class DraftRoom {
     }
 
     async autoPick() {
+        if (this._isAutoPicking) return;
+        this._isAutoPicking = true;
+
         const currentUser = this.draftOrder[this.currentIndex];
         const teamId = currentUser.team_id;
 
@@ -167,58 +199,29 @@ export default class DraftRoom {
                 LIMIT 50
             `, [dayjs().year() - 1]);
 
-            if (candidates.rows.length === 0) {
-                const allNotPicked = await query(`
+            let finalPick = candidates.rows.find(player => {
+                const count = (this.playersPicked[teamId] || []).filter(p => p.position === player.primary_position).length;
+                const limit = this.positionLimits?.[player.primary_position] ?? Infinity;
+                return count < limit;
+            }) || candidates.rows[0];
+
+            if (!finalPick) {
+                const fallback = await query(`
                     SELECT id AS player_id, name, primary_position
                     FROM kbo_player_master
                     WHERE id NOT IN (
                         SELECT player_id FROM draft_results WHERE draft_room_id = $1
                     )
-                    ORDER BY id ASC
-                    LIMIT 1
+                    ORDER BY id ASC LIMIT 1
                 `, [this.draftRoomId]);
-
-                if (allNotPicked.rows.length === 0) {
-                    console.error('[AUTO PICK] 선택할 수 있는 선수가 아예 없습니다.');
+                finalPick = fallback.rows[0];
+                if (!finalPick) {
+                    console.error('[AUTO PICK] No player to pick');
+                    this._isAutoPicking = false;
                     await this.nextTurn();
                     return;
                 }
-
-                const forcedPick = allNotPicked.rows[0];
-
-                await this.savePick({
-                    userId: currentUser.user_id,
-                    teamId,
-                    playerId: forcedPick.player_id,
-                    isAuto: true
-                });
-
-                this.playersPicked[teamId] = [...(this.playersPicked[teamId] || []), {
-                    player_id: forcedPick.player_id,
-                    name: forcedPick.name,
-                    position: forcedPick.primary_position
-                }];
-
-                this.broadcastUpdate();
-                await this.nextTurn();
-                return;
             }
-
-            const teamPicks = this.playersPicked[teamId] || [];
-            const posCount = {};
-
-            for (const player of teamPicks) {
-                const pos = player.position;
-                if (pos) posCount[pos] = (posCount[pos] || 0) + 1;
-            }
-
-            const chosen = candidates.rows.find(player => {
-                const pos = player.primary_position;
-                const limit = this.positionLimits?.[pos] ?? Infinity;
-                return (posCount[pos] || 0) < limit;
-            });
-
-            const finalPick = chosen || candidates.rows[0];
 
             await this.savePick({
                 userId: currentUser.user_id,
@@ -238,6 +241,8 @@ export default class DraftRoom {
         } catch (err) {
             console.error('❌ autoPick error:', err);
             await this.nextTurn();
+        } finally {
+            this._isAutoPicking = false;
         }
     }
 
@@ -286,7 +291,13 @@ export default class DraftRoom {
     }
 
     broadcastUpdate() {
+        if (this.maxRounds && this.currentRound > this.maxRounds) {
+            console.log('[BROADCAST] maxRounds 초과 상태, broadcast 생략');
+            return;
+        }
+
         const currentUser = this.draftOrder[this.currentIndex];
+        console.log(`[BROADCAST] round=${this.currentRound}, maxRound=${this.maxRounds} index=${this.currentIndex}, user=${currentUser.nickname}`);
         this.io.to(`${this.leagueId}-${this.seasonId}`).emit('draft:update', {
             currentUser: currentUser.nickname,
             currentIndex: this.currentIndex,

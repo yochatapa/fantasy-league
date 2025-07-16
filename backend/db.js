@@ -10,7 +10,7 @@ const pool = new Pool({
     database: process.env.DB_NAME,
     password: process.env.DB_PASSWORD,
     port: process.env.DB_PORT,
-    max: 20,
+    max: 50,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 2000,
 });
@@ -25,15 +25,16 @@ pool.on('error', (err, client) => {
  * @param {Array} params - 쿼리 파라미터
  */
 export const query = async (text, params) => {
-    const client = await pool.connect();
+    let client;
     try {
+        client = await pool.connect();
         const res = await client.query(text, params);
         return res;
     } catch (err) {
         console.error('DB Query Error:', err);
         throw err;
     } finally {
-        client.release();
+        if (client) client.release();
     }
 };
 

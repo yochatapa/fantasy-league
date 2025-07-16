@@ -266,7 +266,6 @@ const alertJob = schedule.scheduleJob('0 * * * * *', async () => {
     }
 });
 
-// 드래프트 시작 후 DraftRoom 인스턴스 생성 및 실행
 const startDraftJob = schedule.scheduleJob('* * * * * *', async () => {
     const now = dayjs();
 
@@ -306,17 +305,26 @@ const startDraftJob = schedule.scheduleJob('* * * * * *', async () => {
                 ORDER BY dt.draft_order;
             `, [room.league_id, room.season_id]);
 
+            // maxRounds 조회
+            const { rows: maxRoundRows } = await query(`
+                SELECT COALESCE(SUM(slot_count), 0) AS max_rounds
+                FROM league_season_roster_slot
+                WHERE league_id = $1 AND season_id = $2
+            `, [room.league_id, room.season_id]);
+
+            const maxRounds = parseInt(maxRoundRows[0].max_rounds, 10);
+
             const draftRoomInstance = new DraftRoom({
                 leagueId: room.league_id,
                 seasonId: room.season_id,
                 draftRoomId: room.draft_room_id,
                 draftTimer: room.timer_seconds,
                 draftOrder: orderRows,
+                maxRounds
             });
 
             activeDraftRooms.set(roomKey, draftRoomInstance);
 
-            // draft_rooms 상태 업데이트
             await query(`
                 UPDATE draft_rooms
                 SET status = 'running', updated_at = CURRENT_TIMESTAMP, current_user_id = $1, current_timer_seconds = $2
@@ -386,9 +394,17 @@ async function restoreRunningDraftRooms() {
                 playersPicked[row.team_id].push({ player_id: row.player_id });
             }
 
+            // maxRounds 조회
+            const { rows: maxRoundRows } = await query(`
+                SELECT COALESCE(SUM(slot_count), 0) AS max_rounds
+                FROM league_season_roster_slot
+                WHERE league_id = $1 AND season_id = $2
+            `, [room.league_id, room.season_id]);
+
+            const maxRounds = parseInt(maxRoundRows[0].max_rounds, 10);
+
             const totalTeams = orderRows.length;
             const totalPicksMade = room.current_pick_order || 1;
-
             const currentIndex = (totalPicksMade - 1) % totalTeams;
             const currentRound = room.round || Math.floor((totalPicksMade - 1) / totalTeams) + 1;
 
@@ -401,7 +417,8 @@ async function restoreRunningDraftRooms() {
                 currentIndex,
                 currentRound,
                 playersPicked,
-                remainingTime: room.current_timer_seconds || room.timer_seconds // 핵심 수정
+                remainingTime: room.current_timer_seconds || room.timer_seconds,
+                maxRounds
             });
 
             activeDraftRooms.set(roomKey, draftRoomInstance);
@@ -415,4 +432,3 @@ async function restoreRunningDraftRooms() {
 (async () => {
     await restoreRunningDraftRooms();
 })();
-
