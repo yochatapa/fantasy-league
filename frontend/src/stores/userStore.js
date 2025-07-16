@@ -18,6 +18,9 @@ export const useUserStore = defineStore('user', {
         isAuthChecked: false,
         isAdmin: false,
     }),
+    getters: {
+        getUser: (state) => state.user,
+    },
     actions: {
         setUser(userData) {
             this.user = userData;

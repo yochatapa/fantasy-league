@@ -2,9 +2,8 @@ import schedule from 'node-schedule';
 import { query, withTransaction } from '../db.js'; // DB 연결 모듈
 import dayjs from 'dayjs'
 import { getIO } from '../utils/socket.js';
+import activeDraftRooms from '../utils/draft/activeDraftRooms.js';  // draftRoom 위치에 맞게 경로 수정
 import DraftRoom from '../utils/draft/draftRoom.js';  // draftRoom 위치에 맞게 경로 수정
-
-const activeDraftRooms = new Map();
 
 // 매 분 0초에 실행 (초 분 시 일 월 요일)
 const job = schedule.scheduleJob('0 * * * * *', async () => {

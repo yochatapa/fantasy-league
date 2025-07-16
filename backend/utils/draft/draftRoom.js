@@ -307,6 +307,20 @@ export default class DraftRoom {
         });
     }
 
+    isTeamTurn(teamId) {
+        const currentTurnUser = this.draftOrder[this.currentIndex];
+        return currentTurnUser?.team_id === teamId;
+    }
+
+    isPlayerPicked(playerId) {
+        for (const picks of Object.values(this.playersPicked)) {
+            if (picks.some(p => p.player_id === playerId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     async finish() {
         this.clearTimer();
         console.log(`[DRAFT FINISHED] leagueId=${this.leagueId}, seasonId=${this.seasonId}`);

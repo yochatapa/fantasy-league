@@ -3,6 +3,7 @@ import { query, withTransaction } from '../../db.js';
 import { sendSuccess, sendBadRequest, sendServerError } from '../../utils/apiResponse.js';
 import { encryptData, decryptData } from '../../utils/crypto.js';
 import { generateUniqueCode } from '../../utils/randomCodeGenerator.js';
+import activeDraftRooms from '../../utils/draft/activeDraftRooms.js';
 
 export const createLeague = async (req, res) => {
     const { leagueName, leagueType, leagueFormat, draftMethod, isPublic, maxTeams, playoffTeams, seasonStartDate, draftDate, draftTime } = req.body;
@@ -743,3 +744,55 @@ export const setDraftOrder = async(req,res) => {
         return sendServerError(res, error, '드래프트 순서 정보 저장 중 문제가 발생했습니다. 다시 시도해주세요.');
     }
 }
+
+export const pickPlayer = async (req, res) => {
+    try {
+        let { leagueId, seasonId } = req.params;
+        const { teamId, playerId } = req.body;
+
+        if (!leagueId || !seasonId || !teamId || !playerId) {
+            return sendBadRequest(res, '필수 파라미터가 부족합니다.');
+        }
+
+        // 복호화
+        leagueId = decryptData(decodeURIComponent(leagueId));
+        seasonId = decryptData(decodeURIComponent(seasonId));
+
+        const roomKey = `${leagueId}_${seasonId}`;
+        const draftRoom = activeDraftRooms.get(roomKey);
+
+        if (!draftRoom) {
+            return sendBadRequest(res, '진행 중인 드래프트 룸이 없습니다.');
+        }
+
+        // 현재 유저 차례인지 확인
+        if (!draftRoom.isTeamTurn(teamId)) {
+            return sendBadRequest(res, '현재 차례가 아닙니다.');
+        }
+
+        // 이미 픽된 선수인지 확인
+        if (draftRoom.isPlayerPicked(playerId)) {
+            return sendBadRequest(res, '이미 선택된 선수입니다.');
+        }
+
+        // 선수 정보 조회 후 pickPlayer 호출
+        const { rows } = await query(`
+            SELECT id AS player_id FROM kbo_player_master WHERE id = $1
+        `, [playerId]);
+
+        if (rows.length === 0) {
+            return sendBadRequest(res, '해당 선수가 존재하지 않습니다.');
+        }
+
+        // 메모리 및 DB에 반영 + 다음 턴 진행까지 DraftRoom 내부에서 처리
+        await draftRoom.pickPlayer({
+            teamId,
+            player: rows[0]
+        });
+
+        return sendSuccess(res, { message: '선수 선택이 완료되었습니다.' });
+    } catch (error) {
+        console.error(error);
+        return sendServerError(res, error, '선수 선택 중 문제가 발생했습니다.');
+    }
+};

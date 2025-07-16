@@ -53,6 +53,18 @@
                         fixed-header
                         height="500"
                     >
+                        <template #item.select="{ item }">
+                            <v-btn
+                                icon
+                                size="small"
+                                color="primary"
+                                @click.stop="onPickClick(item)"
+                                :disabled="!isMyTurn"
+                            >
+                                <v-icon>mdi-check</v-icon>
+                            </v-btn>
+                        </template>
+
                         <template #item.name="{ item }">
                             <span>{{ item.name }}</span>
                         </template>
@@ -146,7 +158,6 @@
     </v-container>
 </template>
 
-
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { POSITIONS } from '@/utils/code/code.js';
@@ -163,6 +174,8 @@ const userStore = useUserStore();
 let leagueId = null;
 let seasonId = null;
 let draftRoomId = null;
+
+const user = userStore.getUser;
 
 const leagueIdEncrypted = route.query.leagueId;
 const seasonIdEncrypted = route.query.seasonId;
@@ -200,6 +213,25 @@ const enableStats = ref([]);
 const draftStatus = ref(null);
 
 const draftInfoYn = ref(false);
+
+const draftOrder = ref([]);
+const currentTurnIndex = ref(0);
+const draftResults = ref({});
+
+const selectedTeamId = ref(null);
+
+const isPicking = ref(false);  // 픽 요청 중복 방지 플래그
+
+const teamOptions = computed(() =>
+    draftOrder.value.map(d => ({ value: d.teamId, label: d.nickname }))
+);
+
+const selectedTeamPicks = computed(() => draftResults.value[selectedTeamId.value] || []);
+
+const isMyTurn = computed(() => {
+    const currentTeam = draftOrder.value[currentTurnIndex.value];
+    return currentTeam?.userId === user.userId;
+});
 
 const rawBatterHeaders = [
     { title: '이름', key: 'name' },
@@ -239,7 +271,7 @@ const rawBatterHeaders = [
     { title: '결승타점', key: 'go_ahead_rbi', align: 'center' },
     { title: '끝내기', key: 'walk_off', align: 'center' },
 
-    // 비율 스탯 (유지)
+    // 비율 스탯
     { title: '타율', key: 'batting_average', align: 'center' },
     { title: '출루율', key: 'on_base_percentage', align: 'center' },
     { title: '장타율', key: 'slugging_percentage', align: 'center' },
@@ -287,7 +319,7 @@ const rawPitcherHeaders = [
     { title: '퍼펙트게임', key: 'perfect_game', align: 'center' },
     { title: '노히트', key: 'no_hit', align: 'center' },
 
-    // 비율 스탯 (유지)
+    // 비율 스탯
     { title: 'ERA', key: 'era', align: 'center' },
     { title: '삼진/9이닝', key: 'k_per_9', align: 'center' },
     { title: '볼넷/9이닝', key: 'bb_per_9', align: 'center' },
@@ -295,45 +327,39 @@ const rawPitcherHeaders = [
     { title: 'WHIP', key: 'whip', align: 'center' },
 ];
 
-const batterHeaders = computed(() =>
-    rawBatterHeaders.filter(
-        (h) => ['name', 'team', 'season_position'].includes(h.key) || enableStats.value.includes(h.key)
-    ).map(h => ({
-        title: h.title,
-        key: h.key,
-        align: h.align || 'start',
-        value: h.key,
-    }))
-);
+// 테이블 헤더: 선택 버튼 포함, enableStats 기준 필터링
+const batterHeaders = computed(() => [
+    { title: '', key: 'select', align: 'center' }, // 선택 버튼 컬럼
+    ...rawBatterHeaders
+        .filter(h => ['name', 'team', 'season_position'].includes(h.key) || enableStats.value.includes(h.key))
+        .map(h => ({ title: h.title, key: h.key, align: h.align || 'start', value: h.key }))
+]);
 
-const pitcherHeaders = computed(() =>
-    rawPitcherHeaders.filter(
-        (h) => ['name', 'team', 'season_position'].includes(h.key) || enableStats.value.includes(h.key)
-    ).map(h => ({
-        title: h.title,
-        key: h.key,
-        align: h.align || 'start',
-        value: h.key,
-    }))
-);
+const pitcherHeaders = computed(() => [
+    { title: '', key: 'select', align: 'center' }, // 선택 버튼 컬럼
+    ...rawPitcherHeaders
+        .filter(h => ['name', 'team', 'season_position'].includes(h.key) || enableStats.value.includes(h.key))
+        .map(h => ({ title: h.title, key: h.key, align: h.align || 'start', value: h.key }))
+]);
 
-// 필터링된 선수 리스트
+// 필터링된 선수 리스트 계산
 const filteredPlayers = computed(() => {
     const pickedPlayerIds = new Set(
         Object.values(draftResults.value)
             .flat()
-            .map(p => p.player_id)
+            .map(p => Number(p.player_id))   // 모두 숫자로 변환
     );
 
     return allPlayers.value.filter(p => {
-        const matchesTab = p.player_type === activeTab.value;
-        const matchesPosition = positionFilter.value.length === 0 || positionFilter.value.includes(p.season_position);
-        const matchesSearch = !search.value || p.name.includes(search.value);
-        const isNotPicked = !pickedPlayerIds.has(p.player_id);
-        return matchesTab && matchesPosition && matchesSearch && isNotPicked;
+        const playerId = Number(p.player_id);  // 비교를 위해 숫자로 변환
+        return (
+            p.player_type === activeTab.value &&
+            (positionFilter.value.length === 0 || positionFilter.value.includes(p.season_position)) &&
+            (!search.value || p.name.includes(search.value)) &&
+            !pickedPlayerIds.has(playerId)  // 이미 뽑힌 선수 제외
+        );
     });
 });
-
 
 // 포지션 필터 옵션 (타자/투수 구분)
 const filteredPositionOptions = computed(() => {
@@ -342,31 +368,59 @@ const filteredPositionOptions = computed(() => {
         : POSITIONS.filter(pos => pos.code === 'SP' || pos.code === 'RP');
 });
 
-// 드래프트 순서, 현재 턴 인덱스, 드래프트 결과
-const draftOrder = ref([]);
-const currentTurnIndex = ref(0);
-const draftResults = ref({});
-
-// 팀 선택 및 팀별 픽 목록
-const selectedTeamId = ref(null);
-const teamOptions = computed(() =>
-    draftOrder.value.map(d => ({ value: d.teamId, label: d.nickname }))
-);
-const selectedTeamPicks = computed(() => draftResults.value[selectedTeamId.value] || []);
-
-// 선택된 선수
 const selectedPlayer = ref(null);
 function onPlayerClick(player) {
     selectedPlayer.value = player;
 }
 
-// socket 변수
+// 소켓
 const socket = ref(null);
+
+// 선수 픽 클릭 이벤트
+const onPickClick = async (player) => {
+    if (!isMyTurn.value) {
+        alert('지금은 본인의 차례가 아닙니다.');
+        return;
+    }
+
+    if (isPicking.value) {
+        // 이미 요청 중이면 클릭 무시
+        return;
+    }
+
+    isPicking.value = true;  // 요청 시작
+
+    try {
+        const currentTeam = draftOrder.value[currentTurnIndex.value];
+        const teamId = currentTeam?.teamId;
+
+        const res = await commonFetch(
+            `/api/league/${encodeURIComponent(leagueIdEncrypted)}/season/${encodeURIComponent(seasonIdEncrypted)}/draftroom/pick`,
+            {
+                method: 'POST',
+                body: {
+                    playerId: player.player_id,
+                    teamId
+                }
+            }
+        );
+
+        if (!res.success) {
+            alert(res.message || '픽 처리 중 오류가 발생했습니다.');
+        } else {
+            selectedPlayer.value = null;
+        }
+    } catch (err) {
+        console.error('[onPickClick error]', err);
+        alert('선수 픽 요청 중 오류가 발생했습니다.');
+    } finally {
+        isPicking.value = false;  // 요청 종료
+    }
+};
 
 // 초기 데이터 로드 및 소켓 연결
 onMounted(async () => {
     try {
-        // commonFetch 호출 시 두번째 인자로 method 지정
         const res = await commonFetch(
             `/api/league/${encodeURIComponent(leagueIdEncrypted)}/season/${encodeURIComponent(seasonIdEncrypted)}/draftroom/info`,
             { method: 'GET' }
@@ -386,7 +440,7 @@ onMounted(async () => {
         allPlayers.value = data.players;
         enableStats.value = data.enabledStats || [];
         draftStatus.value = data.draftRoom?.status;
-        maxRounds.value = data.draftRoom?.max_rounds
+        maxRounds.value = data.draftRoom?.max_rounds;
 
         draftOrder.value = data.draftOrder.map(d => ({
             teamId: d.team_id,
@@ -400,7 +454,8 @@ onMounted(async () => {
 
         draftResults.value = data.draftResults || {};
 
-        const myTeam = draftOrder.value.find(t => t.nickname === userStore.nickname);
+        // 현재 로그인 유저 팀으로 기본 선택
+        const myTeam = draftOrder.value.find(t => t.userId === user.userId);
         selectedTeamId.value = myTeam?.teamId || draftOrder.value[0]?.teamId;
 
         // 소켓 연결
@@ -410,8 +465,6 @@ onMounted(async () => {
 
         socket.value.on('connect', () => {
             console.log('[socket] connected:', socket.value.id);
-            // 이벤트 이름 서버와 맞추기
-            console.log("draftRoomId",draftRoomId)
             socket.value.emit('joinRoom', draftRoomId);
         });
 
