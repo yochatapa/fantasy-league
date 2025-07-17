@@ -492,6 +492,11 @@ onMounted(async () => {
             }));
         });
 
+        socket.value.on('draft:end', () => {
+            alert('드래프트가 종료되었습니다.');
+            draftStatus.value = 'finished';
+        });
+
         socket.value.on('disconnect', reason => {
             console.log('[socket] disconnected:', reason);
             router.push(`/league/home?leagueId=${encodeURIComponent(leagueIdEncrypted)}&seasonId=${encodeURIComponent(seasonIdEncrypted)}`);

@@ -151,6 +151,7 @@ export default class DraftRoom {
 
         if (this.maxRounds && this.currentRound > this.maxRounds) {
             console.log('[NEXT TURN] maxRounds 초과, 드래프트 종료');
+            this.clearTimer();
             await this.finish();
             return;
         }
@@ -281,7 +282,7 @@ export default class DraftRoom {
             `, [
                 this.draftRoomId,
                 this.currentRound,
-                this.currentIndex + 1,
+                this.currentIndex,
                 userId,
                 teamId,
                 playerId,
