@@ -46,6 +46,9 @@ import { storeToRefs } from 'pinia';
 import { useNotificationStore } from '@/stores/notificationStore';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
+import { useRouter } from 'vue-router';
+
+const router = useRouter();
 
 dayjs.extend(relativeTime);
 
@@ -54,6 +57,7 @@ const { notifications } = storeToRefs(notificationStore);
 
 const onClickNotification = async (n) => {
     await notificationStore.markAsRead(n.id);
+    if(n.url) router.push(n.url)
 };
 
 // 현재 시간 ref: 1분마다 갱신

@@ -4,6 +4,7 @@ import dayjs from 'dayjs'
 import { getIO } from '../utils/socket.js';
 import activeDraftRooms from '../utils/draft/activeDraftRooms.js';  // draftRoom 위치에 맞게 경로 수정
 import DraftRoom from '../utils/draft/draftRoom.js';  // draftRoom 위치에 맞게 경로 수정
+import { encryptData, decryptData } from '../utils/crypto.js';
 
 // 매 분 0초에 실행 (초 분 시 일 월 요일)
 const job = schedule.scheduleJob('0 * * * * *', async () => {
@@ -121,6 +122,8 @@ const job = schedule.scheduleJob('0 * * * * *', async () => {
                 const insertValues = [];
                 const insertParams = [];
 
+                const url = "/league/draftroom?leagueId="+encodeURIComponent(encryptData(league_id))+"&seasonId="+encodeURIComponent(encryptData(season_id))
+
                 users.forEach(({ user_id }, index) => {
                     const paramIndex = index * 8;
                     insertValues.push(`($${paramIndex + 1}, $${paramIndex + 2}, $${paramIndex + 3}, $${paramIndex + 4}, $${paramIndex + 5}, $${paramIndex + 6}, $${paramIndex + 7}, $${paramIndex + 8})`);
@@ -131,9 +134,9 @@ const job = schedule.scheduleJob('0 * * * * *', async () => {
                         '드래프트 시작 알림',
                         messageText,
                         'unread',
-                        null,
+                        url,
                         draft_room_id,
-                        'draft_room'
+                        'draft_room',
                     );
                 });
 
@@ -157,6 +160,7 @@ const job = schedule.scheduleJob('0 * * * * *', async () => {
                         related_id: draft_room_id,
                         related_type: 'draft_room',
                         id: notiId,
+                        url : url,
                         created_at: now.toISOString()
                     });
                 });
@@ -213,6 +217,8 @@ const alertJob = schedule.scheduleJob('0 * * * * *', async () => {
                 const insertValues = [];
                 const insertParams = [];
 
+                const url = "/league/draftroom?leagueId="+encodeURIComponent(encryptData(league_id))+"&seasonId="+encodeURIComponent(encryptData(season_id));
+
                 users.forEach(({ user_id }, index) => {
                     const paramIndex = index * 8;
                     insertValues.push(`($${paramIndex + 1}, $${paramIndex + 2}, $${paramIndex + 3}, $${paramIndex + 4}, $${paramIndex + 5}, $${paramIndex + 6}, $${paramIndex + 7}, $${paramIndex + 8})`);
@@ -222,9 +228,9 @@ const alertJob = schedule.scheduleJob('0 * * * * *', async () => {
                         '드래프트 10분 전 알림',
                         messageText,
                         'unread',
-                        null,
+                        url,
                         draft_room_id,
-                        'draft_room'
+                        'draft_room',
                     );
                 });
 
@@ -247,6 +253,7 @@ const alertJob = schedule.scheduleJob('0 * * * * *', async () => {
                         related_id: draft_room_id,
                         related_type: 'draft_room',
                         id: notiId,
+                        url : url,
                         created_at: now.toISOString()
                     });
                 });
@@ -286,7 +293,7 @@ const startDraftJob = schedule.scheduleJob('* * * * * *', async () => {
             WHERE dr.status = 'waiting'
             AND dr.started_at <= NOW()
         `);
-
+        
         for (const room of readyRooms) {
             const roomKey = `${room.league_id}_${room.season_id}`;
             if (activeDraftRooms.has(roomKey)) {
