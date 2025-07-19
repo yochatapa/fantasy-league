@@ -613,6 +613,7 @@ export const getSeasonInfo = async (req, res) => {
                 lst.id AS team_id,
                 lst.user_id,
                 lst.team_name,
+                um.nickname,
                 lst.logo_url,
                 ft.path AS file_path,
                 ft.mimetype AS file_mimetype
@@ -625,6 +626,7 @@ export const getSeasonInfo = async (req, res) => {
                 ON ldt.draft_order = gs.draft_order AND ldt.league_id = $1 AND ldt.season_id = $2
             LEFT JOIN league_season_team lst
                 ON lst.id = ldt.team_id
+            INNER JOIN user_master um ON lst.user_id = um.user_id
             LEFT JOIN file_table ft
                 ON ft.file_id = lst.logo_url::uuid AND ft.sn = 1
             ORDER BY gs.draft_order;
@@ -657,12 +659,40 @@ export const getSeasonInfo = async (req, res) => {
         const { rows: draftRoomRows } = await query(draftRoomQuery, param);
         const draftRoom = draftRoomRows[0] || null;
 
+        // 드래프트 결과 조회
+        const draftResultQuery = `
+            SELECT
+                dr.team_id,
+                dr.round,
+                dr.pick_order,
+                dr.player_id,
+                pm.name AS player_name,
+                pm.primary_position
+            FROM draft_results dr
+            INNER JOIN kbo_player_master pm ON dr.player_id = pm.id
+            WHERE dr.draft_room_id = $1
+        `;
+        const draftResultData = await query(draftResultQuery, [draftRoom.id]);
+
+        const draftResults = {};
+        for (const row of draftResultData.rows) {
+            if (!draftResults[row.team_id]) draftResults[row.team_id] = [];
+            draftResults[row.team_id].push({
+                round: row.round,
+                pick_order: row.pick_order,
+                player_id: row.player_id,
+                name: row.player_name,
+                position: row.primary_position,
+            });
+        }
+
         return sendSuccess(res, {
             message: '시즌 정보가 조회되었습니다.',
             seasonInfo: seasonInfo.rows[0],
             teamList,
             draftTeams,
-            draftRoom
+            draftRoom,
+            draftResults
         });
     } catch (error) {
         return sendServerError(res, error, '시즌 정보 조회 중 문제가 발생했습니다. 다시 시도해주세요.');

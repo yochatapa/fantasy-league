@@ -7,11 +7,15 @@
                 <v-col cols="8">
                     <h2>{{ leagueName }} - {{ seasonYear }} 시즌</h2>
                     <div>라운드 {{ currentRound }} / {{ maxRounds }}</div>
-                    <div>현재 픽: <strong>{{ currentUser }}</strong></div>
+                    <div v-if="draftStatus !== 'waiting'">현재 픽: <strong>{{ currentUser }}</strong></div>
+                    <div v-else>드래프트 시작 전입니다. </div>
                 </v-col>
                 <v-col cols="4" class="text-right">
-                    <v-chip color="red" label>
+                    <v-chip color="red" label v-if="draftStatus !== 'waiting'">
                         남은 시간: {{ remainingTime }}초
+                    </v-chip>
+                    <v-chip color="red" label v-else>
+                        시작 전
                     </v-chip>
                 </v-col>
             </v-row>

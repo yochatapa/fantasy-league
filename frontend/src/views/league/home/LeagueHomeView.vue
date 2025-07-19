@@ -178,6 +178,39 @@
                     </v-card-text>
                 </v-card>
             </v-col>
+            <v-col cols="12" v-if="draftRoom && draftRoom?.status === 'finished'">
+                <v-card>
+                    <v-card-title class="d-flex justify-space-between align-center">
+                        <span>드래프트 결과</span>
+                    </v-card-title>
+                    <v-divider></v-divider>
+                    <v-card-text>
+                        <v-row>
+                            <v-col
+                                cols="12"
+                                md="4"
+                                v-for="team in draftTeams"
+                                :key="team.team_id"
+                            >
+                                <v-card class="mb-4" elevation="2">
+                                    <v-card-title class="text-h6">{{ team.nickname }} 팀</v-card-title>
+                                    <v-divider />
+                                    <v-list style="max-height: 400px; overflow-y: auto;">
+                                        <v-list-item
+                                            v-for="(player, idx) in draftResults[team.team_id] || []"
+                                            :key="idx"
+                                        >
+                                            <v-list-item-title>
+                                                {{ player.name }} ({{ player.position }})
+                                            </v-list-item-title>
+                                        </v-list-item>
+                                    </v-list>
+                                </v-card>
+                            </v-col>
+                        </v-row>
+                    </v-card-text>
+                </v-card>
+            </v-col>
         </v-row>
 
         <!-- 메인 영역 -->
@@ -341,6 +374,7 @@ const currentSeasonInfo = ref(null);
 const filteredSeasonYears = ref([]);
 const draftTeams = ref([]);
 const draftRoom = ref(null);
+const draftResults = ref({});
 
 const seasonYear = ref(null);
 watch([seasonInfo, seasonYear], () => {
@@ -484,6 +518,7 @@ const loadLeagueInfo = async () => {
                     currentSeasonInfo.value = seasonRes.data.seasonInfo;
                     draftTeams.value = seasonRes.data.draftTeams;
                     draftRoom.value = seasonRes.data.draftRoom;
+                    draftResults.value = seasonRes.data.draftResults;
                 }
             }
         } else {
