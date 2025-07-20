@@ -1,28 +1,35 @@
 <template>
-    <v-container fluid>
+    <v-container fluid class="pa-2 pa-md-4">
         <!-- 드래프트 진행 중 화면 -->
         <template v-if="draftStatus !== 'finished' && draftInfoYn">
             <!-- 상단 정보 -->
             <v-row class="mb-4" align="center" justify="space-between">
-                <v-col cols="8">
-                    <h2>{{ leagueName }} - {{ seasonYear }} 시즌</h2>
+                <v-col cols="12" md="8">
+                    <h2 class="text-h6 text-md-h5">{{ leagueName }} - {{ seasonYear }} 시즌</h2>
                     <div>라운드 {{ currentRound }} / {{ maxRounds }}</div>
-                    <div v-if="draftStatus !== 'waiting'">현재 픽: <strong>{{ currentUser }}</strong></div>
-                    <div v-else>드래프트 시작 전입니다. </div>
+                    <div v-if="draftStatus !== 'waiting'" class="d-flex justify-space-between">
+                        <span>현재 픽: <strong>{{ currentUser }}</strong></span>
+                        <v-chip color="red" label v-if="isMobile">
+                            {{ draftStatus !== 'waiting' ? `남은 시간: ${remainingTime}초` : '시작 전' }}
+                        </v-chip>
+                    </div>
+                    <div v-else class="d-flex justify-space-between">
+                        <span>드래프트 시작 전입니다.</span>
+                        <v-chip color="red" label v-if="isMobile">
+                            {{ draftStatus !== 'waiting' ? `남은 시간: ${remainingTime}초` : '시작 전' }}
+                        </v-chip>
+                    </div>
                 </v-col>
-                <v-col cols="4" class="text-right">
-                    <v-chip color="red" label v-if="draftStatus !== 'waiting'">
-                        남은 시간: {{ remainingTime }}초
-                    </v-chip>
-                    <v-chip color="red" label v-else>
-                        시작 전
+                <v-col cols="12" md="4" class="text-md-right text-center" v-if="!isMobile">
+                    <v-chip color="red" label>
+                        {{ draftStatus !== 'waiting' ? `남은 시간: ${remainingTime}초` : '시작 전' }}
                     </v-chip>
                 </v-col>
             </v-row>
 
             <v-row>
                 <!-- 선수 리스트 -->
-                <v-col cols="8">
+                <v-col cols="12" md="8">
                     <v-tabs v-model="activeTab">
                         <v-tab value="B">타자</v-tab>
                         <v-tab value="P">투수</v-tab>
@@ -48,41 +55,43 @@
                         chips
                     />
 
-                    <v-data-table
-                        :headers="activeTab === 'B' ? batterHeaders : pitcherHeaders"
-                        :items="filteredPlayers"
-                        class="mt-4"
-                        @click:row="onPlayerClick"
-                        dense
-                        fixed-header
-                        height="500"
-                    >
-                        <template #item.select="{ item }">
-                            <v-btn
-                                icon
-                                size="small"
-                                color="primary"
-                                @click.stop="onPickClick(item)"
-                                :disabled="!isMyTurn || draftStatus == 'waiting'"
-                            >
-                                <v-icon>mdi-check</v-icon>
-                            </v-btn>
-                        </template>
+                    <div class="table-wrapper">
+                        <v-data-table
+                            :headers="activeTab === 'B' ? batterHeaders : pitcherHeaders"
+                            :items="filteredPlayers"
+                            class="mt-4"
+                            @click:row="onPlayerClick"
+                            density="compact"
+                            fixed-header
+                            height="500"
+                        >
+                            <template #item.select="{ item }">
+                                <v-btn
+                                    icon
+                                    size="small"
+                                    color="primary"
+                                    @click.stop="onPickClick(item)"
+                                    :disabled="!isMyTurn || draftStatus == 'waiting'"
+                                >
+                                    <v-icon>mdi-check</v-icon>
+                                </v-btn>
+                            </template>
 
-                        <template #item.name="{ item }">
-                            <span>{{ item.name }}</span>
-                        </template>
-                        <template #item.team="{ item }">
-                            <span>{{ item.team }}</span>
-                        </template>
-                        <template #item.season_position="{ item }">
-                            <span>{{ item.season_position }}</span>
-                        </template>
-                    </v-data-table>
+                            <template #item.name="{ item }">
+                                <span>{{ item.name }}</span>
+                            </template>
+                            <template #item.team="{ item }">
+                                <span>{{ item.team }}</span>
+                            </template>
+                            <template #item.season_position="{ item }">
+                                <span>{{ item.season_position }}</span>
+                            </template>
+                        </v-data-table>
+                    </div>
                 </v-col>
 
                 <!-- 드래프트 결과 + 팀 셀렉트 -->
-                <v-col cols="4">
+                <v-col cols="12" md="4">
                     <v-card class="mb-4">
                         <v-card-title class="text-h6">드래프트 순서</v-card-title>
                         <v-divider />
@@ -92,13 +101,15 @@
                                 :key="user.teamId"
                                 :class="{ 'bg-blue-lighten-4': idx === currentTurnIndex }"
                             >
-                                <v-list-item-title>{{ idx + 1 }}. {{ user.nickname }}</v-list-item-title>
+                                <v-list-item-title>
+                                    {{ idx + 1 }}. {{ user.nickname }}
+                                </v-list-item-title>
                             </v-list-item>
                         </v-list>
                     </v-card>
 
                     <v-card>
-                        <v-card-title class="text-h6 d-flex justify-space-between align-center">
+                        <v-card-title class="text-h6 d-flex justify-space-between align-center flex-wrap">
                             드래프트 결과
                             <v-select
                                 v-model="selectedTeamId"
@@ -108,6 +119,7 @@
                                 hide-details
                                 dense
                                 style="max-width: 160px"
+                                class="mt-2 mt-md-0"
                             />
                         </v-card-title>
                         <v-divider />
@@ -130,7 +142,7 @@
         <template v-else-if="draftInfoYn">
             <v-row class="mb-4">
                 <v-col>
-                    <h2>{{ leagueName }} - {{ seasonYear }} 시즌</h2>
+                    <h2 class="text-h6 text-md-h5">{{ leagueName }} - {{ seasonYear }} 시즌</h2>
                     <div class="text-subtitle-1 font-weight-medium text-success">드래프트가 종료되었습니다.</div>
                 </v-col>
             </v-row>
@@ -170,10 +182,14 @@ import { useUserStore } from '@/stores/userStore';
 import { io } from 'socket.io-client';
 import { decryptData } from '@/utils/common/crypto.js';
 import { commonFetch } from '@/utils/common/commonFetch';
+import { useDisplay } from 'vuetify';
 
 const route = useRoute();
 const router = useRouter();
 const userStore = useUserStore();
+
+const { mobile } = useDisplay();
+const isMobile = computed(() => mobile.value);
 
 let leagueId = null;
 let seasonId = null;
