@@ -659,31 +659,33 @@ export const getSeasonInfo = async (req, res) => {
         const { rows: draftRoomRows } = await query(draftRoomQuery, param);
         const draftRoom = draftRoomRows[0] || null;
 
-        // 드래프트 결과 조회
-        const draftResultQuery = `
-            SELECT
-                dr.team_id,
-                dr.round,
-                dr.pick_order,
-                dr.player_id,
-                pm.name AS player_name,
-                pm.primary_position
-            FROM draft_results dr
-            INNER JOIN kbo_player_master pm ON dr.player_id = pm.id
-            WHERE dr.draft_room_id = $1
-        `;
-        const draftResultData = await query(draftResultQuery, [draftRoom.id]);
+        let draftResults = {};
 
-        const draftResults = {};
-        for (const row of draftResultData.rows) {
-            if (!draftResults[row.team_id]) draftResults[row.team_id] = [];
-            draftResults[row.team_id].push({
-                round: row.round,
-                pick_order: row.pick_order,
-                player_id: row.player_id,
-                name: row.player_name,
-                position: row.primary_position,
-            });
+        if (draftRoom?.id) {
+            const draftResultQuery = `
+                SELECT
+                    dr.team_id,
+                    dr.round,
+                    dr.pick_order,
+                    dr.player_id,
+                    pm.name AS player_name,
+                    pm.primary_position
+                FROM draft_results dr
+                INNER JOIN kbo_player_master pm ON dr.player_id = pm.id
+                WHERE dr.draft_room_id = $1
+            `;
+            const draftResultData = await query(draftResultQuery, [draftRoom.id]);
+
+            for (const row of draftResultData.rows) {
+                if (!draftResults[row.team_id]) draftResults[row.team_id] = [];
+                draftResults[row.team_id].push({
+                    round: row.round,
+                    pick_order: row.pick_order,
+                    player_id: row.player_id,
+                    name: row.player_name,
+                    position: row.primary_position,
+                });
+            }
         }
 
         return sendSuccess(res, {

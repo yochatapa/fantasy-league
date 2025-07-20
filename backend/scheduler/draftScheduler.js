@@ -359,7 +359,7 @@ async function restoreRunningDraftRooms() {
                 dr.current_pick_order,
                 dr.round,
                 dr.current_timer_seconds,
-                dr.max_rounds
+                dr.max_rounds,
             FROM draft_rooms dr
             WHERE dr.status = 'running'
         `);

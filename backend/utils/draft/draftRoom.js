@@ -304,7 +304,8 @@ export default class DraftRoom {
             currentIndex: this.currentIndex,
             currentRound: this.currentRound,
             remainingTime: this.remainingTime,
-            draftResults: this.playersPicked
+            draftResults: this.playersPicked,
+            draftStatus : 'running',
         });
     }
 
@@ -335,7 +336,7 @@ export default class DraftRoom {
         });
 
         this.io.to(`${this.leagueId}-${this.seasonId}`).emit('draft:end', {
-            message: '드래프트가 종료되었습니다.'
+            message: '드래프트가 종료되었습니다.',
         });
     }
 }

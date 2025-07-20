@@ -63,7 +63,7 @@
                                 size="small"
                                 color="primary"
                                 @click.stop="onPickClick(item)"
-                                :disabled="!isMyTurn"
+                                :disabled="!isMyTurn || draftStatus == 'waiting'"
                             >
                                 <v-icon>mdi-check</v-icon>
                             </v-btn>
@@ -478,6 +478,7 @@ onMounted(async () => {
             currentUser.value = data.currentUser;
             currentRound.value = data.currentRound;
             draftResults.value = data.draftResults;
+            draftStatus.value = data.draftStatus;
         });
 
         socket.value.on('draft:playerList', data => {
