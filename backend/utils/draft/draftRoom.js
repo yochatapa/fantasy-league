@@ -31,6 +31,9 @@ export default class DraftRoom {
         this.positionLimits = {};
         this._isAutoPicking = false;
 
+        // ✅ 접속 중인 유저 관리
+        this.connectedUserIds = new Set();
+
         this.init();
     }
 
@@ -299,13 +302,15 @@ export default class DraftRoom {
 
         const currentUser = this.draftOrder[this.currentIndex];
         console.log(`[BROADCAST] round=${this.currentRound}, maxRound=${this.maxRounds} index=${this.currentIndex}, user=${currentUser.nickname}`);
+
         this.io.to(`${this.leagueId}-${this.seasonId}`).emit('draft:update', {
             currentUser: currentUser.nickname,
             currentIndex: this.currentIndex,
             currentRound: this.currentRound,
             remainingTime: this.remainingTime,
             draftResults: this.playersPicked,
-            draftStatus : 'running',
+            draftStatus: 'running',
+            connectedUserIds: Array.from(this.connectedUserIds) // ✅ 추가
         });
     }
 
@@ -338,5 +343,16 @@ export default class DraftRoom {
         this.io.to(`${this.leagueId}-${this.seasonId}`).emit('draft:end', {
             message: '드래프트가 종료되었습니다.',
         });
+    }
+
+    // ✅ 접속자 관리 메서드 추가
+    addConnectedUser(userId) {
+        this.connectedUserIds.add(userId);
+        this.broadcastUpdate();
+    }
+
+    removeConnectedUser(userId) {
+        this.connectedUserIds.delete(userId);
+        this.broadcastUpdate();
     }
 }

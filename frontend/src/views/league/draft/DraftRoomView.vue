@@ -103,6 +103,12 @@
                             >
                                 <v-list-item-title>
                                     {{ idx + 1 }}. {{ user.nickname }}
+                                    <v-icon
+                                        v-if="connectedUserIds.includes(user.userId)"
+                                        size="16"
+                                        color="green"
+                                        class="ml-2"
+                                    >mdi-circle</v-icon>
                                 </v-list-item-title>
                             </v-list-item>
                         </v-list>
