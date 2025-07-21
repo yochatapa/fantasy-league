@@ -104,7 +104,7 @@
                                 <v-list-item-title>
                                     {{ idx + 1 }}. {{ user.nickname }}
                                     <v-icon
-                                        v-if="connectedUserIds.includes(user.userId)"
+                                        v-if="connectedUsers.some(u => u.userId === user.userId)"
                                         size="16"
                                         color="green"
                                         class="ml-2"
@@ -243,6 +243,7 @@ const draftInfoYn = ref(false);
 const draftOrder = ref([]);
 const currentTurnIndex = ref(0);
 const draftResults = ref({});
+const connectedUsers = ref([]);
 
 const selectedTeamId = ref(null);
 
@@ -491,7 +492,11 @@ onMounted(async () => {
 
         socket.value.on('connect', () => {
             console.log('[socket] connected:', socket.value.id);
-            socket.value.emit('joinRoom', draftRoomId);
+            socket.value.emit('joinRoom', draftRoomId, {
+                leagueId,
+                seasonId,
+                userId : user.userId
+            });
         });
 
         socket.value.on('draft:update', data => {
@@ -501,6 +506,7 @@ onMounted(async () => {
             currentRound.value = data.currentRound;
             draftResults.value = data.draftResults;
             draftStatus.value = data.draftStatus;
+            connectedUsers.value = data.connectedUsers;
         });
 
         socket.value.on('draft:playerList', data => {

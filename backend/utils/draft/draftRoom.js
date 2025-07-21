@@ -31,9 +31,6 @@ export default class DraftRoom {
         this.positionLimits = {};
         this._isAutoPicking = false;
 
-        // ✅ 접속 중인 유저 관리
-        this.connectedUserIds = new Set();
-
         this.init();
     }
 
@@ -310,7 +307,7 @@ export default class DraftRoom {
             remainingTime: this.remainingTime,
             draftResults: this.playersPicked,
             draftStatus: 'running',
-            connectedUserIds: Array.from(this.connectedUserIds) // ✅ 추가
+            connectedUsers: this.getConnectedUsers(),
         });
     }
 
@@ -345,14 +342,25 @@ export default class DraftRoom {
         });
     }
 
-    // ✅ 접속자 관리 메서드 추가
-    addConnectedUser(userId) {
-        this.connectedUserIds.add(userId);
-        this.broadcastUpdate();
-    }
+    getConnectedUsers() {
+        const roomKey = `${this.leagueId}-${this.seasonId}`;
+        const room = this.io.sockets.adapter.rooms.get(roomKey);
+        const users = [];
 
-    removeConnectedUser(userId) {
-        this.connectedUserIds.delete(userId);
-        this.broadcastUpdate();
+        if (!room) return users;
+
+        for (const socketId of room) {
+            const socket = this.io.sockets.sockets.get(socketId);
+            if (socket) {
+                users.push({
+                    socketId: socket.id,
+                    userId: socket.userId,
+                    leagueId: socket.leagueId,
+                    seasonId: socket.seasonId
+                });
+            }
+        }
+
+        return users;
     }
 }
