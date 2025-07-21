@@ -492,7 +492,7 @@ onMounted(async () => {
 
         socket.value.on('connect', () => {
             console.log('[socket] connected:', socket.value.id);
-            socket.value.emit('joinRoom', draftRoomId, {
+            socket.value.emit('joinDraftRoom', draftRoomId, {
                 leagueId,
                 seasonId,
                 userId : user.userId

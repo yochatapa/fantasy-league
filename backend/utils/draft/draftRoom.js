@@ -13,7 +13,8 @@ export default class DraftRoom {
         currentIndex = 0,
         playersPicked = {},
         remainingTime = null,
-        maxRounds = null
+        maxRounds = null,
+        draftStatus = 'waiting'
     }) {
         this.leagueId = leagueId;
         this.seasonId = seasonId;
@@ -30,6 +31,7 @@ export default class DraftRoom {
         this.playersPicked = playersPicked;
         this.positionLimits = {};
         this._isAutoPicking = false;
+        this.draftStatus = draftStatus
 
         this.init();
     }
@@ -38,8 +40,6 @@ export default class DraftRoom {
         await this.loadPositionLimits();
         await this.loadPickedPlayersDetails();
         await this.updateDraftRoomState();
-        this.broadcastUpdate();
-        this.startTimer();
     }
 
     async updateDraftRoomState() {
@@ -58,15 +58,17 @@ export default class DraftRoom {
                     current_user_id = $3,
                     timer_seconds = $4,
                     current_timer_seconds = $5,
+                    status = $6,
                     updated_at = CURRENT_TIMESTAMP
-                WHERE id = $6
+                WHERE id = $7
             `, [
                 this.currentRound,
                 this.currentIndex + 1,
                 currentUser.user_id,
                 this.draftTimer,
                 this.remainingTime,
-                this.draftRoomId
+                this.draftStatus,
+                this.draftRoomId,
             ]);
         });
     }
@@ -105,6 +107,8 @@ export default class DraftRoom {
     startTimer() {
         this.clearTimer();
         if (this.timer) return;
+
+        if(this.draftStatus === "waiting") this.draftStatus = "running";
 
         if (this.maxRounds && this.currentRound > this.maxRounds) {
             console.log('[TIMER] maxRounds 초과로 타이머 시작 안함');
@@ -306,7 +310,7 @@ export default class DraftRoom {
             currentRound: this.currentRound,
             remainingTime: this.remainingTime,
             draftResults: this.playersPicked,
-            draftStatus: 'running',
+            draftStatus: this.draftStatus,
             connectedUsers: this.getConnectedUsers(),
         });
     }
@@ -362,5 +366,9 @@ export default class DraftRoom {
         }
 
         return users;
+    }
+    
+    getStatus(){
+        return this.draftStatus;
     }
 }
