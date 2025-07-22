@@ -315,8 +315,8 @@ const startDraftJob = schedule.scheduleJob('* * * * * *', async () => {
         const { rows: readyRooms } = await query(
             `SELECT dr.id AS draft_room_id, dr.league_id, dr.season_id, dr.timer_seconds, dr.max_rounds
             FROM draft_rooms dr
-            WHERE dr.status = 'waiting' -- Look for rooms that are waiting
-            AND dr.started_at <= NOW()` // And whose start time has arrived
+            WHERE dr.status = 'waiting'
+            AND dr.started_at <= NOW()`
         );
 
         for (const room of readyRooms) {
@@ -325,8 +325,6 @@ const startDraftJob = schedule.scheduleJob('* * * * * *', async () => {
 
             if (!draftRoomInstance) {
                 console.warn(`⚠️ DraftRoom 인스턴스를 찾을 수 없음. 복원 로직을 확인하세요. league_id=${room.league_id}, season_id=${room.season_id}`);
-                // Potentially, you might want to instantiate it here if it's missing for some reason
-                // but the restoreRunningDraftRooms and createDraftRoomJob should ideally cover this.
                 continue;
             }
 
@@ -430,6 +428,8 @@ async function restoreRunningDraftRooms() {
             });
 
             activeDraftRooms.set(roomKey, draftRoomInstance);
+
+            draftRoomInstance.startTimer();
             console.log(`✅ DraftRoom 복원됨: league_id=${room.league_id}, season_id=${room.season_id}`);
         }
     } catch (error) {

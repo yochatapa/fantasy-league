@@ -123,15 +123,20 @@ export default class DraftRoom {
             }
 
             this.remainingTime -= 1;
+            this.remainingTime = Math.max(0,this.remainingTime);
 
             try {
-                await this.updateDraftRoomState();
+                this.updateDraftRoomState();
                 this.broadcastUpdate();
             } catch (err) {
                 console.error('❌ Timer loop error:', err);
             }
-
-            if (this.remainingTime <= 0) {
+            
+            const currentUser = this.draftOrder[this.currentIndex];
+            
+            if(this.remainingTime <= Math.max(0,this.draftTimer - 3) && this.getConnectedUsers().findIndex(cu => Number(cu.userId) === Number(currentUser.user_id)) < 0){
+                await this.autoPick();
+            }else if (this.remainingTime <= 0) {
                 await this.autoPick();
             }
         }, 1000);
@@ -302,7 +307,7 @@ export default class DraftRoom {
         }
 
         const currentUser = this.draftOrder[this.currentIndex];
-        console.log(`[BROADCAST] round=${this.currentRound}, maxRound=${this.maxRounds} index=${this.currentIndex}, user=${currentUser.nickname}`);
+        console.log(`[BROADCAST] remainingTime=${this.remainingTime} round=${this.currentRound}, maxRound=${this.maxRounds} index=${this.currentIndex}, user=${currentUser.nickname}`);
 
         this.io.to(`${this.leagueId}-${this.seasonId}`).emit('draft:update', {
             currentUser: currentUser.nickname,
