@@ -14,7 +14,8 @@ export default class DraftRoom {
         playersPicked = {},
         remainingTime = null,
         maxRounds = null,
-        draftStatus = 'waiting'
+        draftStatus = 'waiting',
+        draftType = 'snake'
     }) {
         this.leagueId = leagueId;
         this.seasonId = seasonId;
@@ -31,7 +32,8 @@ export default class DraftRoom {
         this.playersPicked = playersPicked;
         this.positionLimits = {};
         this._isAutoPicking = false;
-        this.draftStatus = draftStatus
+        this.draftStatus = draftStatus;
+        this.draftType = draftType;
 
         this.init();
     }
@@ -150,13 +152,38 @@ export default class DraftRoom {
     }
 
     async nextTurn() {
-        this.currentIndex++;
-        if (this.currentIndex >= this.draftOrder.length) {
-            this.currentIndex = 0;
-            this.currentRound++;
+        const totalUsers = this.draftOrder.length;
+
+        if (this.draftType === 'auction') {
+            console.log('[NEXT TURN] 옥션 드래프트는 nextTurn에서 처리하지 않습니다.');
+            return;
         }
 
-        console.log(`[NEXT TURN] round=${this.currentRound}, index=${this.currentIndex}`);
+        if (this.draftType === 'snake') {
+            const isEvenRound = this.currentRound % 2 === 0;
+
+            if (isEvenRound) {
+                this.currentIndex--;
+                if (this.currentIndex < 0) {
+                    this.currentIndex = 0;
+                    this.currentRound++;
+                }
+            } else {
+                this.currentIndex++;
+                if (this.currentIndex >= totalUsers) {
+                    this.currentIndex = totalUsers - 1;
+                    this.currentRound++;
+                }
+            }
+        } else if (this.draftType === 'linear') {
+            this.currentIndex++;
+            if (this.currentIndex >= totalUsers) {
+                this.currentIndex = 0;
+                this.currentRound++;
+            }
+        }
+
+        console.log(`[NEXT TURN] round=${this.currentRound}, index=${this.currentIndex}, type=${this.draftType}`);
 
         if (this.maxRounds && this.currentRound > this.maxRounds) {
             console.log('[NEXT TURN] maxRounds 초과, 드래프트 종료');

@@ -16,7 +16,7 @@ const createDraftRoomJob = schedule.scheduleJob('0 * * * * *', async () => {
     const thirtyMinutesLater = now.add(30, 'minute');
 
     const draftCandidatesQuery = `
-        SELECT d.id AS draft_master_id, d.league_id, d.season_id, s.max_teams, d.draft_timer, d.draft_start_date
+        SELECT d.id AS draft_master_id, d.league_id, d.season_id, s.max_teams, d.draft_timer, d.draft_start_date, d.draft_type
         FROM league_season_draft_master d
         JOIN league_season s ON d.season_id = s.season_id
         LEFT JOIN league_season_draft_teams dt ON dt.league_id = d.league_id AND dt.season_id = d.season_id
@@ -29,7 +29,7 @@ const createDraftRoomJob = schedule.scheduleJob('0 * * * * *', async () => {
         console.log('draftCandidates (for room creation):', rows.length, 'thirtyMinutesLater:', thirtyMinutesLater.format());
 
         for (const draft of rows) {
-            const { league_id, season_id, draft_master_id, max_teams, draft_timer, draft_start_date } = draft;
+            const { league_id, season_id, draft_master_id, max_teams, draft_timer, draft_start_date, draft_type } = draft;
             const roomKey = `${league_id}_${season_id}`;
 
             // Check if draft_room already exists in DB OR in activeDraftRooms
@@ -121,6 +121,7 @@ const createDraftRoomJob = schedule.scheduleJob('0 * * * * *', async () => {
                     draftOrder: orderRows,
                     maxRounds : maxRounds,
                     draftStatus : 'waiting',
+                    draftType : draft_type,
                     // No need to set currentIndex, currentRound, playersPicked, remainingTime here
                     // as the draft hasn't started yet.
                 });
@@ -313,8 +314,15 @@ const startDraftJob = schedule.scheduleJob('* * * * * *', async () => {
 
     try {
         const { rows: readyRooms } = await query(
-            `SELECT dr.id AS draft_room_id, dr.league_id, dr.season_id, dr.timer_seconds, dr.max_rounds
+            `SELECT 
+                dr.id AS draft_room_id, 
+                dr.league_id, 
+                dr.season_id, 
+                dr.timer_seconds, 
+                dr.max_rounds,
+                lsdm.draft_type
             FROM draft_rooms dr
+                inner join league_season_draft_master lsdm ON lsdm.league_id = dr.league_id AND lsdm.season_id = dr.season_id
             WHERE dr.status = 'waiting'
             AND dr.started_at <= NOW()`
         );
@@ -365,9 +373,12 @@ async function restoreRunningDraftRooms() {
                 dr.current_pick_order,
                 dr.round,
                 dr.current_timer_seconds,
-                dr.max_rounds
+                dr.max_rounds,
+                dr.status,
+                lsdm.draft_type
             FROM draft_rooms dr
-            WHERE dr.status = 'running'
+                inner join league_season_draft_master lsdm ON lsdm.league_id = dr.league_id AND lsdm.season_id = dr.season_id
+            WHERE dr.status = 'running' or dr.status = 'waiting'
         `);
 
         for (const room of runningRooms) {
@@ -424,12 +435,13 @@ async function restoreRunningDraftRooms() {
                 currentRound,
                 playersPicked,
                 remainingTime: room.current_timer_seconds || room.timer_seconds,
-                maxRounds : room.max_rounds
+                maxRounds : room.max_rounds,
+                draftType : room.draft_type
             });
 
             activeDraftRooms.set(roomKey, draftRoomInstance);
 
-            draftRoomInstance.startTimer();
+            if(room.status === 'running') draftRoomInstance.startTimer();
             console.log(`✅ DraftRoom 복원됨: league_id=${room.league_id}, season_id=${room.season_id}`);
         }
     } catch (error) {
