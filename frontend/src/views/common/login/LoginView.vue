@@ -164,6 +164,7 @@ const login = async () => {
                 console.log('로그인 성공');
                 localStorage.setItem('token', response.data.token);
                 userStore.setUser(response.data.user)
+                await userStore.setNotification();
                 if(!!!route.query.type) router.push('/');
                 else{
                     if(route.query.type === "league-join" && !!route.query.code){

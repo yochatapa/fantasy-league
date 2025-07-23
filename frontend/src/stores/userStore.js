@@ -9,14 +9,13 @@ const socket = io(`${import.meta.env.VITE_API_URL}`, {
     transports: ['websocket'],
 });
 
-let isNotificationListenerSet = false; // ✅ 중복 방지용 플래그
-
 export const useUserStore = defineStore('user', {
     state: () => ({
         user: null,
         isLoggedIn: false,
         isAuthChecked: false,
         isAdmin: false,
+        isNotificationListenerSet: false,
     }),
     getters: {
         getUser: (state) => state.user,
@@ -43,6 +42,7 @@ export const useUserStore = defineStore('user', {
                     this.isLoggedIn = false;
                     this.isAuthChecked = true;
                     this.isAdmin = false;
+                    this.isNotificationListenerSet = false;
                     localStorage.removeItem('token');
                     router.push('/');
                     location.reload();
@@ -63,27 +63,7 @@ export const useUserStore = defineStore('user', {
                     if (response.data.user) {
                         this.setUser(response.data.user);
 
-                        if (!socket.connected) {
-                            socket.connect();
-                        }
-
-                        socket.emit('joinRoom', `user_${response.data.user.userId}`);
-
-                        // ✅ 알림 이벤트 리스너 등록 (1회만)
-                        if (!isNotificationListenerSet) {
-                            const notificationStore = useNotificationStore();
-
-                            socket.on('notification', (payload) => {
-                                console.log('[소켓 알림 수신]');
-                                notificationStore.addNotification({
-                                    ...payload,
-                                    id: payload.id ?? Date.now(), // 서버에서 id 주면 사용
-                                    status: 'unread',
-                                });
-                            });
-
-                            isNotificationListenerSet = true;
-                        }
+                        await this.setNotification()
                     }
 
                     return true;
@@ -114,5 +94,30 @@ export const useUserStore = defineStore('user', {
                 return false;
             }
         },
+        async setNotification(){
+            if (!socket.connected) {
+                socket.connect();
+            }
+
+            socket.emit('joinRoom', `user_${this.userId}`);
+
+            // ✅ 알림 이벤트 리스너 등록 (1회만)
+            if (!this.isNotificationListenerSet) {
+                const notificationStore = useNotificationStore();
+
+                await notificationStore.fetchNotifications();
+
+                socket.on('notification', (payload) => {
+                    console.log('[소켓 알림 수신]');
+                    notificationStore.addNotification({
+                        ...payload,
+                        id: payload.id ?? Date.now(), // 서버에서 id 주면 사용
+                        status: 'unread',
+                    });
+                });
+
+                this.isNotificationListenerSet = true;
+            }
+        }
     },
 });
