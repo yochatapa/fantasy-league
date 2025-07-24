@@ -35,7 +35,7 @@ export default class DraftRoom {
         this.draftStatus = draftStatus;
         this.draftType = draftType;
         // 새로 추가: 마지막 DB 업데이트 시간과 업데이트 간격
-        this.lastDbUpdate = dayjs(); 
+        this.lastDbUpdate = dayjs();
         this.dbUpdateInterval = 5; // DB 업데이트 간격 (초 단위)
 
         this.init();
@@ -45,7 +45,7 @@ export default class DraftRoom {
         await this.loadPositionLimits();
         await this.loadPickedPlayersDetails();
         // 초기 로드 시 DB 상태를 한 번 업데이트합니다.
-        await this.updateDraftRoomState(true); 
+        await this.updateDraftRoomState(true);
     }
 
     /**
@@ -107,21 +107,32 @@ export default class DraftRoom {
     }
 
     async loadPickedPlayersDetails() {
-        for (const [teamId, picks] of Object.entries(this.playersPicked)) {
-            const detailedPicks = [];
-            for (const pick of picks) {
-                const { rows } = await query(`
-                    SELECT name, primary_position FROM kbo_player_master WHERE id = $1
-                `, [pick.player_id]);
-                if (rows.length > 0) {
-                    detailedPicks.push({
-                        player_id: pick.player_id,
-                        name: rows[0].name,
-                        position: rows[0].primary_position
-                    });
-                }
+        const pickedPlayersFromDb = await query(`
+            SELECT
+                dr.player_id,
+                dr.team_id,
+                dr.round,          -- round 컬럼 추가
+                kpm.name,
+                kpm.primary_position
+            FROM draft_results dr
+            JOIN kbo_player_master kpm ON dr.player_id = kpm.id
+            WHERE dr.draft_room_id = $1
+            ORDER BY dr.round, dr.pick_order
+        `, [this.draftRoomId]);
+
+        // playersPicked 객체를 초기화하고 DB에서 가져온 데이터로 채웁니다.
+        this.playersPicked = {};
+        for (const row of pickedPlayersFromDb.rows) {
+            const teamId = row.team_id;
+            if (!this.playersPicked[teamId]) {
+                this.playersPicked[teamId] = [];
             }
-            this.playersPicked[teamId] = detailedPicks;
+            this.playersPicked[teamId].push({
+                player_id: row.player_id,
+                name: row.name,
+                position: row.primary_position,
+                round: row.round // round 정보 추가
+            });
         }
     }
 
@@ -148,15 +159,15 @@ export default class DraftRoom {
 
             try {
                 // DB 상태를 덜 자주 업데이트합니다 (updateDraftRoomState 내부 로직에 따름).
-                await this.updateDraftRoomState(); 
+                await this.updateDraftRoomState();
                 // 클라이언트에게는 항상 매 초마다 브로드캐스트합니다.
                 this.broadcastUpdate();
             } catch (err) {
                 console.error('❌ 타이머 루프 오류:', err);
             }
-            
+
             const currentUser = this.draftOrder[this.currentIndex];
-            
+
             // 자동 선택 로직은 동일하게 유지됩니다.
             if(this.remainingTime <= Math.max(0,this.draftTimer - 3) && this.getConnectedUsers().findIndex(cu => Number(cu.userId) === Number(currentUser?.user_id)) < 0){
                 await this.autoPick();
@@ -216,7 +227,7 @@ export default class DraftRoom {
 
         this.remainingTime = this.draftTimer;
         // 턴 변경 시에는 즉시 DB에 반영되어야 하므로 forceUpdate를 true로 호출합니다.
-        await this.updateDraftRoomState(true); 
+        await this.updateDraftRoomState(true);
         this.startTimer();
     }
 
@@ -234,7 +245,7 @@ export default class DraftRoom {
             const pickedIds = picked.rows.map(r => r.player_id);
 
             const candidates = await query(`
-                SELECT 
+                SELECT
                     p.id AS player_id,
                     p.name,
                     p.primary_position,
@@ -287,13 +298,15 @@ export default class DraftRoom {
                 userId: currentUser.user_id,
                 teamId,
                 playerId: finalPick.player_id,
-                isAuto: true
+                isAuto: true,
+                round: this.currentRound // round 정보 추가
             });
 
             this.playersPicked[teamId] = [...(this.playersPicked[teamId] || []), {
                 player_id: finalPick.player_id,
                 name: finalPick.name,
-                position: finalPick.primary_position
+                position: finalPick.primary_position,
+                round: this.currentRound // round 정보 추가
             }];
 
             this.broadcastUpdate();
@@ -315,7 +328,8 @@ export default class DraftRoom {
         this.playersPicked[teamId] = [...(this.playersPicked[teamId] || []), {
             player_id: player.player_id,
             name: playerInfo.name,
-            position: playerInfo.primary_position
+            position: playerInfo.primary_position,
+            round: this.currentRound // round 정보 추가
         }];
 
         const currentUser = this.draftOrder[this.currentIndex];
@@ -324,14 +338,15 @@ export default class DraftRoom {
             userId: currentUser.user_id,
             teamId,
             playerId: player.player_id,
-            isAuto: false
+            isAuto: false,
+            round: this.currentRound // round 정보 추가
         });
 
         this.broadcastUpdate();
         await this.nextTurn();
     }
 
-    async savePick({ userId, teamId, playerId, isAuto }) {
+    async savePick({ userId, teamId, playerId, isAuto, round }) { // round 매개변수 추가
         await withTransaction(async (client) => {
             await client.query(`
                 INSERT INTO draft_results (
@@ -340,7 +355,7 @@ export default class DraftRoom {
                 ) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP, $7)
             `, [
                 this.draftRoomId,
-                this.currentRound,
+                round, // 전달받은 round 값 사용
                 this.currentIndex,
                 userId,
                 teamId,
@@ -422,7 +437,7 @@ export default class DraftRoom {
 
         return users;
     }
-    
+
     getStatus(){
         return this.draftStatus;
     }

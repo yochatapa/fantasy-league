@@ -16,9 +16,12 @@ export const getDraftRoomInfo = async (req, res) => {
 
         // 1. 드래프트 룸 조회
         const draftRoomQuery = `
-            SELECT *
-            FROM draft_rooms
-            WHERE league_id = $1 AND season_id = $2
+            SELECT 
+                dr.*,
+                lsdm.draft_type
+            FROM draft_rooms dr
+                inner join league_season_draft_master lsdm ON lsdm.league_id = dr.league_id AND lsdm.season_id = dr.season_id
+            WHERE dr.league_id = $1 AND dr.season_id = $2
             ORDER BY id DESC
             LIMIT 1
         `;
@@ -95,6 +98,7 @@ export const getDraftRoomInfo = async (req, res) => {
                 pm.id AS player_id,
                 pm.name,
                 ps.team_id,
+                ktm.name as team_name,
                 ps.position AS season_position,
                 pm.primary_position,
                 pm.player_type,
@@ -221,6 +225,7 @@ export const getDraftRoomInfo = async (req, res) => {
 
             FROM kbo_player_master pm
             INNER JOIN kbo_player_season ps ON pm.id = ps.player_id
+            INNER JOIN kbo_team_master ktm ON ps.team_id = ktm.id
             LEFT JOIN batter_season_stats bs ON bs.player_id = pm.id AND bs.season_year = $1 - 1
             LEFT JOIN pitcher_season_stats pss ON pss.player_id = pm.id AND pss.season_year = $1 - 1
             WHERE ps.year = $1
