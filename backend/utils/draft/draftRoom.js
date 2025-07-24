@@ -34,6 +34,9 @@ export default class DraftRoom {
         this._isAutoPicking = false;
         this.draftStatus = draftStatus;
         this.draftType = draftType;
+        // 새로 추가: 마지막 DB 업데이트 시간과 업데이트 간격
+        this.lastDbUpdate = dayjs(); 
+        this.dbUpdateInterval = 5; // DB 업데이트 간격 (초 단위)
 
         this.init();
     }
@@ -41,38 +44,54 @@ export default class DraftRoom {
     async init() {
         await this.loadPositionLimits();
         await this.loadPickedPlayersDetails();
-        await this.updateDraftRoomState();
+        // 초기 로드 시 DB 상태를 한 번 업데이트합니다.
+        await this.updateDraftRoomState(true); 
     }
 
-    async updateDraftRoomState() {
+    /**
+     * 드래프트 룸 상태를 데이터베이스에 업데이트합니다.
+     * @param {boolean} forceUpdate - true인 경우, dbUpdateInterval과 관계없이 즉시 업데이트합니다.
+     */
+    async updateDraftRoomState(forceUpdate = false) {
         if (this.maxRounds && this.currentRound > this.maxRounds) {
             console.log('[UPDATE] maxRounds 초과 상태, draft_rooms 업데이트 스킵');
             return;
         }
 
+        // forceUpdate가 true이거나, 충분한 시간이 경과했을 때만 DB를 업데이트합니다.
+        if (!forceUpdate && dayjs().diff(this.lastDbUpdate, 'second') < this.dbUpdateInterval) {
+            return;
+        }
+
         const currentUser = this.draftOrder[this.currentIndex];
 
-        await withTransaction(async (client) => {
-            await client.query(`
-                UPDATE draft_rooms
-                SET round = $1,
-                    current_pick_order = $2,
-                    current_user_id = $3,
-                    timer_seconds = $4,
-                    current_timer_seconds = $5,
-                    status = $6,
-                    updated_at = CURRENT_TIMESTAMP
-                WHERE id = $7
-            `, [
-                this.currentRound,
-                this.currentIndex + 1,
-                currentUser.user_id,
-                this.draftTimer,
-                this.remainingTime,
-                this.draftStatus,
-                this.draftRoomId,
-            ]);
-        });
+        try {
+            await withTransaction(async (client) => {
+                await client.query(`
+                    UPDATE draft_rooms
+                    SET round = $1,
+                        current_pick_order = $2,
+                        current_user_id = $3,
+                        timer_seconds = $4,
+                        current_timer_seconds = $5,
+                        status = $6,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = $7
+                `, [
+                    this.currentRound,
+                    this.currentIndex + 1,
+                    currentUser?.user_id || null, // currentUser가 없을 경우를 대비한 옵셔널 체이닝
+                    this.draftTimer,
+                    this.remainingTime,
+                    this.draftStatus,
+                    this.draftRoomId,
+                ]);
+            });
+            this.lastDbUpdate = dayjs(); // 마지막 DB 업데이트 시간 갱신
+        } catch (error) {
+            console.error('데이터베이스의 드래프트 룸 상태 업데이트 실패:', error);
+            // 필요에 따라 오류 처리 로직 추가 (예: 재시도)
+        }
     }
 
     async loadPositionLimits() {
@@ -128,17 +147,20 @@ export default class DraftRoom {
             this.remainingTime = Math.max(0,this.remainingTime);
 
             try {
-                this.updateDraftRoomState();
+                // DB 상태를 덜 자주 업데이트합니다 (updateDraftRoomState 내부 로직에 따름).
+                await this.updateDraftRoomState(); 
+                // 클라이언트에게는 항상 매 초마다 브로드캐스트합니다.
                 this.broadcastUpdate();
             } catch (err) {
-                console.error('❌ Timer loop error:', err);
+                console.error('❌ 타이머 루프 오류:', err);
             }
             
             const currentUser = this.draftOrder[this.currentIndex];
             
-            if(this.remainingTime <= Math.max(0,this.draftTimer - 3) && this.getConnectedUsers().findIndex(cu => Number(cu.userId) === Number(currentUser.user_id)) < 0){
+            // 자동 선택 로직은 동일하게 유지됩니다.
+            if(this.remainingTime <= Math.max(0,this.draftTimer - 3) && this.getConnectedUsers().findIndex(cu => Number(cu.userId) === Number(currentUser?.user_id)) < 0){
                 await this.autoPick();
-            }else if (this.remainingTime <= 0) {
+            } else if (this.remainingTime <= 0) {
                 await this.autoPick();
             }
         }, 1000);
@@ -193,7 +215,8 @@ export default class DraftRoom {
         }
 
         this.remainingTime = this.draftTimer;
-        await this.updateDraftRoomState();
+        // 턴 변경 시에는 즉시 DB에 반영되어야 하므로 forceUpdate를 true로 호출합니다.
+        await this.updateDraftRoomState(true); 
         this.startTimer();
     }
 
@@ -253,7 +276,7 @@ export default class DraftRoom {
                 `, [this.draftRoomId]);
                 finalPick = fallback.rows[0];
                 if (!finalPick) {
-                    console.error('[AUTO PICK] No player to pick');
+                    console.error('[AUTO PICK] 선택할 선수 없음');
                     this._isAutoPicking = false;
                     await this.nextTurn();
                     return;
@@ -276,7 +299,7 @@ export default class DraftRoom {
             this.broadcastUpdate();
             await this.nextTurn();
         } catch (err) {
-            console.error('❌ autoPick error:', err);
+            console.error('❌ autoPick 오류:', err);
             await this.nextTurn();
         } finally {
             this._isAutoPicking = false;
@@ -329,15 +352,15 @@ export default class DraftRoom {
 
     broadcastUpdate() {
         if (this.maxRounds && this.currentRound > this.maxRounds) {
-            console.log('[BROADCAST] maxRounds 초과 상태, broadcast 생략');
+            console.log('[BROADCAST] maxRounds 초과 상태, 브로드캐스트 생략');
             return;
         }
 
         const currentUser = this.draftOrder[this.currentIndex];
-        console.log(`[BROADCAST] remainingTime=${this.remainingTime} round=${this.currentRound}, maxRound=${this.maxRounds} index=${this.currentIndex}, user=${currentUser.nickname}`);
+        console.log(`[BROADCAST] remainingTime=${this.remainingTime} round=${this.currentRound}, maxRound=${this.maxRounds} index=${this.currentIndex}, user=${currentUser?.nickname}`);
 
         this.io.to(`${this.leagueId}-${this.seasonId}`).emit('draft:update', {
-            currentUser: currentUser.nickname,
+            currentUser: currentUser?.nickname,
             currentIndex: this.currentIndex,
             currentRound: this.currentRound,
             remainingTime: this.remainingTime,
@@ -363,7 +386,7 @@ export default class DraftRoom {
 
     async finish() {
         this.clearTimer();
-        console.log(`[DRAFT FINISHED] leagueId=${this.leagueId}, seasonId=${this.seasonId}`);
+        console.log(`[DRAFT 종료] leagueId=${this.leagueId}, seasonId=${this.seasonId}`);
 
         await withTransaction(async (client) => {
             await client.query(`
