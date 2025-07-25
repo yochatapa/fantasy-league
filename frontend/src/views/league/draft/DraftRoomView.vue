@@ -3,7 +3,7 @@
         <template v-if="draftStatus !== 'finished' && draftInfoYn">
             <v-card class="mb-4 pa-4" elevation="2">
                 <v-row align="center" justify="space-between" class="px-2">
-                    <v-col cols="12" md="8">
+                    <v-col cols="12">
                         <h2 class="text-h6 text-md-h5 font-weight-bold text-primary mb-1">
                             {{ leagueName }} - {{ seasonYear }} 시즌 드래프트
                         </h2>
@@ -16,7 +16,8 @@
                                 <v-icon size="small" class="mr-1">mdi-account-star</v-icon>
                                 현재 픽: <strong :class="{'text-success': isMyTurn, 'text-primary': !isMyTurn}">{{ currentUser }}</strong>
                                 <v-chip v-if="isMyTurn" color="green" size="small" label class="ml-2">내 차례!</v-chip>
-                                <span v-else class="ml-2 text-medium-emphasis">({{ picksRemaining }}차례 후 내 차례)</span>
+                                <span v-else-if="picksRemaining>=0" class="ml-2 text-medium-emphasis">({{ picksRemaining }}차례 후 내 차례)</span>
+                                <span v-else class="ml-2 text-medium-emphasis">(내 차례 종료!)</span>
                             </div>
                             <v-chip color="red-darken-1" label class="mt-2 mt-sm-0 d-flex align-center justify-center" v-if="isMobile">
                                 <v-icon start icon="mdi-alarm"></v-icon>
@@ -157,7 +158,7 @@
                                     </v-avatar>
                                 </template>
                                 <v-list-item-title class="ml-2">
-                                    {{ user.nickname }} ({{ user.teamName }})
+                                    {{ user.teamName }}
                                     <v-chip
                                         v-if="connectedUsers.some(u => u.userId === user.userId)"
                                         color="green-lighten-1"
@@ -306,7 +307,6 @@ import { io } from 'socket.io-client';
 import { decryptData } from '@/utils/common/crypto.js';
 import { commonFetch } from '@/utils/common/commonFetch';
 import { useDisplay } from 'vuetify';
-import { groupBy } from 'lodash'; // Lodash 사용을 위해 임포트 추가
 
 const route = useRoute();
 const router = useRouter();
@@ -380,93 +380,41 @@ const isMyTurn = computed(() => {
 });
 
 const picksRemaining = computed(() => {
-    // 1. 드래프트 상태 체크 (기본 예외 처리)
-    if (!draftOrder.value.length || draftStatus.value === 'finished' || draftStatus.value === 'waiting') {
-        return 0;
-    }
-
-    // 2. 내 차례인 경우
-    if (isMyTurn.value) {
-        console.log("Debug: isMyTurn is true, returning 0.");
-        return 0;
-    }
-
-    // 3. 내 팀의 드래프트 순번 찾기
     const myTurnIndex = draftOrder.value.findIndex(d => d.userId === user.userId);
     if (myTurnIndex === -1) {
-        console.log("Debug: myTurnIndex not found, returning 0.");
         return 0;
     }
 
-    const playersPerRound = draftOrder.value.length; // 한 라운드당 팀(플레이어) 수
-    
-    // 현재 진행된 총 픽의 절대 순번 (0부터 시작)
-    // 이 값이 정확한지 확인하는 것이 핵심입니다.
-    const currentAbsolutePick = (currentRound.value - 1) * playersPerRound + currentTurnIndex.value;
+    let afterRound, passedPick;
 
-    let myNextAbsolutePick = -1; // 내 다음 픽의 절대 순번을 저장할 변수
+    if(draftType.value === 'linear'){
+        passedPick = Math.max(0,currentRound.value-1) * draftOrder.value.length + currentTurnIndex.value + 1
 
-    // --- 디버깅 로그 (이 부분의 정확한 값이 필요합니다) ---
-    console.log("--- Picks Remaining Debug ---");
-    console.log("Input: currentRound:", currentRound.value);
-    console.log("Input: currentTurnIndex:", currentTurnIndex.value);
-    console.log("Input: myTurnIndex:", myTurnIndex);
-    console.log("Input: playersPerRound:", playersPerRound);
-    console.log("Input: maxRounds:", maxRounds.value);
-    console.log("Calculated: currentAbsolutePick (현재 진행된 총 픽):", currentAbsolutePick);
-    // --- 디버깅 로그 끝 ---
+        if(currentTurnIndex.value > myTurnIndex){ // 이미 지나감
+            afterRound = Math.min(currentRound.value + 1,maxRounds.value);        
+        }else
+            afterRound = currentRound.value;
+    }else if(draftType.value === 'snake'){
+        if(currentRound.value % 2 === 1){ // 정방향
+            passedPick = Math.max(0,currentRound.value-1) * draftOrder.value.length + currentTurnIndex.value + 1
 
-    if (draftType.value === 'linear') {
-        const myAbsolutePickInCurrentRound = (currentRound.value - 1) * playersPerRound + myTurnIndex;
+            if(currentTurnIndex.value > myTurnIndex){ // 이미 지나감
+                afterRound = Math.min(currentRound.value + 1,maxRounds.value);        
+            }else
+                afterRound = currentRound.value;
+        }else{ //역방향
+            passedPick = Math.max(0,currentRound.value-1) * draftOrder.value.length + (draftOrder.value.length - currentTurnIndex.value)
 
-        if (myAbsolutePickInCurrentRound > currentAbsolutePick) {
-            myNextAbsolutePick = myAbsolutePickInCurrentRound;
-        } else {
-            const nextRound = currentRound.value + 1;
-            if (nextRound <= maxRounds.value) {
-                myNextAbsolutePick = (nextRound - 1) * playersPerRound + myTurnIndex;
-            } else {
-                myNextAbsolutePick = -1;
-            }
-        }
-    } else if (draftType.value === 'snake') {
-        for (let round = currentRound.value; round <= maxRounds.value; round++) {
-            let actualPickIndexInRound;
-
-            if (round % 2 !== 0) { // 홀수 라운드 (1, 3, 5...): 정방향 (0,1,2,3...)
-                actualPickIndexInRound = myTurnIndex;
-            } else { // 짝수 라운드 (2, 4, 6...): 역방향 (팀 수-1, 팀 수-2, ...)
-                actualPickIndexInRound = playersPerRound - 1 - myTurnIndex;
-            }
-
-            const myAbsolutePickInThisRound = (round - 1) * playersPerRound + actualPickIndexInRound;
-
-            console.log(`Debug Loop: Round ${round} (isEven: ${round % 2 === 0}), My actual index=${actualPickIndexInRound}, My absolute pick=${myAbsolutePickInThisRound}`);
-
-            // 여기가 핵심 조건: 내 픽이 현재 진행된 픽보다 뒤에 있는 경우
-            // (즉, 아직 내 차례가 오지 않았거나, 현재 픽이 끝나면 내 차례가 아닌 경우)
-            if (myAbsolutePickInThisRound > currentAbsolutePick) {
-                myNextAbsolutePick = myAbsolutePickInThisRound;
-                console.log(`Debug Loop: -> Found my next pick! Absolute pick: ${myNextAbsolutePick}`);
-                break;
-            }
+            if(currentTurnIndex.value < myTurnIndex){ // 이미 지나감
+                afterRound = Math.min(currentRound.value + 1,maxRounds.value);        
+            }else
+                afterRound = currentRound.value;
         }
     }
 
-    // 5. 최종 남은 픽 수 계산 및 반환
-    if (myNextAbsolutePick === -1) {
-        console.log("Debug: myNextAbsolutePick is -1, returning 0 (no more picks or end of draft).");
-        return 0;
-    } else {
-        // (내 다음 픽 절대 순번) - (현재 진행된 픽 절대 순번) - 1
-        // -1은 현재 진행 중인 픽을 제외하기 위함입니다.
-        // 예를 들어, currentAbsolutePick = 3 (4번 팀 픽 중), myNextAbsolutePick = 7 (1번 팀 다음 픽)
-        // 7 - 3 - 1 = 3 (3, 2, 1번 팀 픽 남음)
-        const calculatedRemaining = myNextAbsolutePick - currentAbsolutePick - 1;
-        console.log("Debug: myNextAbsolutePick:", myNextAbsolutePick, "currentAbsolutePick:", currentAbsolutePick);
-        console.log("Debug: Calculated Remaining Picks (before max(0)):", calculatedRemaining);
-        return Math.max(0, calculatedRemaining);
-    }
+    const nextMyPick = (afterRound-1) * draftOrder.value.length + (!(draftType.value==="snake" && afterRound % 2 === 0)?myTurnIndex + 1:(draftOrder.value.length - myTurnIndex))
+
+    return nextMyPick-passedPick
 });
 
 const rawBatterHeaders = [

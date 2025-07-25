@@ -12,7 +12,7 @@ const pool = new Pool({
     port: process.env.DB_PORT,
     max: 50,
     idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 2000,
+    connectionTimeoutMillis: 10000,
 });
 
 pool.on('error', (err, client) => {

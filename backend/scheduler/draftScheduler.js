@@ -309,7 +309,7 @@ const alertJob = schedule.scheduleJob('0 * * * * *', async () => {
 });
 
 // --- Modified 'startDraftJob' for calling startTimer() ---
-const startDraftJob = schedule.scheduleJob('* * * * * *', async () => {
+const startDraftJob = schedule.scheduleJob('0 * * * * *', async () => {
     const now = dayjs();
 
     try {
