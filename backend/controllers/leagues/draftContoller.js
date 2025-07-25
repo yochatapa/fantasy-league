@@ -72,10 +72,10 @@ export const getDraftRoomInfo = async (req, res) => {
                 dr.round,
                 dr.pick_order,
                 dr.player_id,
-                pm.name AS player_name,
-                pm.primary_position
+                kpm.name AS player_name,
+                dr.player_original_positions AS primary_position -- Use player_original_positions directly
             FROM draft_results dr
-            INNER JOIN kbo_player_master pm ON dr.player_id = pm.id
+            INNER JOIN kbo_player_master kpm ON dr.player_id = kpm.id
             WHERE dr.draft_room_id = $1
         `;
         const draftResultData = await query(draftResultQuery, [draftRoom.id]);

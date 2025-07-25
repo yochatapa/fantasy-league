@@ -131,7 +131,7 @@
 
         <!-- 드래프트 순번 -->
         <v-row v-if="currentSeasonInfo.season_status === 'pending'">
-            <v-col cols="12">
+            <v-col cols="12" v-if="draftRoom?.status !== 'finished'">
                 <v-card>
                     <v-card-title class="d-flex justify-space-between align-center">
                         <span>드래프트 순번</span>

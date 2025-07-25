@@ -37,15 +37,41 @@ export default class DraftRoom {
         // 새로 추가: 마지막 DB 업데이트 시간과 업데이트 간격
         this.lastDbUpdate = dayjs();
         this.dbUpdateInterval = 5; // DB 업데이트 간격 (초 단위)
+        this.seasonYear = null; // Add seasonYear property
 
         this.init();
     }
 
     async init() {
+        await this.loadSeasonYear(); // Load season year first
         await this.loadPositionLimits();
         await this.loadPickedPlayersDetails();
         // 초기 로드 시 DB 상태를 한 번 업데이트합니다.
         await this.updateDraftRoomState(true);
+    }
+
+    /**
+     * Loads the season_year for the current league and season.
+     */
+    async loadSeasonYear() {
+        try {
+            const { rows } = await query(`
+                SELECT season_year
+                FROM league_season
+                WHERE league_id = $1 AND season_id = $2
+            `, [this.leagueId, this.seasonId]);
+
+            if (rows.length > 0) {
+                this.seasonYear = rows[0].season_year;
+            } else {
+                console.warn(`[WARNING] No season_year found for leagueId: ${this.leagueId}, seasonId: ${this.seasonId}`);
+                // Fallback or error handling if season_year is crucial and not found
+                this.seasonYear = dayjs().year(); // Default to current year if not found
+            }
+        } catch (error) {
+            console.error('Failed to load season year:', error);
+            this.seasonYear = dayjs().year(); // Fallback in case of error
+        }
     }
 
     /**
@@ -111,13 +137,21 @@ export default class DraftRoom {
             SELECT
                 dr.player_id,
                 dr.team_id,
-                dr.round,          -- round 컬럼 추가
+                dr.round,
                 kpm.name,
-                kpm.primary_position
-            FROM draft_results dr
-            JOIN kbo_player_master kpm ON dr.player_id = kpm.id
-            WHERE dr.draft_room_id = $1
-            ORDER BY dr.round, dr.pick_order
+                dr.player_original_positions AS position
+            FROM
+                draft_results dr
+            INNER JOIN
+                draft_rooms drm ON dr.draft_room_id = drm.id
+            INNER JOIN
+                league_season ls ON drm.league_id = ls.league_id AND drm.season_id = ls.season_id
+            INNER JOIN
+                kbo_player_master kpm ON dr.player_id = kpm.id
+            WHERE
+                dr.draft_room_id = $1
+            ORDER BY
+                dr.round, dr.pick_order;
         `, [this.draftRoomId]);
 
         // playersPicked 객체를 초기화하고 DB에서 가져온 데이터로 채웁니다.
@@ -130,7 +164,7 @@ export default class DraftRoom {
             this.playersPicked[teamId].push({
                 player_id: row.player_id,
                 name: row.name,
-                position: row.primary_position,
+                position: row.position,
                 round: row.round // round 정보 추가
             });
         }
@@ -244,11 +278,18 @@ export default class DraftRoom {
             `, [this.draftRoomId]);
             const pickedIds = picked.rows.map(r => r.player_id);
 
+            // Ensure seasonYear is loaded before querying
+            if (this.seasonYear === null) {
+                await this.loadSeasonYear();
+            }
+
+            // Fetch players with their actual positions from kbo_player_season
             const candidates = await query(`
                 SELECT
                     p.id AS player_id,
                     p.name,
-                    p.primary_position,
+                    -- Use STRING_AGG to get all positions for the player
+                    STRING_AGG(DISTINCT kps.position, ', ') AS player_original_positions,
                     (
                         COALESCE(s.hits, 0) + COALESCE(s.walks, 0) + COALESCE(s.hit_by_pitch, 0)
                     )::float / NULLIF(
@@ -264,27 +305,37 @@ export default class DraftRoom {
                     )::float / NULLIF(COALESCE(s.at_bats, 0), 0) AS ops
                 FROM kbo_player_master p
                 JOIN batter_season_stats s ON p.id = s.player_id
-                WHERE s.season_year = $1
+                JOIN kbo_player_season kps ON kps.player_id = p.id AND kps.year = $1 -- Use this.seasonYear
+                WHERE s.season_year = $1 -- Use this.seasonYear
                 AND p.id NOT IN (${pickedIds.length > 0 ? pickedIds.join(',') : 'NULL'})
+                GROUP BY p.id, p.name, s.hits, s.walks, s.hit_by_pitch, s.at_bats, s.sacrifice_flies, s.singles, s.doubles, s.triples, s.home_runs
                 ORDER BY ops DESC
                 LIMIT 50
-            `, [dayjs().year() - 1]);
+            `, [this.seasonYear]); // Pass this.seasonYear
 
             let finalPick = candidates.rows.find(player => {
-                const count = (this.playersPicked[teamId] || []).filter(p => p.position === player.primary_position).length;
-                const limit = this.positionLimits?.[player.primary_position] ?? Infinity;
-                return count < limit;
+                const playerPositions = player.player_original_positions.split(',').map(pos => pos.trim());
+                for (const p of playerPositions) {
+                    const count = (this.playersPicked[teamId] || []).filter(pp => pp.position.split(',').map(pos => pos.trim()).includes(p)).length;
+                    const limit = this.positionLimits?.[p] ?? Infinity;
+                    if (count < limit) {
+                        return true;
+                    }
+                }
+                return false;
             }) || candidates.rows[0];
 
             if (!finalPick) {
                 const fallback = await query(`
-                    SELECT id AS player_id, name, primary_position
-                    FROM kbo_player_master
-                    WHERE id NOT IN (
+                    SELECT p.id AS player_id, name, STRING_AGG(DISTINCT kps.position, ', ') AS player_original_positions
+                    FROM kbo_player_master p
+                    JOIN kbo_player_season kps ON kps.player_id = p.id AND kps.year = $2
+                    WHERE p.id NOT IN (
                         SELECT player_id FROM draft_results WHERE draft_room_id = $1
                     )
-                    ORDER BY id ASC LIMIT 1
-                `, [this.draftRoomId]);
+                    GROUP BY p.id, p.name
+                    ORDER BY p.id ASC LIMIT 1
+                `, [this.draftRoomId, this.seasonYear]); // Pass this.seasonYear
                 finalPick = fallback.rows[0];
                 if (!finalPick) {
                     console.error('[AUTO PICK] 선택할 선수 없음');
@@ -298,15 +349,16 @@ export default class DraftRoom {
                 userId: currentUser.user_id,
                 teamId,
                 playerId: finalPick.player_id,
+                playerOriginalPositions: finalPick.player_original_positions,
                 isAuto: true,
-                round: this.currentRound // round 정보 추가
+                round: this.currentRound
             });
 
             this.playersPicked[teamId] = [...(this.playersPicked[teamId] || []), {
                 player_id: finalPick.player_id,
                 name: finalPick.name,
-                position: finalPick.primary_position,
-                round: this.currentRound // round 정보 추가
+                position: finalPick.player_original_positions,
+                round: this.currentRound
             }];
 
             this.broadcastUpdate();
@@ -320,16 +372,33 @@ export default class DraftRoom {
     }
 
     async pickPlayer({ teamId, player }) {
+        // Ensure seasonYear is loaded before querying
+        if (this.seasonYear === null) {
+            await this.loadSeasonYear();
+        }
+
+        // Fetch player info, including all original positions
         const { rows } = await query(`
-            SELECT name, primary_position FROM kbo_player_master WHERE id = $1
-        `, [player.player_id]);
+            SELECT
+                kpm.name,
+                STRING_AGG(DISTINCT kps.position, ', ') AS player_original_positions
+            FROM kbo_player_master kpm
+            JOIN kbo_player_season kps ON kps.player_id = kpm.id AND kps.year = $2 -- Use this.seasonYear
+            WHERE kpm.id = $1
+            GROUP BY kpm.name;
+        `, [player.player_id, this.seasonYear]); // Pass this.seasonYear
         const playerInfo = rows[0];
+
+        if (!playerInfo) {
+            console.error(`선수 ID ${player.player_id}를 찾을 수 없습니다.`);
+            return;
+        }
 
         this.playersPicked[teamId] = [...(this.playersPicked[teamId] || []), {
             player_id: player.player_id,
             name: playerInfo.name,
-            position: playerInfo.primary_position,
-            round: this.currentRound // round 정보 추가
+            position: playerInfo.player_original_positions,
+            round: this.currentRound
         }];
 
         const currentUser = this.draftOrder[this.currentIndex];
@@ -338,21 +407,23 @@ export default class DraftRoom {
             userId: currentUser.user_id,
             teamId,
             playerId: player.player_id,
+            playerOriginalPositions: playerInfo.player_original_positions,
             isAuto: false,
-            round: this.currentRound // round 정보 추가
+            round: this.currentRound
         });
 
         this.broadcastUpdate();
         await this.nextTurn();
     }
 
-    async savePick({ userId, teamId, playerId, isAuto, round }) { // round 매개변수 추가
+    async savePick({ userId, teamId, playerId, playerOriginalPositions, isAuto, round }) { // round 및 playerOriginalPositions 매개변수 추가
         await withTransaction(async (client) => {
             await client.query(`
                 INSERT INTO draft_results (
                     draft_room_id, round, pick_order, user_id,
-                    team_id, player_id, picked_at, is_auto_pick
-                ) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP, $7)
+                    team_id, player_id, picked_at, is_auto_pick,
+                    player_original_positions -- 새로운 컬럼 추가
+                ) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP, $7, $8)
             `, [
                 this.draftRoomId,
                 round, // 전달받은 round 값 사용
@@ -360,7 +431,8 @@ export default class DraftRoom {
                 userId,
                 teamId,
                 playerId,
-                isAuto
+                isAuto,
+                playerOriginalPositions // player_original_positions 컬럼에 값 전달
             ]);
         });
     }
@@ -404,11 +476,133 @@ export default class DraftRoom {
         console.log(`[DRAFT 종료] leagueId=${this.leagueId}, seasonId=${this.seasonId}`);
 
         await withTransaction(async (client) => {
+            // 1. 드래프트 룸 상태 업데이트
             await client.query(`
                 UPDATE draft_rooms
                 SET status = 'finished', finished_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
                 WHERE id = $1
             `, [this.draftRoomId]);
+
+            // 2. 로스터 슬롯 정보 불러오기
+            // 각 리그/시즌별 로스터 슬롯 정의를 가져옵니다.
+            const slotConfigQuery = await client.query(`
+                SELECT position, slot_count
+                FROM public.league_season_roster_slot
+                WHERE league_id = $1 AND season_id = $2
+            `, [this.leagueId, this.seasonId]);
+
+            const rosterSlotConfig = {}; // { '1B': 1, '2B': 1, ..., 'BENCH': 5 } 형태
+            slotConfigQuery.rows.forEach(row => {
+                rosterSlotConfig[row.position] = Number(row.slot_count);
+            });
+
+            // 3. 로스터 슬롯 할당 우선순위 정의 (하드코딩 또는 DB에서 관리 가능)
+            // 선수의 원래 포지션과 매칭될 수 있는 슬롯 포지션의 우선순위를 정의합니다.
+            // 예를 들어, 'RF' 선수는 'RF' -> 'OF' -> 'UTIL' -> 'BENCH' 순으로 할당됩니다.
+            const positionSlotPriorities = {
+                '1B': ['1B', 'IF', 'UTIL', 'BENCH'],
+                '2B': ['2B', 'IF', 'UTIL', 'BENCH'],
+                '3B': ['3B', 'IF', 'UTIL', 'BENCH'],
+                'SS': ['SS', 'IF', 'UTIL', 'BENCH'],
+                'LF': ['LF', 'OF', 'UTIL', 'BENCH'],
+                'CF': ['CF', 'OF', 'UTIL', 'BENCH'],
+                'RF': ['RF', 'OF', 'UTIL', 'BENCH'],
+                'C': ['C', 'UTIL', 'BENCH'], // 포수는 C 슬롯이 따로 있을 경우
+                'SP': ['SP', 'P', 'BENCH'],
+                'RP': ['RP', 'P', 'BENCH'],
+                // Add any other positions as needed, including general ones like 'IF', 'OF', 'P', 'UTIL'
+                'DH': ['DH', 'UTIL', 'BENCH'], // Designated Hitter
+                'P': ['P', 'BENCH'], // Generic Pitcher
+                'IF': ['IF', 'UTIL', 'BENCH'], // Generic Infielder
+                'OF': ['OF', 'UTIL', 'BENCH'], // Generic Outfielder
+                'UTIL': ['UTIL', 'BENCH'], // Utility
+                'BENCH': ['BENCH'] // Bench
+            };
+
+            // 팀별 현재 슬롯 사용 현황을 추적할 객체 (각 팀마다 초기화)
+            const teamSlotUsage = {}; // { teamId: { '1B': 0, '2B': 0, ..., 'BENCH': 0 } } 형태
+
+            // 4. 드래프트 결과에 따라 team_rosters 및 roster_transaction_history에 데이터 삽입
+            if (this.playersPicked && Object.keys(this.playersPicked).length > 0) {
+                let totalPlayersProcessed = 0;
+
+                for (const teamIdStr of Object.keys(this.playersPicked)) {
+                    const teamId = parseInt(teamIdStr);
+                    const playersInTeam = this.playersPicked[teamIdStr]; // 해당 팀의 선수 배열
+
+                    // 각 팀별 슬롯 사용 현황 초기화
+                    teamSlotUsage[teamId] = {};
+                    for (const pos in rosterSlotConfig) {
+                        teamSlotUsage[teamId][pos] = 0;
+                    }
+
+                    // Sort players by round and then by pick_order (implicitly by their order in the array)
+                    // The `loadPickedPlayersDetails` already orders them, so we can rely on that order.
+                    playersInTeam.sort((a, b) => a.round - b.round);
+
+                    for (const player of playersInTeam) {
+                        const { player_id, name, position, round } = player; // Player's original positions (e.g., "1B,DH")
+
+                        let assignedSlot = 'BENCH'; // Default to BENCH if no specific slot found
+
+                        const playerOriginalPositions = position.split(',').map(p => p.trim());
+
+                        let foundSlot = false;
+                        for (const originalPos of playerOriginalPositions) {
+                            const possibleSlots = positionSlotPriorities[originalPos] || ['UTIL', 'BENCH'];
+
+                            for (const slotCandidate of possibleSlots) {
+                                if (rosterSlotConfig[slotCandidate] !== undefined &&
+                                    teamSlotUsage[teamId][slotCandidate] < rosterSlotConfig[slotCandidate]) {
+                                    assignedSlot = slotCandidate;
+                                    teamSlotUsage[teamId][slotCandidate]++;
+                                    foundSlot = true;
+                                    break;
+                                }
+                            }
+                            if (foundSlot) break; // If a slot was found for any of the original positions, stop
+                        }
+
+                        // If no specific slot was found, try assigning to UTIL or BENCH
+                        if (!foundSlot) {
+                            const generalSlots = ['UTIL', 'BENCH'];
+                            for (const slotCandidate of generalSlots) {
+                                if (rosterSlotConfig[slotCandidate] !== undefined &&
+                                    teamSlotUsage[teamId][slotCandidate] < rosterSlotConfig[slotCandidate]) {
+                                    assignedSlot = slotCandidate;
+                                    teamSlotUsage[teamId][slotCandidate]++;
+                                    break;
+                                }
+                            }
+                        }
+
+                        // league_season_team_rosters 테이블에 선수 추가
+                        await client.query(`
+                            INSERT INTO public.league_season_team_rosters (league_id, season_id, team_id, player_id, roster_slot_position, acquired_at)
+                            VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+                            ON CONFLICT (league_id, season_id, team_id, player_id) DO UPDATE
+                            SET roster_slot_position = $5, acquired_at = CURRENT_TIMESTAMP, is_active = TRUE, updated_at = CURRENT_TIMESTAMP
+                        `, [this.leagueId, this.seasonId, teamId, player_id, assignedSlot]);
+
+                        // league_season_roster_transaction_history 테이블에 이력 기록
+                        await client.query(`
+                            INSERT INTO public.league_season_roster_transaction_history (league_id, season_id, team_id, player_id, transaction_type, transaction_date, details)
+                            VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, $6)
+                        `, [
+                            this.leagueId,
+                            this.seasonId,
+                            teamId,
+                            player_id,
+                            'drafted', // 트랜잭션 타입
+                            `드래프트 라운드: ${round || 'N/A'}, 할당 슬롯: ${assignedSlot}, 선수 포지션: ${position}, 선수명: ${name}` // 상세 정보
+                        ]);
+                        totalPlayersProcessed++;
+                    }
+                }
+                console.log(`[DRAFT 종료] leagueId=${this.leagueId}, seasonId=${this.seasonId}: ${totalPlayersProcessed}명의 선수 로스터 및 이력 기록 완료.`);
+            } else {
+                console.warn(`[DRAFT 종료] leagueId=${this.leagueId}, seasonId=${this.seasonId}: 드래프트 결과가 없어 로스터 및 이력 기록을 건너킵니다.`);
+            }
         });
 
         this.io.to(`${this.leagueId}-${this.seasonId}`).emit('draft:end', {

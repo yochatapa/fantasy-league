@@ -15,11 +15,12 @@
                             <div class="text-body-1 font-weight-medium">
                                 <v-icon size="small" class="mr-1">mdi-account-star</v-icon>
                                 현재 픽: <strong :class="{'text-success': isMyTurn, 'text-primary': !isMyTurn}">{{ currentUser }}</strong>
+                                <br v-if="isMobile"/>
                                 <v-chip v-if="isMyTurn" color="green" size="small" label class="ml-2">내 차례!</v-chip>
                                 <span v-else-if="picksRemaining>=0" class="ml-2 text-medium-emphasis">({{ picksRemaining }}차례 후 내 차례)</span>
                                 <span v-else class="ml-2 text-medium-emphasis">(내 차례 종료!)</span>
                             </div>
-                            <v-chip color="red-darken-1" label class="mt-2 mt-sm-0 d-flex align-center justify-center" v-if="isMobile">
+                            <v-chip color="red-darken-1" label class="mt-2 mt-sm-0 d-flex align-center justify-center" v-if="!isMobile">
                                 <v-icon start icon="mdi-alarm"></v-icon>
                                 남은 시간: <span class="font-weight-bold">{{ remainingTime }}초</span>
                             </v-chip>
@@ -35,10 +36,10 @@
                             </v-chip>
                         </div>
                     </v-col>
-                    <v-col cols="12" md="4" class="text-md-right text-center" v-if="!isMobile">
-                        <v-chip color="red-darken-1" label size="large" class="py-2 px-4">
+                    <v-col cols="12" md="4" class="text-md-right" v-if="isMobile">
+                        <v-chip color="red-darken-1" label class="py-2 px-4">
                             <v-icon start icon="mdi-alarm"></v-icon>
-                            남은 시간: <span class="font-weight-bold text-h6 ml-1">{{ remainingTime }}초</span>
+                            남은 시간: <span class="font-weight-bold ml-1">{{ remainingTime }}초</span>
                         </v-chip>
                     </v-col>
                 </v-row>
@@ -192,16 +193,17 @@
                             </div>
                         </v-card-title>
                         <v-divider />
+                        <v-list-item>
+                            <v-select
+                                v-model="selectedTeamId"
+                                :items="teamOptions"
+                                item-title="label"
+                                item-value="value"
+                                hide-details
+                                class="w-100 my-2" />
+                        </v-list-item>
                         <v-list style="max-height: 400px; overflow-y: auto;">
-                            <v-list-item>
-                                <v-select
-                                    v-model="selectedTeamId"
-                                    :items="teamOptions"
-                                    item-title="label"
-                                    item-value="value"
-                                    hide-details
-                                    class="w-100 mb-2" />
-                            </v-list-item>
+                            
                             <v-divider></v-divider> <template v-for="(player, idx) in selectedTeamPicks" :key="idx">
                                 <v-list-item class="py-2">
                                     <template v-slot:prepend>
@@ -212,13 +214,15 @@
                                     <v-list-item-title class="font-weight-medium">
                                         {{ player.name }}
                                         <v-chip
-                                            class="ml-2"
+                                            v-for="(pos, idx) in player.position.split(',')"
+                                            :key="pos + idx"
+                                            size="x-small"
                                             color="indigo-lighten-4"
                                             label
-                                            size="small"
+                                            class="mr-1 mb-1"
                                         >
-                                            <v-icon start :icon="getPositionIcon(player.position)"></v-icon>
-                                            {{ player.position }}
+                                            <v-icon start :icon="getPositionIcon(pos.trim())"></v-icon>
+                                            {{ pos.trim() }}
                                         </v-chip>
                                     </v-list-item-title>
                                 </v-list-item>
@@ -255,45 +259,48 @@
                     :key="team.teamId"
                 >
                     <v-card class="mb-4" elevation="3">
-                    <v-card-title class="text-h6 py-3 d-flex align-center">
-                        <v-avatar size="36" class="mr-2">
-                        <v-img :src="team.logoUrl || '/default-team-logo.png'" alt="팀 로고"></v-img>
-                        </v-avatar>
-                        {{ team.nickname }} 팀 ({{ team.teamName }})
-                    </v-card-title>
-                    <v-divider />
-                    <v-list style="max-height: 400px; overflow-y: auto;">
-                        <template v-for="(player, idx) in [...(draftResults[team.teamId] || [])].sort((a, b) => a.round - b.round)" :key="idx">
-                        <v-list-item class="py-2">
-                            <template v-slot:prepend>
-                            <v-avatar color="blue-grey-lighten-4" size="28">
-                                <span class="text-caption font-weight-bold text-blue-darken-3">{{ player.round }}</span>
+                        <v-card-title class="text-h6 py-3 d-flex align-center">
+                            <v-avatar size="36" class="mr-2">
+                                <v-img :src="team.logoUrl || '/default-team-logo.png'" alt="팀 로고"></v-img>
                             </v-avatar>
+                            {{ team.nickname }} 팀 ({{ team.teamName }})
+                        </v-card-title>
+                        <v-divider />
+                        <v-list style="max-height: 400px; overflow-y: auto;">
+                            <template v-for="(player, idx) in [...(draftResults[team.teamId] || [])].sort((a, b) => a.round - b.round)" :key="idx">
+                            <v-list-item class="py-2">
+                                <template v-slot:prepend>
+                                <v-avatar color="blue-grey-lighten-4" size="28">
+                                    <span class="text-caption font-weight-bold text-blue-darken-3">{{ player.round }}</span>
+                                </v-avatar>
+                                </template>
+                                <v-list-item-title>
+                                     <span>{{ player.name }}</span>
+                                </v-list-item-title>
+                                <v-list-item-title class="font-weight-medium d-flex flex-wrap align-center">
+                                    <v-chip
+                                        v-for="(pos, idx) in player.position.split(',')"
+                                        :key="pos + idx"
+                                        color="indigo-lighten-4"
+                                        label
+                                        class="mr-2 mt-1 mb-1"
+                                    >
+                                        <v-icon start :icon="getPositionIcon(pos.trim())"></v-icon>
+                                        {{ pos.trim() }}
+                                    </v-chip>
+                                </v-list-item-title>
+                            </v-list-item>
+                            <v-divider v-if="idx < (draftResults[team.teamId] || []).length - 1"></v-divider>
                             </template>
-                            <v-list-item-title class="font-weight-medium">
-                            {{ player.name }}
-                            <v-chip
-                                class="ml-2"
-                                color="indigo-lighten-4"
-                                label
-                                size="small"
-                            >
-                                <v-icon start :icon="getPositionIcon(player.position)"></v-icon>
-                                {{ player.position }}
-                            </v-chip>
+                            <v-list-item v-if="!draftResults[team.teamId] || draftResults[team.teamId].length === 0">
+                            <v-list-item-title class="text-center text-medium-emphasis py-4">
+                                선수 픽이 없습니다.
                             </v-list-item-title>
-                        </v-list-item>
-                        <v-divider v-if="idx < (draftResults[team.teamId] || []).length - 1"></v-divider>
-                        </template>
-                        <v-list-item v-if="!draftResults[team.teamId] || draftResults[team.teamId].length === 0">
-                        <v-list-item-title class="text-center text-medium-emphasis py-4">
-                            선수 픽이 없습니다.
-                        </v-list-item-title>
-                        </v-list-item>
-                    </v-list>
+                            </v-list-item>
+                        </v-list>
                     </v-card>
                 </v-col>
-                </v-row>
+            </v-row>
         </template>
     </v-container>
 </template>

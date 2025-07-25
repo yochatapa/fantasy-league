@@ -190,10 +190,10 @@ export const createLeague = async (req, res) => {
                     , ($1, $2, 'LF', 1, CURRENT_TIMESTAMP)
                     , ($1, $2, 'CF', 1, CURRENT_TIMESTAMP)
                     , ($1, $2, 'RF', 1, CURRENT_TIMESTAMP)
-                    , ($1, $2, 'BUTIL', 2, CURRENT_TIMESTAMP)
+                    , ($1, $2, 'UTIL', 2, CURRENT_TIMESTAMP)
                     , ($1, $2, 'SP', 3, CURRENT_TIMESTAMP)
                     , ($1, $2, 'RP', 5, CURRENT_TIMESTAMP)
-                    , ($1, $2, 'PUTIL', 2, CURRENT_TIMESTAMP);
+                    , ($1, $2, 'P', 2, CURRENT_TIMESTAMP);
             `;
             await client.query(insertLeagueRosterSlot, [leagueId, seasonId]);
 

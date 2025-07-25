@@ -99,7 +99,7 @@ export const useUserStore = defineStore('user', {
                 socket.connect();
             }
 
-            socket.emit('joinRoom', `user_${this.userId}`);
+            socket.emit('joinRoom', `user_${this.user.userId}`);
 
             // ✅ 알림 이벤트 리스너 등록 (1회만)
             if (!this.isNotificationListenerSet) {
