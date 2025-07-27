@@ -2,6 +2,41 @@ import dayjs from 'dayjs';
 import { query, withTransaction } from '../../db.js';
 import { getIO } from '../socket.js';
 
+// Global constants for position slot prioritization and specificity.
+// These should ideally be loaded from a config or database if they are dynamic.
+// Ensure these match your actual league_season_roster_slot and fantasy rules.
+
+// Maps a player's original position to the fantasy roster slots they can fill.
+const positionSlotPriorities = {
+    'C': ['C', 'UTIL', 'BENCH'],
+    '1B': ['1B', 'IF', 'UTIL', 'BENCH'],
+    '2B': ['2B', 'IF', 'UTIL', 'BENCH'],
+    '3B': ['3B', 'IF', 'UTIL', 'BENCH'],
+    'SS': ['SS', 'IF', 'UTIL', 'BENCH'],
+    'LF': ['LF', 'OF', 'UTIL', 'BENCH'],
+    'CF': ['CF', 'OF', 'UTIL', 'BENCH'],
+    'RF': ['RF', 'OF', 'UTIL', 'BENCH'],
+    'SP': ['SP', 'P', 'BENCH'],
+    'RP': ['RP', 'P', 'BENCH'],
+    'DH': ['DH', 'UTIL', 'BENCH'],
+    'P': ['P', 'BENCH'],
+    'IF': ['IF', 'UTIL', 'BENCH'],
+    'OF': ['OF', 'UTIL', 'BENCH'],
+    'UTIL': ['UTIL', 'BENCH'],
+    'BENCH': ['BENCH']
+};
+
+// Defines the order of specificity for roster slots. More specific slots come first.
+// This is used to prioritize filling critical positions.
+const SLOTS_BY_SPECIFICITY_GLOBAL = [
+    'C', 'SS', // Most specific and critical infield positions
+    'SP', 'RP', // Pitcher specific
+    '1B', '2B', '3B', // Infielders
+    'LF', 'CF', 'RF', // Outfielders
+    'DH', // Designated Hitter
+    'P', 'IF', 'OF', 'UTIL', 'BENCH' // More general or flexible slots
+];
+
 export default class DraftRoom {
     constructor({
         leagueId,
@@ -30,23 +65,24 @@ export default class DraftRoom {
         this.remainingTime = remainingTime ?? draftTimer;
         this.io = getIO();
         this.playersPicked = playersPicked;
-        this.positionLimits = {};
+        this.positionLimits = {}; // Will be loaded from DB
         this._isAutoPicking = false;
         this.draftStatus = draftStatus;
         this.draftType = draftType;
-        // 새로 추가: 마지막 DB 업데이트 시간과 업데이트 간격
         this.lastDbUpdate = dayjs();
-        this.dbUpdateInterval = 5; // DB 업데이트 간격 (초 단위)
-        this.seasonYear = null; // Add seasonYear property
+        this.dbUpdateInterval = 5; // DB update interval in seconds
+        this.seasonYear = null; // Season year for player stats and positions
+        this.rosterSlotConfig = {}; // Will be loaded from DB
 
         this.init();
     }
 
     async init() {
         await this.loadSeasonYear(); // Load season year first
-        await this.loadPositionLimits();
+        await this.loadPositionLimits(); // Load league-specific position limits
+        await this.loadRosterSlotConfig(); // Load league-specific roster slots
         await this.loadPickedPlayersDetails();
-        // 초기 로드 시 DB 상태를 한 번 업데이트합니다.
+        // Initial DB state update
         await this.updateDraftRoomState(true);
     }
 
@@ -65,7 +101,6 @@ export default class DraftRoom {
                 this.seasonYear = rows[0].season_year;
             } else {
                 console.warn(`[WARNING] No season_year found for leagueId: ${this.leagueId}, seasonId: ${this.seasonId}`);
-                // Fallback or error handling if season_year is crucial and not found
                 this.seasonYear = dayjs().year(); // Default to current year if not found
             }
         } catch (error) {
@@ -75,16 +110,39 @@ export default class DraftRoom {
     }
 
     /**
-     * 드래프트 룸 상태를 데이터베이스에 업데이트합니다.
-     * @param {boolean} forceUpdate - true인 경우, dbUpdateInterval과 관계없이 즉시 업데이트합니다.
+     * Loads the roster slot configuration for the current league and season.
+     */
+    async loadRosterSlotConfig() {
+        try {
+            const slotConfigQueryResult = await query(`
+                SELECT position, slot_count
+                FROM public.league_season_roster_slot
+                WHERE league_id = $1 AND season_id = $2
+            `, [this.leagueId, this.seasonId]);
+
+            this.rosterSlotConfig = {}; // Reset before filling
+            slotConfigQueryResult.rows.forEach(row => {
+                this.rosterSlotConfig[row.position] = Number(row.slot_count);
+            });
+            console.log(`[INFO] Loaded roster slot config:`, this.rosterSlotConfig);
+        } catch (error) {
+            console.error('Failed to load roster slot configuration:', error);
+            // Default or error handling if crucial config is not found
+            this.rosterSlotConfig = {}; // Ensure it's an empty object if load fails
+        }
+    }
+
+    /**
+     * Updates the draft room state in the database.
+     * @param {boolean} forceUpdate - If true, updates immediately regardless of dbUpdateInterval.
      */
     async updateDraftRoomState(forceUpdate = false) {
         if (this.maxRounds && this.currentRound > this.maxRounds) {
-            console.log('[UPDATE] maxRounds 초과 상태, draft_rooms 업데이트 스킵');
+            console.log('[UPDATE] maxRounds exceeded, skipping draft_rooms update.');
             return;
         }
 
-        // forceUpdate가 true이거나, 충분한 시간이 경과했을 때만 DB를 업데이트합니다.
+        // Only update DB if forceUpdate is true, or enough time has passed.
         if (!forceUpdate && dayjs().diff(this.lastDbUpdate, 'second') < this.dbUpdateInterval) {
             return;
         }
@@ -106,17 +164,17 @@ export default class DraftRoom {
                 `, [
                     this.currentRound,
                     this.currentIndex + 1,
-                    currentUser?.user_id || null, // currentUser가 없을 경우를 대비한 옵셔널 체이닝
+                    currentUser?.user_id || null, // Optional chaining for currentUser
                     this.draftTimer,
                     this.remainingTime,
                     this.draftStatus,
                     this.draftRoomId,
                 ]);
             });
-            this.lastDbUpdate = dayjs(); // 마지막 DB 업데이트 시간 갱신
+            this.lastDbUpdate = dayjs(); // Update last DB update time
         } catch (error) {
-            console.error('데이터베이스의 드래프트 룸 상태 업데이트 실패:', error);
-            // 필요에 따라 오류 처리 로직 추가 (예: 재시도)
+            console.error('Failed to update draft room state in database:', error);
+            // Add retry logic or more robust error handling as needed
         }
     }
 
@@ -154,7 +212,7 @@ export default class DraftRoom {
                 dr.round, dr.pick_order;
         `, [this.draftRoomId]);
 
-        // playersPicked 객체를 초기화하고 DB에서 가져온 데이터로 채웁니다.
+        // Initialize playersPicked and populate with data from DB
         this.playersPicked = {};
         for (const row of pickedPlayersFromDb.rows) {
             const teamId = row.team_id;
@@ -165,7 +223,7 @@ export default class DraftRoom {
                 player_id: row.player_id,
                 name: row.name,
                 position: row.position,
-                round: row.round // round 정보 추가
+                round: row.round // Include round information
             });
         }
     }
@@ -177,13 +235,13 @@ export default class DraftRoom {
         if(this.draftStatus === "waiting") this.draftStatus = "running";
 
         if (this.maxRounds && this.currentRound > this.maxRounds) {
-            console.log('[TIMER] maxRounds 초과로 타이머 시작 안함');
+            console.log('[TIMER] maxRounds exceeded, not starting timer.');
             return;
         }
 
         this.timer = setInterval(async () => {
             if (this.maxRounds && this.currentRound > this.maxRounds) {
-                console.log('[TIMER] maxRounds 초과 감지, 타이머 종료');
+                console.log('[TIMER] maxRounds detected, stopping timer.');
                 this.clearTimer();
                 return;
             }
@@ -192,20 +250,23 @@ export default class DraftRoom {
             this.remainingTime = Math.max(0,this.remainingTime);
 
             try {
-                // DB 상태를 덜 자주 업데이트합니다 (updateDraftRoomState 내부 로직에 따름).
+                // Update DB state less frequently (controlled by updateDraftRoomState logic).
                 await this.updateDraftRoomState();
-                // 클라이언트에게는 항상 매 초마다 브로드캐스트합니다.
+                // Always broadcast to clients every second.
                 this.broadcastUpdate();
             } catch (err) {
-                console.error('❌ 타이머 루프 오류:', err);
+                console.error('❌ Timer loop error:', err);
             }
 
             const currentUser = this.draftOrder[this.currentIndex];
 
-            // 자동 선택 로직은 동일하게 유지됩니다.
-            if(this.remainingTime <= Math.max(0,this.draftTimer - 3) && this.getConnectedUsers().findIndex(cu => Number(cu.userId) === Number(currentUser?.user_id)) < 0){
-                await this.autoPick();
-            } else if (this.remainingTime <= 0) {
+            // Auto-pick logic remains the same.
+            // If the current user is not connected AND 3 seconds (or less) remain, auto-pick.
+            // OR if the timer runs out, auto-pick.
+            const isCurrentUserConnected = this.getConnectedUsers().findIndex(cu => Number(cu.userId) === Number(currentUser?.user_id)) >= 0;
+            const shouldAutoPickDueToDisconnection = !isCurrentUserConnected && this.remainingTime <= Math.max(0, this.draftTimer - 3);
+
+            if (shouldAutoPickDueToDisconnection || this.remainingTime <= 0) {
                 await this.autoPick();
             }
         }, 1000);
@@ -222,7 +283,7 @@ export default class DraftRoom {
         const totalUsers = this.draftOrder.length;
 
         if (this.draftType === 'auction') {
-            console.log('[NEXT TURN] 옥션 드래프트는 nextTurn에서 처리하지 않습니다.');
+            console.log('[NEXT TURN] Auction draft is not handled by nextTurn.');
             return;
         }
 
@@ -253,14 +314,14 @@ export default class DraftRoom {
         console.log(`[NEXT TURN] round=${this.currentRound}, index=${this.currentIndex}, type=${this.draftType}`);
 
         if (this.maxRounds && this.currentRound > this.maxRounds) {
-            console.log('[NEXT TURN] maxRounds 초과, 드래프트 종료');
+            console.log('[NEXT TURN] maxRounds exceeded, ending draft.');
             this.clearTimer();
             await this.finish();
             return;
         }
 
         this.remainingTime = this.draftTimer;
-        // 턴 변경 시에는 즉시 DB에 반영되어야 하므로 forceUpdate를 true로 호출합니다.
+        // Force update DB immediately when turn changes.
         await this.updateDraftRoomState(true);
         this.startTimer();
     }
@@ -273,6 +334,7 @@ export default class DraftRoom {
         const teamId = currentUser.team_id;
 
         try {
+            // Get already picked player IDs for this draft room
             const picked = await query(`
                 SELECT player_id FROM draft_results WHERE draft_room_id = $1
             `, [this.draftRoomId]);
@@ -283,12 +345,12 @@ export default class DraftRoom {
                 await this.loadSeasonYear();
             }
 
-            // Fetch players with their actual positions from kbo_player_season
+            // Fetch players with their actual positions and OPS from kbo_player_season
+            // Increased LIMIT to consider a wider pool of candidates
             const candidates = await query(`
                 SELECT
                     p.id AS player_id,
                     p.name,
-                    -- Use STRING_AGG to get all positions for the player
                     STRING_AGG(DISTINCT kps.position, ', ') AS player_original_positions,
                     (
                         COALESCE(s.hits, 0) + COALESCE(s.walks, 0) + COALESCE(s.hit_by_pitch, 0)
@@ -304,27 +366,124 @@ export default class DraftRoom {
                         + 4 * COALESCE(s.home_runs, 0)
                     )::float / NULLIF(COALESCE(s.at_bats, 0), 0) AS ops
                 FROM kbo_player_master p
-                JOIN batter_season_stats s ON p.id = s.player_id
-                JOIN kbo_player_season kps ON kps.player_id = p.id AND kps.year = $1 -- Use this.seasonYear
-                WHERE s.season_year = $1 -- Use this.seasonYear
-                AND p.id NOT IN (${pickedIds.length > 0 ? pickedIds.join(',') : 'NULL'})
+                JOIN batter_season_stats s ON p.id = s.player_id AND s.season_year = $1
+                JOIN kbo_player_season kps ON kps.player_id = p.id AND kps.year = $1
+                WHERE p.id NOT IN (${pickedIds.length > 0 ? pickedIds.join(',') : 'NULL'})
                 GROUP BY p.id, p.name, s.hits, s.walks, s.hit_by_pitch, s.at_bats, s.sacrifice_flies, s.singles, s.doubles, s.triples, s.home_runs
                 ORDER BY ops DESC
-                LIMIT 50
-            `, [this.seasonYear]); // Pass this.seasonYear
+                LIMIT 100 -- Consider top 100 OPS players
+            `, [this.seasonYear]);
 
-            let finalPick = candidates.rows.find(player => {
-                const playerPositions = player.player_original_positions.split(',').map(pos => pos.trim());
-                for (const p of playerPositions) {
-                    const count = (this.playersPicked[teamId] || []).filter(pp => pp.position.split(',').map(pos => pos.trim()).includes(p)).length;
-                    const limit = this.positionLimits?.[p] ?? Infinity;
-                    if (count < limit) {
-                        return true;
+            // Ensure rosterSlotConfig is loaded (should be in init, but as a fallback)
+            if (Object.keys(this.rosterSlotConfig).length === 0) {
+                await this.loadRosterSlotConfig();
+            }
+
+            // Calculate current team's roster slot usage (temporary assignment simulation)
+            const currentTeamRoster = this.playersPicked[teamId] || [];
+            const tempSlotUsage = {};
+            for (const pos in this.rosterSlotConfig) {
+                 tempSlotUsage[pos] = 0;
+            }
+
+            const assignedPlayerIds = new Set();
+            const specificSlotsSorted = SLOTS_BY_SPECIFICITY_GLOBAL.filter(s => this.rosterSlotConfig[s] > 0 && s !== 'BENCH' && s !== 'UTIL');
+            const flexibleSlotsSorted = ['UTIL', 'BENCH'].filter(s => this.rosterSlotConfig[s] > 0);
+
+            // 1. Initial assignment (greedy) for specific slots
+            for (const slotType of specificSlotsSorted) {
+                let remaining = this.rosterSlotConfig[slotType] - (tempSlotUsage[slotType] || 0);
+                for (const player of currentTeamRoster) {
+                    if (assignedPlayerIds.has(player.player_id)) continue;
+
+                    const playerOriginalPositions = player.position.split(',').map(p => p.trim());
+                    if (playerOriginalPositions.some(p => (positionSlotPriorities[p] || []).includes(slotType))) {
+                        if (remaining > 0) {
+                            tempSlotUsage[slotType]++;
+                            assignedPlayerIds.add(player.player_id);
+                            remaining--;
+                        }
                     }
                 }
-                return false;
-            }) || candidates.rows[0];
+            }
 
+            // 2. Assign remaining players to utility/bench slots
+            for (const slotType of flexibleSlotsSorted) {
+                let remaining = this.rosterSlotConfig[slotType] - (tempSlotUsage[slotType] || 0);
+                for (const player of currentTeamRoster) {
+                    if (assignedPlayerIds.has(player.player_id)) continue;
+                    if (remaining > 0) {
+                        tempSlotUsage[slotType] = (tempSlotUsage[slotType] || 0) + 1;
+                        assignedPlayerIds.add(player.player_id);
+                        remaining--;
+                    }
+                }
+            }
+            // `tempSlotUsage` now reflects the current team's assumed roster state.
+
+            let bestScore = -1;
+            let bestPick = null;
+
+            for (const candidate of candidates.rows) {
+                const playerOriginalPositions = candidate.player_original_positions.split(',').map(pos => pos.trim());
+                let currentScore = 0;
+
+                let canFillAnyEmptySpecificSlot = false; // Can this player fill any specific (non-bench/util) empty slot?
+
+                for (const slotType of SLOTS_BY_SPECIFICITY_GLOBAL) {
+                    const maxCount = this.rosterSlotConfig[slotType] || 0;
+                    const currentCount = tempSlotUsage[slotType] || 0;
+                    const remainingSlots = maxCount - currentCount;
+
+                    if (remainingSlots > 0) { // If there's an available slot of this type
+                        const canPlayerFillSlot = playerOriginalPositions.some(p =>
+                            (positionSlotPriorities[p] || []).includes(slotType)
+                        );
+
+                        if (canPlayerFillSlot) {
+                            if (slotType !== 'BENCH' && slotType !== 'UTIL') {
+                                canFillAnyEmptySpecificSlot = true;
+                            }
+
+                            // Prioritize more specific slots and empty slots
+                            const specificityIndex = SLOTS_BY_SPECIFICITY_GLOBAL.indexOf(slotType);
+                            // Higher score for more specific slots (smaller index)
+                            const slotWeight = (SLOTS_BY_SPECIFICITY_GLOBAL.length - specificityIndex) * 100;
+
+                            // Significant bonus for filling an *empty* slot
+                            const emptyBonus = remainingSlots > 0 ? 500 : 0;
+
+                            currentScore += (slotWeight + emptyBonus);
+                        }
+                    }
+                }
+
+                // Add OPS score, scaled appropriately
+                currentScore += (candidate.ops * 100); // OPS 1.0 adds 100 points
+
+                // Apply a penalty if the player cannot fill any specific empty slot
+                // This pushes players who only fit into BENCH/UTIL slots lower on the priority list early on
+                if (!canFillAnyEmptySpecificSlot && (this.rosterSlotConfig['BENCH'] > (tempSlotUsage['BENCH'] || 0) || this.rosterSlotConfig['UTIL'] > (tempSlotUsage['UTIL'] || 0))) {
+                     currentScore -= 1000; // Large penalty
+                }
+
+
+                if (currentScore > bestScore) {
+                    bestScore = currentScore;
+                    bestPick = candidate;
+                }
+            }
+
+            let finalPick = bestPick;
+
+            // Fallback: If no suitable player found with good score, or all specific slots filled,
+            // fall back to the highest OPS player from the candidates.
+            if (!finalPick || bestScore < -500) { // Adjust score threshold as needed
+                console.log('[AUTO PICK] No optimal position player found or score too low, falling back to highest OPS player.');
+                finalPick = candidates.rows[0];
+            }
+
+            // Final fallback: If even the first candidate is null (shouldn't happen if DB has players)
             if (!finalPick) {
                 const fallback = await query(`
                     SELECT p.id AS player_id, name, STRING_AGG(DISTINCT kps.position, ', ') AS player_original_positions
@@ -335,16 +494,17 @@ export default class DraftRoom {
                     )
                     GROUP BY p.id, p.name
                     ORDER BY p.id ASC LIMIT 1
-                `, [this.draftRoomId, this.seasonYear]); // Pass this.seasonYear
+                `, [this.draftRoomId, this.seasonYear]);
                 finalPick = fallback.rows[0];
                 if (!finalPick) {
-                    console.error('[AUTO PICK] 선택할 선수 없음');
+                    console.error('[AUTO PICK] No player available to pick.');
                     this._isAutoPicking = false;
                     await this.nextTurn();
                     return;
                 }
             }
 
+            // Save the chosen player
             await this.savePick({
                 userId: currentUser.user_id,
                 teamId,
@@ -354,6 +514,7 @@ export default class DraftRoom {
                 round: this.currentRound
             });
 
+            // Add the picked player to the in-memory playersPicked object
             this.playersPicked[teamId] = [...(this.playersPicked[teamId] || []), {
                 player_id: finalPick.player_id,
                 name: finalPick.name,
@@ -364,7 +525,7 @@ export default class DraftRoom {
             this.broadcastUpdate();
             await this.nextTurn();
         } catch (err) {
-            console.error('❌ autoPick 오류:', err);
+            console.error('❌ autoPick error:', err);
             await this.nextTurn();
         } finally {
             this._isAutoPicking = false;
@@ -383,14 +544,14 @@ export default class DraftRoom {
                 kpm.name,
                 STRING_AGG(DISTINCT kps.position, ', ') AS player_original_positions
             FROM kbo_player_master kpm
-            JOIN kbo_player_season kps ON kps.player_id = kpm.id AND kps.year = $2 -- Use this.seasonYear
+            JOIN kbo_player_season kps ON kps.player_id = kpm.id AND kps.year = $2
             WHERE kpm.id = $1
             GROUP BY kpm.name;
-        `, [player.player_id, this.seasonYear]); // Pass this.seasonYear
+        `, [player.player_id, this.seasonYear]);
         const playerInfo = rows[0];
 
         if (!playerInfo) {
-            console.error(`선수 ID ${player.player_id}를 찾을 수 없습니다.`);
+            console.error(`Player ID ${player.player_id} not found.`);
             return;
         }
 
@@ -416,30 +577,30 @@ export default class DraftRoom {
         await this.nextTurn();
     }
 
-    async savePick({ userId, teamId, playerId, playerOriginalPositions, isAuto, round }) { // round 및 playerOriginalPositions 매개변수 추가
+    async savePick({ userId, teamId, playerId, playerOriginalPositions, isAuto, round }) {
         await withTransaction(async (client) => {
             await client.query(`
                 INSERT INTO draft_results (
                     draft_room_id, round, pick_order, user_id,
                     team_id, player_id, picked_at, is_auto_pick,
-                    player_original_positions -- 새로운 컬럼 추가
+                    player_original_positions
                 ) VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP, $7, $8)
             `, [
                 this.draftRoomId,
-                round, // 전달받은 round 값 사용
+                round,
                 this.currentIndex,
                 userId,
                 teamId,
                 playerId,
                 isAuto,
-                playerOriginalPositions // player_original_positions 컬럼에 값 전달
+                playerOriginalPositions
             ]);
         });
     }
 
     broadcastUpdate() {
         if (this.maxRounds && this.currentRound > this.maxRounds) {
-            console.log('[BROADCAST] maxRounds 초과 상태, 브로드캐스트 생략');
+            console.log('[BROADCAST] maxRounds exceeded, skipping broadcast.');
             return;
         }
 
@@ -473,110 +634,180 @@ export default class DraftRoom {
 
     async finish() {
         this.clearTimer();
-        console.log(`[DRAFT 종료] leagueId=${this.leagueId}, seasonId=${this.seasonId}`);
+        console.log(`[DRAFT FINISH] leagueId=${this.leagueId}, seasonId=${this.seasonId}`);
 
         await withTransaction(async (client) => {
-            // 1. 드래프트 룸 상태 업데이트
+            // 1. Update draft room status
             await client.query(`
                 UPDATE draft_rooms
                 SET status = 'finished', finished_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
                 WHERE id = $1
             `, [this.draftRoomId]);
 
-            // 2. 로스터 슬롯 정보 불러오기
-            // 각 리그/시즌별 로스터 슬롯 정의를 가져옵니다.
-            const slotConfigQuery = await client.query(`
-                SELECT position, slot_count
-                FROM public.league_season_roster_slot
-                WHERE league_id = $1 AND season_id = $2
-            `, [this.leagueId, this.seasonId]);
+            // 2. Load roster slot information (if not already loaded)
+            // Ensure this.rosterSlotConfig is fully populated
+            if (Object.keys(this.rosterSlotConfig).length === 0) {
+                await this.loadRosterSlotConfig();
+            }
 
-            const rosterSlotConfig = {}; // { '1B': 1, '2B': 1, ..., 'BENCH': 5 } 형태
-            slotConfigQuery.rows.forEach(row => {
-                rosterSlotConfig[row.position] = Number(row.slot_count);
-            });
+            // 3. Define position slot priorities and specificity order
+            // These are now global constants defined at the top of the file.
 
-            // 3. 로스터 슬롯 할당 우선순위 정의 (하드코딩 또는 DB에서 관리 가능)
-            // 선수의 원래 포지션과 매칭될 수 있는 슬롯 포지션의 우선순위를 정의합니다.
-            // 예를 들어, 'RF' 선수는 'RF' -> 'OF' -> 'UTIL' -> 'BENCH' 순으로 할당됩니다.
-            const positionSlotPriorities = {
-                '1B': ['1B', 'IF', 'UTIL', 'BENCH'],
-                '2B': ['2B', 'IF', 'UTIL', 'BENCH'],
-                '3B': ['3B', 'IF', 'UTIL', 'BENCH'],
-                'SS': ['SS', 'IF', 'UTIL', 'BENCH'],
-                'LF': ['LF', 'OF', 'UTIL', 'BENCH'],
-                'CF': ['CF', 'OF', 'UTIL', 'BENCH'],
-                'RF': ['RF', 'OF', 'UTIL', 'BENCH'],
-                'C': ['C', 'UTIL', 'BENCH'], // 포수는 C 슬롯이 따로 있을 경우
-                'SP': ['SP', 'P', 'BENCH'],
-                'RP': ['RP', 'P', 'BENCH'],
-                // Add any other positions as needed, including general ones like 'IF', 'OF', 'P', 'UTIL'
-                'DH': ['DH', 'UTIL', 'BENCH'], // Designated Hitter
-                'P': ['P', 'BENCH'], // Generic Pitcher
-                'IF': ['IF', 'UTIL', 'BENCH'], // Generic Infielder
-                'OF': ['OF', 'UTIL', 'BENCH'], // Generic Outfielder
-                'UTIL': ['UTIL', 'BENCH'], // Utility
-                'BENCH': ['BENCH'] // Bench
-            };
-
-            // 팀별 현재 슬롯 사용 현황을 추적할 객체 (각 팀마다 초기화)
-            const teamSlotUsage = {}; // { teamId: { '1B': 0, '2B': 0, ..., 'BENCH': 0 } } 형태
-
-            // 4. 드래프트 결과에 따라 team_rosters 및 roster_transaction_history에 데이터 삽입
+            // 4. Insert data into team_rosters and roster_transaction_history based on draft results
             if (this.playersPicked && Object.keys(this.playersPicked).length > 0) {
                 let totalPlayersProcessed = 0;
 
                 for (const teamIdStr of Object.keys(this.playersPicked)) {
                     const teamId = parseInt(teamIdStr);
-                    const playersInTeam = this.playersPicked[teamIdStr]; // 해당 팀의 선수 배열
+                    const playersInTeam = this.playersPicked[teamIdStr]; // Array of players for this team
 
-                    // 각 팀별 슬롯 사용 현황 초기화
-                    teamSlotUsage[teamId] = {};
-                    for (const pos in rosterSlotConfig) {
-                        teamSlotUsage[teamId][pos] = 0;
+                    // Initialize slot usage for the current team
+                    const currentTeamSlotUsage = {};
+                    for (const pos in this.rosterSlotConfig) {
+                        currentTeamSlotUsage[pos] = 0;
                     }
 
-                    // Sort players by round and then by pick_order (implicitly by their order in the array)
-                    // The `loadPickedPlayersDetails` already orders them, so we can rely on that order.
-                    playersInTeam.sort((a, b) => a.round - b.round);
+                    const playerToAssignedSlot = new Map(); // Map<player_id, assignedSlotType>
+                    const slotTypeToAssignedPlayers = new Map(); // Map<slotType, Set<player_id>>
+                    for (const slotType of SLOTS_BY_SPECIFICITY_GLOBAL) {
+                        slotTypeToAssignedPlayers.set(slotType, new Set());
+                    }
 
+                    // ---------------------------------------------------
+                    // 4-1. Initial Assignment Phase (Greedy)
+                    // ---------------------------------------------------
+                    const unassignedPlayers = new Set(playersInTeam.map(p => p.player_id));
+
+                    // Attempt to fill specific slots first (excluding BENCH, UTIL)
+                    const specificSlots = SLOTS_BY_SPECIFICITY_GLOBAL.filter(s => s !== 'BENCH' && s !== 'UTIL' && this.rosterSlotConfig[s] > 0);
+                    for (const targetSlot of specificSlots) {
+                        let remainingSlotCount = this.rosterSlotConfig[targetSlot] - (currentTeamSlotUsage[targetSlot] || 0);
+                        if (remainingSlotCount <= 0) continue;
+
+                        const candidates = playersInTeam.filter(p =>
+                            unassignedPlayers.has(p.player_id) &&
+                            p.position.split(',').map(pos => pos.trim()).some(origPos =>
+                                (positionSlotPriorities[origPos] || []).includes(targetSlot)
+                            )
+                        );
+
+                        // Assign players to specific slots
+                        for (const player of candidates) {
+                            if (remainingSlotCount <= 0) break;
+                            playerToAssignedSlot.set(player.player_id, targetSlot);
+                            slotTypeToAssignedPlayers.get(targetSlot).add(player.player_id);
+                            currentTeamSlotUsage[targetSlot]++;
+                            unassignedPlayers.delete(player.player_id);
+                            remainingSlotCount--;
+                        }
+                    }
+
+                    // Assign remaining players to UTIL or BENCH slots
                     for (const player of playersInTeam) {
-                        const { player_id, name, position, round } = player; // Player's original positions (e.g., "1B,DH")
-
-                        let assignedSlot = 'BENCH'; // Default to BENCH if no specific slot found
-
-                        const playerOriginalPositions = position.split(',').map(p => p.trim());
-
-                        let foundSlot = false;
-                        for (const originalPos of playerOriginalPositions) {
-                            const possibleSlots = positionSlotPriorities[originalPos] || ['UTIL', 'BENCH'];
-
-                            for (const slotCandidate of possibleSlots) {
-                                if (rosterSlotConfig[slotCandidate] !== undefined &&
-                                    teamSlotUsage[teamId][slotCandidate] < rosterSlotConfig[slotCandidate]) {
-                                    assignedSlot = slotCandidate;
-                                    teamSlotUsage[teamId][slotCandidate]++;
-                                    foundSlot = true;
-                                    break;
-                                }
+                        if (unassignedPlayers.has(player.player_id)) {
+                            let assignedToFlexibleSlot = false;
+                            if (this.rosterSlotConfig['UTIL'] > (currentTeamSlotUsage['UTIL'] || 0)) {
+                                playerToAssignedSlot.set(player.player_id, 'UTIL');
+                                slotTypeToAssignedPlayers.get('UTIL').add(player.player_id);
+                                currentTeamSlotUsage['UTIL'] = (currentTeamSlotUsage['UTIL'] || 0) + 1;
+                                unassignedPlayers.delete(player.player_id);
+                                assignedToFlexibleSlot = true;
+                            } else if (this.rosterSlotConfig['BENCH'] > (currentTeamSlotUsage['BENCH'] || 0)) {
+                                playerToAssignedSlot.set(player.player_id, 'BENCH');
+                                slotTypeToAssignedPlayers.get('BENCH').add(player.player_id);
+                                currentTeamSlotUsage['BENCH'] = (currentTeamSlotUsage['BENCH'] || 0) + 1;
+                                unassignedPlayers.delete(player.player_id);
+                                assignedToFlexibleSlot = true;
                             }
-                            if (foundSlot) break; // If a slot was found for any of the original positions, stop
-                        }
 
-                        // If no specific slot was found, try assigning to UTIL or BENCH
-                        if (!foundSlot) {
-                            const generalSlots = ['UTIL', 'BENCH'];
-                            for (const slotCandidate of generalSlots) {
-                                if (rosterSlotConfig[slotCandidate] !== undefined &&
-                                    teamSlotUsage[teamId][slotCandidate] < rosterSlotConfig[slotCandidate]) {
-                                    assignedSlot = slotCandidate;
-                                    teamSlotUsage[teamId][slotCandidate]++;
-                                    break;
-                                }
+                            if (!assignedToFlexibleSlot) {
+                                // Fallback if all slots (even BENCH) are somehow full.
+                                // This should ideally not happen if roster size matches draft picks.
+                                playerToAssignedSlot.set(player.player_id, 'BENCH'); // Force assign to BENCH
+                                if (!slotTypeToAssignedPlayers.has('BENCH')) slotTypeToAssignedPlayers.set('BENCH', new Set());
+                                slotTypeToAssignedPlayers.get('BENCH').add(player.player_id);
+                                currentTeamSlotUsage['BENCH'] = (currentTeamSlotUsage['BENCH'] || 0) + 1; // Increment anyway
+                                unassignedPlayers.delete(player.player_id);
+                                console.warn(`[DRAFT FINISH] Team ${teamId} - Player ${player.name} (ID: ${player.player_id}) could not be assigned to any slot during initial pass, forcing BENCH assignment.`);
                             }
                         }
+                    }
 
-                        // league_season_team_rosters 테이블에 선수 추가
+                    // ---------------------------------------------------
+                    // 4-2. Optimization Phase (Iterative Swapping)
+                    // ---------------------------------------------------
+                    const MAX_SWAP_ITERATIONS = 10;
+                    let swappedThisIteration = true;
+
+                    for (let iter = 0; iter < MAX_SWAP_ITERATIONS && swappedThisIteration; iter++) {
+                        swappedThisIteration = false;
+
+                        // Find currently empty specific slots (excluding flexible ones)
+                        const emptySpecificSlots = SLOTS_BY_SPECIFICITY_GLOBAL.filter(slotType =>
+                            slotType !== 'BENCH' && slotType !== 'UTIL' && this.rosterSlotConfig[slotType] > 0 &&
+                            (currentTeamSlotUsage[slotType] || 0) < this.rosterSlotConfig[slotType]
+                        );
+
+                        for (const emptySlotType of emptySpecificSlots) {
+                            // Look for a player in a less specific slot (UTIL, BENCH, IF, OF, P)
+                            // who can fill the `emptySlotType`.
+                            const flexibleSlotTypesForSwap = ['UTIL', 'BENCH', 'IF', 'OF', 'P'].filter(s => this.rosterSlotConfig[s] > 0);
+                            let foundPlayerToSwap = null;
+                            let playerOldSlotType = null;
+
+                            for (const flexSlotType of flexibleSlotTypesForSwap) {
+                                if (!slotTypeToAssignedPlayers.has(flexSlotType)) continue;
+
+                                for (const playerIdInFlexSlot of slotTypeToAssignedPlayers.get(flexSlotType)) {
+                                    const player = playersInTeam.find(p => p.player_id === playerIdInFlexSlot);
+                                    if (!player) continue;
+
+                                    // Check if this player can play the empty specific slot
+                                    const canPlayEmptySlot = player.position.split(',').map(pos => pos.trim()).some(origPos =>
+                                        (positionSlotPriorities[origPos] || []).includes(emptySlotType)
+                                    );
+
+                                    if (canPlayEmptySlot) {
+                                        foundPlayerToSwap = player;
+                                        playerOldSlotType = flexSlotType;
+                                        break;
+                                    }
+                                }
+                                if (foundPlayerToSwap) break;
+                            }
+
+                            if (foundPlayerToSwap) {
+                                const playerId = foundPlayerToSwap.player_id;
+
+                                // Perform the swap
+                                slotTypeToAssignedPlayers.get(playerOldSlotType).delete(playerId);
+                                currentTeamSlotUsage[playerOldSlotType]--;
+
+                                playerToAssignedSlot.set(playerId, emptySlotType);
+                                slotTypeToAssignedPlayers.get(emptySlotType).add(playerId);
+                                currentTeamSlotUsage[emptySlotType]++;
+
+                                swappedThisIteration = true;
+                                // Reset iteration to ensure all possible swaps are considered
+                                // (a swap might open up new opportunities)
+                                iter = -1; // Force restart the outer loop
+                                break; // Exit inner loop for emptySpecificSlots
+                            }
+                        }
+                    }
+
+                    // ---------------------------------------------------
+                    // 4-3. Save Final Assigned Slots to DB
+                    // ---------------------------------------------------
+                    for (const player of playersInTeam) {
+                        const assignedSlot = playerToAssignedSlot.get(player.player_id);
+                        if (!assignedSlot) {
+                            console.error(`[ERROR] Player ${player.name} (ID: ${player.player_id}) has no assigned slot after all processes for team ${teamId}.`);
+                            continue;
+                        }
+
+                        const { player_id, name, position, round } = player;
+
                         await client.query(`
                             INSERT INTO public.league_season_team_rosters (league_id, season_id, team_id, player_id, roster_slot_position, acquired_at)
                             VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
@@ -584,7 +815,6 @@ export default class DraftRoom {
                             SET roster_slot_position = $5, acquired_at = CURRENT_TIMESTAMP, is_active = TRUE, updated_at = CURRENT_TIMESTAMP
                         `, [this.leagueId, this.seasonId, teamId, player_id, assignedSlot]);
 
-                        // league_season_roster_transaction_history 테이블에 이력 기록
                         await client.query(`
                             INSERT INTO public.league_season_roster_transaction_history (league_id, season_id, team_id, player_id, transaction_type, transaction_date, details)
                             VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, $6)
@@ -593,20 +823,20 @@ export default class DraftRoom {
                             this.seasonId,
                             teamId,
                             player_id,
-                            'drafted', // 트랜잭션 타입
-                            `드래프트 라운드: ${round || 'N/A'}, 할당 슬롯: ${assignedSlot}, 선수 포지션: ${position}, 선수명: ${name}` // 상세 정보
+                            'drafted',
+                            `Draft Round: ${round || 'N/A'}, Assigned Slot: ${assignedSlot}, Player Original Positions: ${position}, Player Name: ${name}`
                         ]);
                         totalPlayersProcessed++;
                     }
                 }
-                console.log(`[DRAFT 종료] leagueId=${this.leagueId}, seasonId=${this.seasonId}: ${totalPlayersProcessed}명의 선수 로스터 및 이력 기록 완료.`);
+                console.log(`[DRAFT FINISH] leagueId=${this.leagueId}, seasonId=${this.seasonId}: ${totalPlayersProcessed} players' rosters and transaction history recorded.`);
             } else {
-                console.warn(`[DRAFT 종료] leagueId=${this.leagueId}, seasonId=${this.seasonId}: 드래프트 결과가 없어 로스터 및 이력 기록을 건너킵니다.`);
+                console.warn(`[DRAFT FINISH] leagueId=${this.leagueId}, seasonId=${this.seasonId}: No draft results found, skipping roster and history recording.`);
             }
         });
 
         this.io.to(`${this.leagueId}-${this.seasonId}`).emit('draft:end', {
-            message: '드래프트가 종료되었습니다.',
+            message: 'Draft has ended.',
         });
     }
 
