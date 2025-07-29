@@ -7,6 +7,7 @@ import app from './app.js';
 import http from 'http';
 import { setupSocket } from './utils/socket.js';
 import './scheduler/draftScheduler.js';
+import './scheduler/leagueScheduler.js';
 
 const PORT = 3000;
 
