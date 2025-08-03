@@ -116,7 +116,7 @@ export default class DraftRoom {
         try {
             const slotConfigQueryResult = await query(`
                 SELECT position, slot_count
-                FROM public.league_season_roster_slot
+                FROM league_season_roster_slot
                 WHERE league_id = $1 AND season_id = $2
             `, [this.leagueId, this.seasonId]);
 
@@ -634,7 +634,7 @@ export default class DraftRoom {
 
     async finish() {
         this.clearTimer();
-        console.log(`[DRAFT FINISH] leagueId=${this.leagueId}, seasonId=${this.seasonId}`);
+        console.log(`[DRAFT FINISH] leagueId=${this.this.leagueId}, seasonId=${this.seasonId}`);
 
         await withTransaction(async (client) => {
             // 1. Update draft room status
@@ -643,6 +643,12 @@ export default class DraftRoom {
                 SET status = 'finished', finished_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
                 WHERE id = $1
             `, [this.draftRoomId]);
+
+            await client.query(`
+                UPDATE league_season_draft_master
+                SET draft_end_date = CURRENT_TIMESTAMP
+                WHERE league_id = $1, season_id = $2
+            `, [this.leagueId, this.seasonId]);
 
             // 2. Load roster slot information (if not already loaded)
             // Ensure this.rosterSlotConfig is fully populated
@@ -809,14 +815,14 @@ export default class DraftRoom {
                         const { player_id, name, position, round } = player;
 
                         await client.query(`
-                            INSERT INTO public.league_season_team_rosters (league_id, season_id, team_id, player_id, roster_slot_position, acquired_at)
+                            INSERT INTO league_season_team_rosters (league_id, season_id, team_id, player_id, roster_slot_position, acquired_at)
                             VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
                             ON CONFLICT (league_id, season_id, team_id, player_id) DO UPDATE
                             SET roster_slot_position = $5, acquired_at = CURRENT_TIMESTAMP, is_active = TRUE, updated_at = CURRENT_TIMESTAMP
                         `, [this.leagueId, this.seasonId, teamId, player_id, assignedSlot]);
 
                         await client.query(`
-                            INSERT INTO public.league_season_roster_transaction_history (league_id, season_id, team_id, player_id, transaction_type, transaction_date, details)
+                            INSERT INTO league_season_roster_transaction_history (league_id, season_id, team_id, player_id, transaction_type, transaction_date, details)
                             VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, $6)
                         `, [
                             this.leagueId,
