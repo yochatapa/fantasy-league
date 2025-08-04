@@ -49,7 +49,7 @@ const createDraftRoomJob = schedule.scheduleJob('0 * * * * *', async () => {
                 const { rows: maxRoundRows } = await client.query(
                     `SELECT COALESCE(SUM(slot_count), 0) AS max_rounds
                     FROM league_season_roster_slot
-                    WHERE league_id = $1 AND season_id = $2`,
+                    WHERE league_id = $1 AND season_id = $2 AND position NOT IN ('IL','NA')`,
                     [league_id, season_id]
                 );
                 const maxRounds = parseInt(maxRoundRows[0].max_rounds, 10);

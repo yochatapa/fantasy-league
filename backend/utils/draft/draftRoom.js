@@ -117,7 +117,7 @@ export default class DraftRoom {
             const slotConfigQueryResult = await query(`
                 SELECT position, slot_count
                 FROM league_season_roster_slot
-                WHERE league_id = $1 AND season_id = $2
+                WHERE league_id = $1 AND season_id = $2 AND position NOT IN ('IL','NA')
             `, [this.leagueId, this.seasonId]);
 
             this.rosterSlotConfig = {}; // Reset before filling

@@ -209,27 +209,43 @@ async function initializeSeasonTeamStandings(client, leagueId, seasonId) {
 }
 
 /**
- * 트레이드 및 와이버(FA 영입) 시스템 관련 설정을 활성화합니다.
- * 이 함수는 `league_season` 테이블의 `allow_trades` 컬럼을 업데이트합니다.
+ * 와이버 시스템 관련 설정을 활성화하고 와이버 우선순위를 초기화합니다.
+ * 이 함수는 `league_season` 테이블의 `allow_waivers` 컬럼을 업데이트하고,
+ * 드래프트 역순으로 팀의 초기 와이버 우선순위를 설정합니다.
  * @param {object} client - PostgreSQL 트랜잭션 클라이언트 인스턴스
  * @param {number} leagueId - 리그 고유 ID
  * @param {number} seasonId - 시즌 고유 ID
  */
-async function activateTradeWaiverSystem(client, leagueId, seasonId) {
-    console.log(`[트레이드/와이버 활성화] 리그 ID: ${leagueId}, 시즌 ID: ${seasonId} - 시스템 활성화 시작.`);
-    // `league_season` 테이블의 `allow_trades` 컬럼을 `TRUE`로 설정하여 트레이드를 허용합니다.
-    // `trade_deadline`, `waiver_clear_days` 등은 드래프트 전에 이미 설정되었을 수 있습니다.
-    await client.query(`
-        UPDATE league_season
-        SET
-            allow_trades = TRUE,
-            updated_at = CURRENT_TIMESTAMP
-        WHERE league_id = $1 AND season_id = $2
-    `, [leagueId, seasonId]);
-    console.log(`[트레이드/와이버 활성화] 리그 ID: ${leagueId}, 시즌 ID: ${seasonId} - 트레이드 시스템 활성화 완료.`);
+async function activateWaiverSystem(client, leagueId, seasonId) {
+    console.log(`[와이버 시스템 활성화] 리그 ID: ${leagueId}, 시즌 ID: ${seasonId} - 시스템 활성화 시작.`);
 
-    // 와이버 시스템 활성화 로직이 별도의 플래그(`allow_waiver` 등)로 관리된다면,
-    // `league_season` DDL에 해당 컬럼을 추가한 후 여기서 함께 업데이트합니다.
+    // 1. 드래프트 순서 역순으로 와이버 우선순위 초기화
+    //    league_season_draft_teams 테이블에서 draft_order를 기준으로 내림차순(DESC) 정렬하여 팀 목록을 가져옵니다.
+    //    draft_order가 10인 팀이 와이버 우선순위 1을 가지게 됩니다.
+    const teams = await client.query(`
+        SELECT team_id FROM league_season_draft_teams
+        WHERE league_id = $1 AND season_id = $2
+        ORDER BY draft_order DESC
+    `, [leagueId, seasonId]);
+
+    if (teams.rows.length === 0) {
+        console.warn(`[와이버 시스템 활성화] 리그 ID: ${leagueId}, 시즌 ID: ${seasonId} - 드래프트 정보가 없어 와이버 우선순위를 초기화할 수 없습니다.`);
+        return;
+    }
+    
+    let priority = 1;
+    for (const team of teams.rows) {
+        // `league_season_waiver_priorities` 테이블에 초기 우선순위 삽입 또는 업데이트
+        await client.query(`
+            INSERT INTO league_season_waiver_priorities (league_id, season_id, team_id, priority_order)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (league_id, season_id, team_id) DO UPDATE SET
+                priority_order = $4,
+                updated_at = CURRENT_TIMESTAMP
+        `, [leagueId, seasonId, team.team_id, priority++]);
+    }
+    
+    console.log(`[와이버 시스템 활성화] 리그 ID: ${leagueId}, 시즌 ID: ${seasonId} - 와이버 우선순위 초기화 완료.`);
 }
 
 /**
@@ -251,9 +267,6 @@ async function initializePlayerStatus(client, leagueId, seasonId) {
         WHERE league_id = $1 AND season_id = $2;
     `, [leagueId, seasonId]);
     console.log(`[선수 상태 초기화] 리그 ID: ${leagueId}, 시즌 ID: ${seasonId} - 모든 선수 활성 상태로 초기화 완료.`);
-
-    // 필요시 부상자 명단(IL) 초기화 등 추가적인 선수 상태 관련 로직을 여기에 구현할 수 있습니다.
-    // 예: 시즌 시작 시 모든 선수를 IL에서 해제 (단, KBO 실제 부상 여부와는 별개)
 }
 
 /**
@@ -292,7 +305,7 @@ async function notifyLeagueStarted(client, io, leagueId, seasonId) {
 
 // --- 시즌 시작 스케줄러: 매일 자정 (새벽 0시 0분 0초)에 실행 ---
 // '0 0 0 * * *' : 초 분 시 일 월 요일
-const startLeagueSeasonJob = schedule.scheduleJob('0 * * * * *', async () => {
+const startLeagueSeasonJob = schedule.scheduleJob('0 0 0 * * *', async () => {
     const now = dayjs(); // 현재 시각
     const today = now.format('YYYY-MM-DD'); // 오늘 날짜 (YYYY-MM-DD 형식, KST 기준)
 
@@ -354,8 +367,8 @@ const startLeagueSeasonJob = schedule.scheduleJob('0 * * * * *', async () => {
                     // 3-3. 로스터 선수들의 활성 상태를 초기화합니다. (필요시)
                     await initializePlayerStatus(client, season.league_id, season.season_id);
 
-                    // 3-4. 트레이드 및 와이버 시스템을 활성화합니다.
-                    await activateTradeWaiverSystem(client, season.league_id, season.season_id);
+                    // 3-4. 웨이버 시스템을 활성화합니다.
+                    await activateWaiverSystem(client, season.league_id, season.season_id);
 
                     // 3-5. 사용자들에게 리그 시작 알림을 전송합니다. (Socket.IO 인스턴스가 있을 경우)
                     if (io) {
