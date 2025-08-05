@@ -634,7 +634,7 @@ export default class DraftRoom {
 
     async finish() {
         this.clearTimer();
-        console.log(`[DRAFT FINISH] leagueId=${this.this.leagueId}, seasonId=${this.seasonId}`);
+        console.log(`[DRAFT FINISH] leagueId=${this.leagueId}, seasonId=${this.seasonId}`);
 
         await withTransaction(async (client) => {
             // 1. Update draft room status
@@ -647,7 +647,7 @@ export default class DraftRoom {
             await client.query(`
                 UPDATE league_season_draft_master
                 SET draft_end_date = CURRENT_TIMESTAMP
-                WHERE league_id = $1, season_id = $2
+                WHERE league_id = $1 AND season_id = $2
             `, [this.leagueId, this.seasonId]);
 
             // 2. Load roster slot information (if not already loaded)

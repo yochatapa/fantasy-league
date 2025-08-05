@@ -626,7 +626,7 @@ export const getSeasonInfo = async (req, res) => {
                 ON ldt.draft_order = gs.draft_order AND ldt.league_id = $1 AND ldt.season_id = $2
             LEFT JOIN league_season_team lst
                 ON lst.id = ldt.team_id
-            INNER JOIN user_master um ON lst.user_id = um.user_id
+            LEFT JOIN user_master um ON lst.user_id = um.user_id
             LEFT JOIN file_table ft
                 ON ft.file_id = lst.logo_url::uuid AND ft.sn = 1
             ORDER BY gs.draft_order;
