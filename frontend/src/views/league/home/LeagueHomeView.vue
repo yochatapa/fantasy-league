@@ -492,6 +492,42 @@ const matches = ref([]);
 const waiverList = ref([]);
 const rankings = ref([]);
 
+const loadSeasonData = async () => {
+    if (!currentSeasonInfo.value) return;
+
+    const seasonId = currentSeasonInfo.value.season_id;
+    const leagueId = leagueInfo.value.league_id;
+
+    try {
+        const [matchesRes, waiverRes, rankingsRes] = await Promise.all([
+            commonFetch(`/api/league/${encodeURIComponent(orgLeagueId)}/season/${encodeURIComponent(encryptData(seasonId))}/matches`, {
+                method: 'GET'
+            }),
+            commonFetch(`/api/league/${encodeURIComponent(orgLeagueId)}/season/${encodeURIComponent(encryptData(seasonId))}/waivers`, {
+                method: 'GET'
+            }),
+            commonFetch(`/api/league/${encodeURIComponent(orgLeagueId)}/season/${encodeURIComponent(encryptData(seasonId))}/rankings`, {
+                method: 'GET'
+            }),
+        ]);
+
+        if (matchesRes.success) {
+            matches.value = matchesRes.data.matches || [];
+        }
+
+        if (waiverRes.success) {
+            waiverList.value = waiverRes.data.waivers || [];
+        }
+
+        if (rankingsRes.success) {
+            rankings.value = rankingsRes.data.rankings || [];
+        }
+    } catch (err) {
+        console.error('시즌 데이터 로드 실패:', err);
+    }
+};
+
+
 const loadLeagueInfo = async () => {
     try {
         const response = await commonFetch(`/api/league/${encodeURIComponent(orgLeagueId)}/info`, {
@@ -519,6 +555,8 @@ const loadLeagueInfo = async () => {
                     draftTeams.value = seasonRes.data.draftTeams;
                     draftRoom.value = seasonRes.data.draftRoom;
                     draftResults.value = seasonRes.data.draftResults;
+                    
+                    await loadSeasonData();
                 }
             }
         } else {

@@ -16,7 +16,7 @@ import { encryptData, decryptData } from '../utils/crypto.js'; // 암호화/복�
 async function createSeasonMatchups(client, leagueId, seasonId) {
     console.log(`[경기 일정 생성] 리그 ID: ${leagueId}, 시즌 ID: ${seasonId} - 경기 일정 생성 시작.`);
 
-    // 1. 해당 리그의 시작 날짜, 시즌 연도, 그리고 참여 팀 목록을 조회합니다.
+    // 1. 리그 시작일, 시즌 연도, 팀 목록 조회
     const { rows: leagueSeasonInfo } = await client.query(`
         SELECT ls.start_date, ls.season_year, lt.id AS team_id
         FROM league_season ls
@@ -26,7 +26,7 @@ async function createSeasonMatchups(client, leagueId, seasonId) {
     `, [leagueId, seasonId]);
 
     if (leagueSeasonInfo.length < 2) {
-        console.warn(`[경기 일정 생성] 리그 ID: ${leagueId}, 시즌 ID: ${seasonId} - 팀 수가 부족하여 경기 일정을 생성할 수 없습니다. (현재 팀 수: ${leagueSeasonInfo.length}개)`);
+        console.warn(`[경기 일정 생성] 팀 수가 부족하여 경기 일정을 생성할 수 없습니다. (팀 수: ${leagueSeasonInfo.length})`);
         return;
     }
 
@@ -35,36 +35,36 @@ async function createSeasonMatchups(client, leagueId, seasonId) {
     const teamIds = leagueSeasonInfo.map(t => t.team_id);
     const numTeams = teamIds.length;
 
-    // 2. league_season의 season_year를 이용해 kbo_season_master의 id를 조회합니다.
-    // 이 ID를 사용하여 kbo_season_week 테이블을 조회하는 것이 더 명확합니다.
+    // 2. kbo_season_master에서 season_year로 시즌 ID 조회
     const { rows: kboMaster } = await client.query(`
         SELECT id FROM kbo_season_master WHERE season_year = $1
     `, [leagueSeasonYear]);
-    
+
     if (kboMaster.length === 0) {
-        console.warn(`[경기 일정 생성] 리그 ID: ${leagueId}, 시즌 ID: ${seasonId} - 시즌 연도(${leagueSeasonYear})에 해당하는 KBO 시즌 마스터 정보가 없습니다.`);
+        console.warn(`[경기 일정 생성] 시즌 연도(${leagueSeasonYear})에 해당하는 KBO 시즌 정보가 없습니다.`);
         return;
     }
-    
+
     const kboSeasonId = kboMaster[0].id;
 
-    // 3. 리그 시작일 이후에 시작하는 KBO 주차 정보를 조회합니다.
+    // 3. 리그 시작일 이후의 주차 정보 조회
     const { rows: kboWeeks } = await client.query(`
         SELECT
             ks.id AS week_id,
             ks.week_number,
-            ks.week_start_date
+            ks.week_start_date,
+            ks.week_end_date
         FROM kbo_season_week ks
         WHERE ks.season_id = $1 AND ks.week_start_date >= $2::date
         ORDER BY ks.week_number
     `, [kboSeasonId, leagueStartDate]);
 
     if (kboWeeks.length === 0) {
-        console.warn(`[경기 일정 생성] 리그 ID: ${leagueId}, 시즌 ID: ${seasonId} - 리그 시작일(${leagueStartDate}) 이후의 KBO 주차 정보가 없어 경기 일정을 생성할 수 없습니다.`);
+        console.warn(`[경기 일정 생성] 시작일(${leagueStartDate}) 이후의 KBO 주차 정보가 없습니다.`);
         return;
     }
-    
-    // 팀 수가 홀수일 경우, 부전승(bye)을 위한 더미 팀을 추가
+
+    // 4. 홀수 팀 수 대비 부전승 처리
     const teamsForSchedule = [...teamIds];
     const hasByeWeek = numTeams % 2 !== 0;
     if (hasByeWeek) {
@@ -75,29 +75,32 @@ async function createSeasonMatchups(client, leagueId, seasonId) {
     const rotationTeams = teamsForSchedule.slice(1);
     const fixedTeam = teamsForSchedule[0];
 
-    // 4. 라운드 로빈(Round Robin) 알고리즘으로 대진표 생성
-    for (const week of kboWeeks) {
+    // 5. 라운드 로빈 알고리즘으로 주차별 매치 생성
+    for (let i = 0; i < kboWeeks.length; i++) {
+        const week = kboWeeks[i];
+        const isFirstWeek = i === 0;
+
+        const matchStartDate = isFirstWeek ? leagueStartDate : week.week_start_date;
+        const matchEndDate = week.week_end_date;
+
         const matchesInWeek = [];
-        // 고정 팀과 첫 번째 회전 팀 매치업
+
         if (fixedTeam !== null) {
             const awayTeam = rotationTeams[rotationTeams.length - 1];
             if (awayTeam !== null) {
-                 matchesInWeek.push({ home: fixedTeam, away: awayTeam });
+                matchesInWeek.push({ home: fixedTeam, away: awayTeam });
             }
         }
-        
-        // 나머지 팀들 매치업
-        for (let i = 0; i < rotationTeams.length / 2; i++) {
-            const homeTeam = rotationTeams[i];
-            const awayTeam = rotationTeams[rotationTeams.length - 1 - i];
-            
-            // 부전승 팀은 매치업에서 제외
+
+        for (let j = 0; j < rotationTeams.length / 2; j++) {
+            const homeTeam = rotationTeams[j];
+            const awayTeam = rotationTeams[rotationTeams.length - 1 - j];
+
             if (homeTeam !== null && awayTeam !== null && homeTeam !== awayTeam) {
                 matchesInWeek.push({ home: homeTeam, away: awayTeam });
             }
         }
 
-        // 생성된 매치업 데이터를 matchupsToInsert에 추가
         matchesInWeek.forEach(match => {
             matchupsToInsert.push({
                 league_id: leagueId,
@@ -106,42 +109,46 @@ async function createSeasonMatchups(client, leagueId, seasonId) {
                 week_number: week.week_number,
                 home_team_id: match.home,
                 away_team_id: match.away,
-                match_date: week.week_start_date
+                match_start_date: matchStartDate,
+                match_end_date: matchEndDate,
+                match_status: 'scheduled'
             });
         });
 
-        // 다음 주차를 위한 팀 로테이션
+        // 팀 회전
         if (rotationTeams.length > 0) {
             const lastTeam = rotationTeams.pop();
             rotationTeams.unshift(lastTeam);
         }
     }
 
-
-    // 5. 데이터베이스에 매치업 데이터 삽입
+    // 6. DB에 INSERT
     if (matchupsToInsert.length > 0) {
         const valuePlaceholders = matchupsToInsert.map((_, index) => {
-            const offset = index * 8;
-            return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, $${offset + 7}, $${offset + 8}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`;
+            const offset = index * 9;
+            return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, $${offset + 7}, $${offset + 8}, $${offset + 9}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`;
         }).join(',');
 
         const values = matchupsToInsert.flatMap(m => [
             m.league_id, m.season_id, m.week_id, m.week_number,
-            m.home_team_id, m.away_team_id, m.match_date, m.match_status || 'scheduled'
+            m.home_team_id, m.away_team_id,
+            m.match_start_date, m.match_end_date,
+            m.match_status,  // status
         ]);
 
         await client.query(`
             INSERT INTO league_season_match
-            (league_id, season_id, week_id, week_number, home_team_id, away_team_id, match_date, match_status, created_at, updated_at)
+            (league_id, season_id, week_id, week_number, home_team_id, away_team_id,
+            match_start_date, match_end_date, match_status, created_at, updated_at)
             VALUES ${valuePlaceholders}
             ON CONFLICT (league_id, season_id, week_id, home_team_id, away_team_id) DO NOTHING;
         `, values);
-        console.log(`[경기 일정 생성] 리그 ID: ${leagueId}, 시즌 ID: ${seasonId} - 총 ${matchupsToInsert.length}개의 경기 일정 삽입 완료.`);
+
+        console.log(`[경기 일정 생성] 총 ${matchupsToInsert.length}개의 경기 일정이 생성되었습니다.`);
     } else {
-        console.log(`[경기 일정 생성] 리그 ID: ${leagueId}, 시즌 ID: ${seasonId} - 생성된 경기 일정이 없습니다.`);
+        console.log(`[경기 일정 생성] 생성된 경기 일정이 없습니다.`);
     }
 }
-
 
 /**
  * 리그 시즌 내 각 팀의 초기 통계(승리, 패배, 무승부, 득점, 실점 등)를 0으로 초기화합니다.

@@ -4,6 +4,7 @@ import { sendSuccess, sendBadRequest, sendServerError } from '../../utils/apiRes
 import { encryptData, decryptData } from '../../utils/crypto.js';
 import { generateUniqueCode } from '../../utils/randomCodeGenerator.js';
 import activeDraftRooms from '../../utils/draft/activeDraftRooms.js';
+import dayjs from 'dayjs';
 
 export const createLeague = async (req, res) => {
     const { leagueName, leagueType, leagueFormat, draftMethod, isPublic, maxTeams, playoffTeams, seasonStartDate, draftDate, draftTime } = req.body;
@@ -353,7 +354,7 @@ export const getLeagueList = async (req, res) => {
             });
         else return sendBadRequest(res, '리그 목록이 없습니다.');
     } catch (error) {
-        //return sendServerError(res, error, '리그 정보 조회 중 문제가 발생했습니다. 다시 시도해주세요.');
+        return sendServerError(res, error, '리그 정보 조회 중 문제가 발생했습니다. 다시 시도해주세요.');
     }
 }
 
@@ -826,5 +827,106 @@ export const pickPlayer = async (req, res) => {
     } catch (error) {
         console.error(error);
         return sendServerError(res, error, '선수 선택 중 문제가 발생했습니다.');
+    }
+};
+
+export const getMatchList = async (req, res) => {
+    const accessToken = req.headers['authorization']?.split(' ')[1];
+    if (!accessToken) return sendBadRequest(res, '토큰이 제공되지 않았습니다.');
+
+    const user = jwt.verify(accessToken, process.env.JWT_SECRET);
+    let { leagueId, seasonId } = req.params;
+
+    leagueId = decryptData(leagueId);
+    seasonId = decryptData(seasonId);
+
+    const today = dayjs().format('YYYY-MM-DD')
+
+    try {
+        const matchQuery = `
+            SELECT id, week_id, week_number, home_team_id, away_team_id,
+                   home_score, away_score, match_status, match_start_date, match_end_date
+            FROM league_season_match
+            WHERE league_id = $1 AND season_id = $2
+              AND $3 BETWEEN match_start_date AND match_end_date
+        `;
+        const matchInfo = await query(matchQuery, [leagueId, seasonId, today]);
+
+        if (matchInfo.rows.length > 0) {
+            return sendSuccess(res, {
+                message: '이번 주 경기 목록이 조회되었습니다.',
+                matches: matchInfo.rows,
+            });
+        } else {
+            return sendBadRequest(res, '이번 주에 예정된 경기가 없습니다.');
+        }
+    } catch (error) {
+        return sendServerError(res, error, '경기 정보를 가져오는 중 오류가 발생했습니다.');
+    }
+};
+
+
+export const getWaiverList = async (req, res) => {
+    const accessToken = req.headers['authorization']?.split(' ')[1];
+    if (!accessToken) return sendBadRequest(res, '토큰이 제공되지 않았습니다.');
+
+    const user = jwt.verify(accessToken, process.env.JWT_SECRET);
+    let { leagueId, seasonId } = req.params;
+
+    leagueId = decryptData(leagueId);
+    seasonId = decryptData(seasonId);
+
+    try {
+        const waiverQuery = `
+            SELECT team_id, priority_order, updated_at
+            FROM league_season_waiver_priorities
+            WHERE league_id = $1 AND season_id = $2
+            ORDER BY priority_order ASC
+        `;
+        const waiverInfo = await query(waiverQuery, [leagueId, seasonId]);
+
+        if (waiverInfo.rows.length > 0) {
+            return sendSuccess(res, {
+                message: 'Waiver 목록이 조회되었습니다.',
+                waivers: waiverInfo.rows,
+            });
+        } else {
+            return sendBadRequest(res, 'Waiver 정보가 없습니다.');
+        }
+    } catch (error) {
+        return sendServerError(res, error, 'Waiver 정보를 가져오는 중 오류가 발생했습니다.');
+    }
+};
+
+
+export const getRankings = async (req, res) => {
+    const accessToken = req.headers['authorization']?.split(' ')[1];
+    if (!accessToken) return sendBadRequest(res, '토큰이 제공되지 않았습니다.');
+
+    const user = jwt.verify(accessToken, process.env.JWT_SECRET);
+    let { leagueId, seasonId } = req.params;
+
+    leagueId = decryptData(leagueId);
+    seasonId = decryptData(seasonId);
+
+    try {
+        const rankQuery = `
+            SELECT team_id, wins, losses, ties, points_for, points_against, rank
+            FROM league_team_standings
+            WHERE league_id = $1 AND season_id = $2
+            ORDER BY rank ASC NULLS LAST
+        `;
+        const rankingInfo = await query(rankQuery, [leagueId, seasonId]);
+
+        if (rankingInfo.rows.length > 0) {
+            return sendSuccess(res, {
+                message: '순위가 조회되었습니다.',
+                standings: rankingInfo.rows,
+            });
+        } else {
+            return sendBadRequest(res, '순위 정보가 없습니다.');
+        }
+    } catch (error) {
+        return sendServerError(res, error, '순위 정보를 가져오는 중 오류가 발생했습니다.');
     }
 };
