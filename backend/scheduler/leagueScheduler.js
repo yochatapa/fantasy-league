@@ -20,7 +20,8 @@ async function createSeasonMatchups(client, leagueId, seasonId) {
     const { rows: leagueSeasonInfo } = await client.query(`
         SELECT ls.start_date, ls.season_year, lt.id AS team_id
         FROM league_season ls
-        INNER JOIN league_season_team lt ON ls.league_id = lt.league_id AND ls.season_id = lt.season_id
+        INNER JOIN league_season_team lt 
+            ON ls.league_id = lt.league_id AND ls.season_id = lt.season_id
         WHERE ls.league_id = $1 AND ls.season_id = $2
         ORDER BY lt.id
     `, [leagueId, seasonId]);
@@ -64,44 +65,51 @@ async function createSeasonMatchups(client, leagueId, seasonId) {
         return;
     }
 
-    // 4. 홀수 팀 수 대비 부전승 처리
-    const teamsForSchedule = [...teamIds];
-    const hasByeWeek = numTeams % 2 !== 0;
-    if (hasByeWeek) {
+    // 4. 홀수 팀일 경우 부전승(null) 추가
+    let teamsForSchedule = [...teamIds];
+    if (numTeams % 2 !== 0) {
         teamsForSchedule.push(null);
     }
 
+    const numRounds = teamsForSchedule.length - 1; // 한 바퀴 라운드 수
+    const numMatchesPerRound = teamsForSchedule.length / 2;
     const matchupsToInsert = [];
-    const rotationTeams = teamsForSchedule.slice(1);
-    const fixedTeam = teamsForSchedule[0];
 
-    // 5. 라운드 로빈 알고리즘으로 주차별 매치 생성
-    for (let i = 0; i < kboWeeks.length; i++) {
-        const week = kboWeeks[i];
-        const isFirstWeek = i === 0;
+    // 5. 라운드 로빈 패턴 미리 생성
+    const allRounds = [];
+    let rotation = [...teamsForSchedule];
+    for (let round = 0; round < numRounds; round++) {
+        const roundMatches = [];
+        for (let matchIndex = 0; matchIndex < numMatchesPerRound; matchIndex++) {
+            let home = rotation[matchIndex];
+            let away = rotation[rotation.length - 1 - matchIndex];
+            if (round % 2 === 1) {
+                [home, away] = [away, home];
+            }
+            if (home !== null && away !== null) {
+                roundMatches.push({ home, away });
+            }
+        }
+        allRounds.push(roundMatches);
 
+        // 팀 회전 (첫 팀 고정)
+        rotation = [
+            rotation[0],
+            rotation[rotation.length - 1],
+            ...rotation.slice(1, rotation.length - 1)
+        ];
+    }
+
+    // 6. 주차 수에 맞춰 라운드 반복 배치
+    for (let weekIndex = 0; weekIndex < kboWeeks.length; weekIndex++) {
+        const week = kboWeeks[weekIndex];
+        const isFirstWeek = weekIndex === 0;
         const matchStartDate = isFirstWeek ? leagueStartDate : week.week_start_date;
         const matchEndDate = week.week_end_date;
 
-        const matchesInWeek = [];
-
-        if (fixedTeam !== null) {
-            const awayTeam = rotationTeams[rotationTeams.length - 1];
-            if (awayTeam !== null) {
-                matchesInWeek.push({ home: fixedTeam, away: awayTeam });
-            }
-        }
-
-        for (let j = 0; j < rotationTeams.length / 2; j++) {
-            const homeTeam = rotationTeams[j];
-            const awayTeam = rotationTeams[rotationTeams.length - 1 - j];
-
-            if (homeTeam !== null && awayTeam !== null && homeTeam !== awayTeam) {
-                matchesInWeek.push({ home: homeTeam, away: awayTeam });
-            }
-        }
-
-        matchesInWeek.forEach(match => {
+        // 현재 주차에 해당하는 라운드
+        const roundMatches = allRounds[weekIndex % numRounds];
+        for (const match of roundMatches) {
             matchupsToInsert.push({
                 league_id: leagueId,
                 season_id: seasonId,
@@ -113,16 +121,10 @@ async function createSeasonMatchups(client, leagueId, seasonId) {
                 match_end_date: matchEndDate,
                 match_status: 'scheduled'
             });
-        });
-
-        // 팀 회전
-        if (rotationTeams.length > 0) {
-            const lastTeam = rotationTeams.pop();
-            rotationTeams.unshift(lastTeam);
         }
     }
 
-    // 6. DB에 INSERT
+    // 7. DB에 INSERT
     if (matchupsToInsert.length > 0) {
         const valuePlaceholders = matchupsToInsert.map((_, index) => {
             const offset = index * 9;
@@ -133,7 +135,7 @@ async function createSeasonMatchups(client, leagueId, seasonId) {
             m.league_id, m.season_id, m.week_id, m.week_number,
             m.home_team_id, m.away_team_id,
             m.match_start_date, m.match_end_date,
-            m.match_status,  // status
+            m.match_status
         ]);
 
         await client.query(`
@@ -312,7 +314,7 @@ async function notifyLeagueStarted(client, io, leagueId, seasonId) {
 
 // --- 시즌 시작 스케줄러: 매일 자정 (새벽 0시 0분 0초)에 실행 ---
 // '0 0 0 * * *' : 초 분 시 일 월 요일
-const startLeagueSeasonJob = schedule.scheduleJob('0 0 0 * * *', async () => {
+const startLeagueSeasonJob = schedule.scheduleJob('0 * * * * *', async () => {
     const now = dayjs(); // 현재 시각
     const today = now.format('YYYY-MM-DD'); // 오늘 날짜 (YYYY-MM-DD 형식, KST 기준)
 

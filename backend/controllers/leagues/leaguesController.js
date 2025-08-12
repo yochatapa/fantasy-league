@@ -844,13 +844,39 @@ export const getMatchList = async (req, res) => {
 
     try {
         const matchQuery = `
-            SELECT id, week_id, week_number, home_team_id, away_team_id,
-                   home_score, away_score, match_status, match_start_date, match_end_date
-            FROM league_season_match
-            WHERE league_id = $1 AND season_id = $2
-              AND $3 BETWEEN match_start_date AND match_end_date
+            SELECT 
+                m.id,
+                m.week_id,
+                m.week_number,
+                m.home_team_id,
+                m.away_team_id,
+                m.home_score,
+                m.away_score,
+                m.match_status,
+                m.match_start_date,
+                m.match_end_date,
+                ht.team_name as home_team_name,
+                at.team_name as away_team_name,
+                CASE 
+                    WHEN ht.user_id = $4 OR at.user_id = $4 THEN true 
+                    ELSE false 
+                END AS is_me
+            FROM league_season_match m
+            LEFT JOIN league_season_team ht 
+                ON ht.id = m.home_team_id
+                AND ht.league_id = m.league_id
+                AND ht.season_id = m.season_id
+            LEFT JOIN league_season_team at 
+                ON at.id = m.away_team_id
+                AND at.league_id = m.league_id
+                AND at.season_id = m.season_id
+            WHERE m.league_id = $1
+            AND m.season_id = $2
+            AND $3 BETWEEN m.match_start_date AND m.match_end_date
+            ORDER BY is_me DESC, m.match_start_date ASC;
+
         `;
-        const matchInfo = await query(matchQuery, [leagueId, seasonId, today]);
+        const matchInfo = await query(matchQuery, [leagueId, seasonId, today, user.userId]);
 
         if (matchInfo.rows.length > 0) {
             return sendSuccess(res, {
@@ -911,17 +937,28 @@ export const getRankings = async (req, res) => {
 
     try {
         const rankQuery = `
-            SELECT team_id, wins, losses, ties, points_for, points_against, rank
-            FROM league_team_standings
-            WHERE league_id = $1 AND season_id = $2
-            ORDER BY rank ASC NULLS LAST
+            SELECT 
+                s.team_id,
+                t.team_name,
+                s.wins,
+                s.losses,
+                s.ties,
+                s.points_for,
+                s.points_against,
+                s.rank
+            FROM league_team_standings s
+            JOIN league_season_team t 
+                ON s.team_id = t.id
+            WHERE s.league_id = $1 
+            AND s.season_id = $2
+            ORDER BY s.rank ASC NULLS LAST;
         `;
         const rankingInfo = await query(rankQuery, [leagueId, seasonId]);
 
         if (rankingInfo.rows.length > 0) {
             return sendSuccess(res, {
                 message: '순위가 조회되었습니다.',
-                standings: rankingInfo.rows,
+                rankings: rankingInfo.rows,
             });
         } else {
             return sendBadRequest(res, '순위 정보가 없습니다.');

@@ -244,18 +244,18 @@
                                 <v-avatar size="40" class="mb-1">
                                     <v-img :src="match.myImage" />
                                 </v-avatar>
-                                <div class="text-subtitle1">{{ match.myTeam }}</div>
-                                <div class="text-caption text-grey">{{ match.myRank }}위</div>
+                                <div class="text-subtitle1">{{ match.away_team_name }}</div>
+                                <div class="text-caption text-grey">{{ match.away_team_rank }}위</div>
                             </v-col>
                             <v-col cols="auto" class="text-center">
-                                <div class="text-h6">{{ match.myScore }} : {{ match.opponentScore }}</div>
+                                <div class="text-h6">{{ Number(match.away_score) }} : {{ Number(match.home_score) }}</div>
                             </v-col>
                             <v-col cols="auto" class="text-center">
                                 <v-avatar size="40" class="mb-1">
                                     <v-img :src="match.opponentImage" />
                                 </v-avatar>
-                                <div class="text-subtitle1">{{ match.opponentTeam }}</div>
-                                <div class="text-caption text-grey">{{ match.opponentRank }}위</div>
+                                <div class="text-subtitle1">{{ match.home_team_name }}</div>
+                                <div class="text-caption text-grey">{{ match.home_team_rank }}위</div>
                             </v-col>
                         </v-row>
                         <v-divider class="my-4" />
@@ -269,18 +269,18 @@
                                         <v-avatar size="40" class="mb-1">
                                             <v-img :src="match.myImage" />
                                         </v-avatar>
-                                        <div class="text-subtitle1">{{ match.myTeam }}</div>
-                                        <div class="text-caption text-grey">{{ match.myRank }}위</div>
+                                        <div class="text-subtitle1">{{ match.away_team_name }}</div>
+                                        <div class="text-caption text-grey">{{ match.away_team_rank }}위</div>
                                     </v-col>
                                     <v-col cols="auto" class="text-center">
-                                        <div class="text-h6">{{ match.myScore }} : {{ match.opponentScore }}</div>
+                                        <div class="text-h6">{{ Number(match.away_score) }} : {{ Number(match.home_score) }}</div>
                                     </v-col>
                                     <v-col cols="auto" class="text-center">
                                         <v-avatar size="40" class="mb-1">
                                             <v-img :src="match.opponentImage" />
                                         </v-avatar>
-                                        <div class="text-subtitle1">{{ match.opponentTeam }}</div>
-                                        <div class="text-caption text-grey">{{ match.opponentRank }}위</div>
+                                        <div class="text-subtitle1">{{ match.home_team_name }}</div>
+                                        <div class="text-caption text-grey">{{ match.home_team_rank }}위</div>
                                     </v-col>
                                 </v-row>
                                 <v-divider class="my-4" />
@@ -302,15 +302,16 @@
                             :key="team.rank"
                             class="px-0"
                         >
-                            <div class="d-flex align-center justify-space-between">
+                            <div class="d-flex align-center justify-space-between mt-2 mb-4">
                                 <div class="d-flex align-center">
-                                    <span class="text-grey text-caption mr-2">{{ team.rank }}위</span>
-                                    <span>{{ team.name }}</span>
+                                    <span class="text-grey text-caption mr-2">{{ team.rank !== 0?team.rank:'-' }}위</span>
+                                    <span>{{ team.team_name }}</span>
                                 </div>
                                 <div class="text-right">
                                     <span class="text-body-2 font-weight-medium">{{ team.wins }}승 {{ team.losses }}패</span>
                                 </div>
                             </div>
+                            <v-divider></v-divider>
                         </v-list-item>
                     </v-list>
                 </v-card>
@@ -585,11 +586,11 @@ watch(isMobile, (newVal) => {
 });
 
 const displayMatches = computed(() => {
-    return matches.value.filter(match => match.isMe);
+    return matches.value.filter(match => match.is_me);
 });
 
 const additionalMatches = computed(() => {
-    return matches.value.filter(match => !match.isMe);
+    return matches.value.filter(match => !match.is_me);
 });
 
 const toggleDetails = () => {
