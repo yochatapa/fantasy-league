@@ -318,24 +318,32 @@
             </v-col>
         </v-row>
 
-        <!-- Waiver 기록 -->
         <v-card class="pa-4 mt-6" elevation="2" v-if="currentSeasonInfo.season_status !== 'pending'">
-            <v-card-title class="text-h6">
-                Waiver 기록
+            <v-card-title class="text-h6 pb-2">
+                로스터 변동 이력
             </v-card-title>
             <v-divider class="my-2" />
-            <div v-for="(waiver, index) in waiverList" :key="index">
-                <v-row class="align-center mb-2">
-                    <v-col cols="auto">
-                        <v-icon :color="waiver.type === 'add' ? 'green' : 'red'">
-                            {{ waiver.type === 'add' ? 'mdi-plus' : 'mdi-minus' }}
+            <div style="max-height: 300px; overflow-y: auto;overflow-x: hidden;">
+            <v-list dense>
+                <v-list-item :key="index" v-for="(transaction, index) in transactionsList">
+                    <div class="d-flex align-center mb-2">
+                        <v-icon :color="isPlayerAdded(transaction.transaction_type) ? 'green' : 'red'" class="mr-1">
+                            {{ isPlayerAdded(transaction.transaction_type) ? 'mdi-plus-circle-outline' : 'mdi-minus-circle-outline' }}
                         </v-icon>
-                    </v-col>
-                    <v-col>
-                        {{ waiver.team }} {{ waiver.type === 'add' ? '추가' : '드랍' }} - {{ waiver.player }}
-                    </v-col>
-                </v-row>
-                <v-divider class="my-2" v-if="index !== waiverList.length - 1" />
+                        {{ TRANSACTION_TYPE.find(tt => tt.id ===transaction.transaction_type)?.label }}
+                    </div>
+                    <v-list-item-title>
+                        <span class="font-weight-bold">{{ transaction.team_name }}</span>
+                        {{ isPlayerAdded(transaction.transaction_type) ? '이(가) ' : '이(가) ' }}
+                        <span class="font-weight-bold">{{ transaction.player_name }}</span>
+                        {{ isPlayerAdded(transaction.transaction_type) ? '선수를 영입했습니다.' : '선수를 방출했습니다.' }}
+                    </v-list-item-title>
+                    <v-list-item-subtitle class="caption mt-1">
+                        {{ dayjs(transaction.transaction_date).format('YYYY.MM.DD HH:mm') }}
+                    </v-list-item-subtitle>
+                    <v-divider :key="'divider-' + index" v-if="index < transactionsList.length - 1" class="mt-4"/>
+                </v-list-item>
+            </v-list>
             </div>
         </v-card>
     </v-container>
@@ -348,7 +356,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useClipboard } from '@vueuse/core';
 import { useDisplay } from 'vuetify';
 import { commonFetch } from '@/utils/common/commonFetch';
-import { LEAGUE_TYPES, LEAGUE_FORMATS } from '@/utils/code/code';
+import { LEAGUE_TYPES, LEAGUE_FORMATS, TRANSACTION_TYPE } from '@/utils/code/code';
 import { encryptData } from '@/utils/common/crypto.js';
 import { formatDate } from '@/utils/common/dateUtils.js';
 import { io } from 'socket.io-client';
@@ -417,6 +425,10 @@ const getDDayText = (date) => {
     if (diff < 0) return `D+${Math.abs(diff)}`;
     return 'D-Day';
 };
+
+const isPlayerAdded = type => {
+    return ['add', 'waiver_add', 'drafted'].includes(type);
+}
 
 const datePercents = computed(() => {
     if (!barWidth.value) barWidth.value = barRef.value?.offsetWidth;
@@ -490,7 +502,7 @@ const copyLink = () => {
 };
 
 const matches = ref([]);
-const waiverList = ref([]);
+const transactionsList = ref([]);
 const rankings = ref([]);
 
 const loadSeasonData = async () => {
@@ -500,11 +512,11 @@ const loadSeasonData = async () => {
     const leagueId = leagueInfo.value.league_id;
 
     try {
-        const [matchesRes, waiverRes, rankingsRes] = await Promise.all([
+        const [matchesRes, transactionsRes, rankingsRes] = await Promise.all([
             commonFetch(`/api/league/${encodeURIComponent(orgLeagueId)}/season/${encodeURIComponent(encryptData(seasonId))}/matches`, {
                 method: 'GET'
             }),
-            commonFetch(`/api/league/${encodeURIComponent(orgLeagueId)}/season/${encodeURIComponent(encryptData(seasonId))}/waivers`, {
+            commonFetch(`/api/league/${encodeURIComponent(orgLeagueId)}/season/${encodeURIComponent(encryptData(seasonId))}/transactions`, {
                 method: 'GET'
             }),
             commonFetch(`/api/league/${encodeURIComponent(orgLeagueId)}/season/${encodeURIComponent(encryptData(seasonId))}/rankings`, {
@@ -516,8 +528,8 @@ const loadSeasonData = async () => {
             matches.value = matchesRes.data.matches || [];
         }
 
-        if (waiverRes.success) {
-            waiverList.value = waiverRes.data.waivers || [];
+        if (transactionsRes.success) {
+            transactionsList.value = transactionsRes.data.transactions || [];
         }
 
         if (rankingsRes.success) {

@@ -66,3 +66,11 @@ export const DRAFT_METHODS = [
         description: '커미셔너가 직접 각 팀의 선수를 지정',
     }
 ]
+
+export const TRANSACTION_TYPE = [
+  { id: 'add', label: '선수 추가' },
+  { id: 'drop', label: '선수 드랍' },
+  { id: 'waiver_add', label: '웨이버 추가' },
+  { id: 'drafted', label: '드래프트' },
+  { id: 'trade', label: '트레이드' }
+];

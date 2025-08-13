@@ -891,36 +891,56 @@ export const getMatchList = async (req, res) => {
     }
 };
 
-
-export const getWaiverList = async (req, res) => {
+export const getRosterTransactionHistory = async (req, res) => {
     const accessToken = req.headers['authorization']?.split(' ')[1];
     if (!accessToken) return sendBadRequest(res, '토큰이 제공되지 않았습니다.');
 
-    const user = jwt.verify(accessToken, process.env.JWT_SECRET);
-    let { leagueId, seasonId } = req.params;
-
-    leagueId = decryptData(leagueId);
-    seasonId = decryptData(seasonId);
-
     try {
-        const waiverQuery = `
-            SELECT team_id, priority_order, updated_at
-            FROM league_season_waiver_priorities
-            WHERE league_id = $1 AND season_id = $2
-            ORDER BY priority_order ASC
-        `;
-        const waiverInfo = await query(waiverQuery, [leagueId, seasonId]);
+        const user = jwt.verify(accessToken, process.env.JWT_SECRET);
+        let { leagueId, seasonId } = req.params;
 
-        if (waiverInfo.rows.length > 0) {
+        leagueId = decryptData(leagueId);
+        seasonId = decryptData(seasonId);
+
+        const transactionQuery = `
+            SELECT
+                lrth.id AS transaction_id,
+                lrth.player_id,
+                lrth.team_id,
+                lst.team_name,
+                kpm.name AS player_name,
+                lrth.transaction_date,
+                lrth.transaction_type,
+                lrth.details
+            FROM
+                league_season_roster_transaction_history lrth
+            LEFT JOIN
+                kbo_player_master kpm ON lrth.player_id = kpm.id
+            LEFT JOIN
+                league_season_team lst ON lrth.team_id = lst.id
+            WHERE
+                lrth.league_id = $1
+            AND
+                lrth.season_id = $2
+            ORDER BY
+                lrth.transaction_date DESC;
+        `;
+        const transactionHistory = await query(transactionQuery, [leagueId, seasonId]);
+
+        if (transactionHistory.rows.length > 0) {
             return sendSuccess(res, {
-                message: 'Waiver 목록이 조회되었습니다.',
-                waivers: waiverInfo.rows,
+                message: '로스터 변동 이력이 조회되었습니다.',
+                transactions: transactionHistory.rows,
             });
         } else {
-            return sendBadRequest(res, 'Waiver 정보가 없습니다.');
+            return sendSuccess(res, {
+                message: '로스터 변동 이력이 없습니다.',
+                transactions: [],
+            });
         }
     } catch (error) {
-        return sendServerError(res, error, 'Waiver 정보를 가져오는 중 오류가 발생했습니다.');
+        console.error(error);
+        return sendServerError(res, error, '로스터 변동 이력을 가져오는 중 오류가 발생했습니다.');
     }
 };
 

@@ -1,6 +1,6 @@
 import express from 'express';
 import { verifyToken, verifyCommissioner, verifyTeams}  from '../middleware/auth.js'
-import { createLeague, getLeagueInfo, getLeagueList, getSeasonInfo, checkInviteCode, joinLeague, setDraftOrder, pickPlayer, getMatchList, getWaiverList, getRankings } from '../controllers/leagues/leaguesController.js';
+import { createLeague, getLeagueInfo, getLeagueList, getSeasonInfo, checkInviteCode, joinLeague, setDraftOrder, pickPlayer, getMatchList, getRankings, getRosterTransactionHistory } from '../controllers/leagues/leaguesController.js';
 import { getDraftRoomInfo } from '../controllers/leagues/draftContoller.js';
 
 const router = express.Router();
@@ -10,7 +10,7 @@ router.get('/:leagueId/info', verifyToken, verifyTeams, getLeagueInfo);
 router.get('/:leagueId/season/:seasonId/draftroom/info', verifyToken, verifyTeams, getDraftRoomInfo);
 router.get('/:leagueId/season/:seasonId/info', verifyToken, verifyTeams, getSeasonInfo);
 router.get('/:leagueId/season/:seasonId/matches', verifyToken, verifyTeams, getMatchList); 
-router.get('/:leagueId/season/:seasonId/waivers', verifyToken, verifyTeams, getWaiverList);
+router.get('/:leagueId/season/:seasonId/transactions', verifyToken, verifyTeams, getRosterTransactionHistory);
 router.get('/:leagueId/season/:seasonId/rankings', verifyToken, verifyTeams, getRankings); 
 router.get('/list', verifyToken, getLeagueList);
 
