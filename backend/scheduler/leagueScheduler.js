@@ -314,7 +314,7 @@ async function notifyLeagueStarted(client, io, leagueId, seasonId) {
 
 // --- 시즌 시작 스케줄러: 매일 자정 (새벽 0시 0분 0초)에 실행 ---
 // '0 0 0 * * *' : 초 분 시 일 월 요일
-const startLeagueSeasonJob = schedule.scheduleJob('0 * * * * *', async () => {
+const startLeagueSeasonJob = schedule.scheduleJob('0 0 0 * * *', async () => {
     const now = dayjs(); // 현재 시각
     const today = now.format('YYYY-MM-DD'); // 오늘 날짜 (YYYY-MM-DD 형식, KST 기준)
 
@@ -396,5 +396,119 @@ const startLeagueSeasonJob = schedule.scheduleJob('0 * * * * *', async () => {
 
     } catch (error) {
         console.error('❌ [시즌 시작 스케줄러] 메인 실행 중 에러 발생:', error);
+    }
+});
+
+schedule.scheduleJob('0 0 0 * * *', async () => {
+    const gameDate = dayjs().startOf('day'); // 오늘 0시
+    const seasonYear = gameDate.year();
+
+    console.log(`[${gameDate.format('YYYY-MM-DD')}] 판타지 리그 스탯 업데이트 시작`);
+
+    try {
+        await withTransaction(async (client) => {
+            // 1. 판타지 리그에 속한 선수 정보 + player_type 가져오기
+            const players = await client.query(`
+                SELECT 
+                    lstr.league_id, 
+                    lstr.season_id, 
+                    lstr.team_id, 
+                    lstr.player_id, 
+                    kpm.player_type
+                FROM league_season_team_rosters lstr
+                JOIN kbo_player_master kpm 
+                    ON kpm.id = lstr.player_id
+                JOIN kbo_player_season kps
+                    ON kps.player_id = lstr.player_id
+                    AND kps.year = $1
+                WHERE lstr.is_active = true
+            `, [seasonYear]);
+
+            // 2. 스탯 설정 가져오기 (리그/시즌별 허용된 스탯)
+            const statSettings = await client.query(`
+                SELECT league_id, season_id, stat
+                FROM league_season_stat_setting
+            `);
+
+            // 리그/시즌별 허용 스탯 집합
+            const allowedStats = {};
+            for (const row of statSettings.rows) {
+                const key = `${row.league_id}-${row.season_id}`;
+                if (!allowedStats[key]) allowedStats[key] = new Set();
+                allowedStats[key].add(row.stat);
+            }
+
+            // 3. 선수별 집계
+            const teamStats = {};
+            for (const row of players.rows) {
+                let statsQuery = '';
+                if (row.player_type === 'B') {
+                    statsQuery = `
+                        SELECT * FROM batter_daily_stats
+                        WHERE season_year = $1 AND game_date = $2 AND player_id = $3
+                    `;
+                } else if (row.player_type === 'P') {
+                    statsQuery = `
+                        SELECT * FROM pitcher_daily_stats
+                        WHERE season_year = $1 AND game_date = $2 AND player_id = $3
+                    `;
+                } else {
+                    continue;
+                }
+
+                const res = await client.query(statsQuery, [
+                    seasonYear,
+                    gameDate.format('YYYY-MM-DD'),
+                    row.player_id
+                ]);
+                if (!res.rows.length) continue;
+
+                const key = `${row.league_id}-${row.season_id}-${row.team_id}-${row.player_type}`;
+                if (!teamStats[key]) teamStats[key] = {};
+                if (!teamStats[key][row.player_id]) teamStats[key][row.player_id] = {};
+
+                const statRow = res.rows[0];
+                const settingKey = `${row.league_id}-${row.season_id}`;
+                const allowed = allowedStats[settingKey] || new Set();
+
+                for (const [statName, value] of Object.entries(statRow)) {
+                    if (typeof value === 'number' && allowed.has(statName)) {
+                        teamStats[key][row.player_id][statName] =
+                            (teamStats[key][row.player_id][statName] || 0) + value;
+                    }
+                }
+            }
+
+            // 4. DB 저장
+            for (const key in teamStats) {
+                const [league_id, season_id, team_id, type] = key.split('-');
+                for (const playerId in teamStats[key]) {
+                    for (const [stats_type, stats_number] of Object.entries(teamStats[key][playerId])) {
+                        await client.query(`
+                            INSERT INTO league_season_daily_stats
+                            (league_id, season_id, team_id, player_id, game_date, type, stats_type, stats_number)
+                            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                            ON CONFLICT (league_id, season_id, team_id, player_id, game_date, type, stats_type)
+                            DO UPDATE SET
+                                stats_number = EXCLUDED.stats_number,
+                                updated_at = now()
+                        `, [
+                            league_id,
+                            season_id,
+                            team_id,
+                            playerId,
+                            gameDate.format('YYYY-MM-DD'),
+                            type,
+                            stats_type,
+                            stats_number
+                        ]);
+                    }
+                }
+            }
+        });
+
+        console.log('판타지 리그 스탯 업데이트 완료');
+    } catch (err) {
+        console.error('스탯 업데이트 실패', err);
     }
 });
