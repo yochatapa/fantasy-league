@@ -99,7 +99,9 @@
     <!-- 콘텐츠 영역 -->
     <v-row>
         <v-col cols="12">
-            <router-view />
+            <router-view v-slot="{ Component }" :league-info="leagueInfo" :season-info="seasonInfo" :current-season-info="currentSeasonInfo" :draft-teams="draftTeams" :draft-room="draftRoom" > 
+                <component :is="Component" :league-info="leagueInfo" :season-info="seasonInfo" :current-season-info="currentSeasonInfo" :draft-teams="draftTeams" :draft-room="draftRoom" /> 
+            </router-view>
         </v-col>
     </v-row>
 </template>
@@ -111,10 +113,12 @@ import { useRouter, useRoute } from 'vue-router';
 import { id } from 'vuetify/locale';
 
 const props = defineProps({
-    menus: {
-        type: Array,
-        required: true
-    }
+    menus: Array,
+    leagueInfo: Object,
+    seasonInfo: Object,
+    currentSeasonInfo: Object,
+    draftTeams: Array,
+    draftRoom: Object
 });
 
 const { mobile } = useDisplay();

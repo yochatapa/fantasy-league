@@ -1,20 +1,17 @@
 <template>
     <v-container v-if="isLoadedData">
-        <!-- 리그명 + 공유 -->
         <v-row class="align-center mb-6" no-gutters>
-            <!-- 리그명 + 공유 버튼 -->
             <v-col cols="12" class="d-flex align-center justify-space-between">
-                <h1 class="text-h4 font-weight-bold mr-2">{{ leagueInfo.league_name }}</h1>
+                <h1 class="text-h4 font-weight-bold mr-2">{{ leagueInfo?.league_name }}</h1>
                 <v-icon @click="copyLink" color="primary" style="cursor: pointer;">
                     mdi-share-variant
                 </v-icon>
             </v-col>
 
-            <!-- 시즌 년도 -->
             <v-col cols="12" class="d-flex">
                 <v-list dense class="horizontal-list bg-transparent pa-0">
                     <v-list-item
-                        v-if="seasonInfo.length === 1"
+                        v-if="seasonInfo?.length === 1"
                         class="pa-0"
                     >
                         <v-list-item-title>({{ seasonYear }}년)</v-list-item-title>
@@ -51,7 +48,6 @@
             </v-col>
         </v-row>
 
-        <!-- 공지사항 -->
         <v-card class="mb-6">
             <v-card-text>
                 <div class="d-flex align-center justify-space-between">
@@ -62,9 +58,8 @@
                 </div>
             </v-card-text>
         </v-card>
-
-        <!-- 시즌 일정 -->
-        <v-row v-if="currentSeasonInfo.season_status === 'pending'">
+        
+        <v-row v-if="currentSeasonInfo?.season_status === 'pending'">
             <v-col cols="12">
                 <v-card>
                     <v-card-title class="d-flex justify-space-between align-center">
@@ -72,7 +67,6 @@
                     </v-card-title>
                     <v-divider></v-divider>
                     <div class="d-flex flex-column align-center position-relative mt-6 mb-2 pt-6 pb-10 mx-10">
-                        <!-- 타임라인 바 -->
                         <div ref="barRef" class="position-relative timeline-bar my-4" style="height: 8px; background: #e0e0e0; width: 100%; border-radius: 4px;">
                             <div
                                 v-for="item in datePercents"
@@ -98,7 +92,6 @@
                             </div>
                         </div>
 
-                        <!-- 날짜 라벨 -->
                         <div class="d-flex justify-space-between w-100 text-caption mt-2">
                             <div
                                 v-for="item in datePercents"
@@ -129,8 +122,7 @@
             </v-col>
         </v-row>
 
-        <!-- 드래프트 순번 -->
-        <v-row v-if="currentSeasonInfo.season_status === 'pending'">
+        <v-row v-if="currentSeasonInfo?.season_status === 'pending'">
             <v-col cols="12" v-if="draftRoom?.status !== 'finished'">
                 <v-card>
                     <v-card-title class="d-flex justify-space-between align-center">
@@ -148,7 +140,6 @@
                             </thead>
                             <tbody>
                                 <tr v-for="team in draftTeams" :key="team.draft_order">
-                                    <!-- 순번 표시 -->
                                     <td class="text-center">
                                         <span v-if="team.team_id">{{ team.draft_order }}</span>
                                         <v-btn
@@ -162,7 +153,6 @@
                                         </v-btn>
                                     </td>
 
-                                    <!-- 팀 아이콘 + 이름 -->
                                     <td>
                                         <div v-if="team.team_id" class="d-flex align-center" style="gap: 8px">
                                             <v-avatar size="24" v-if="team.file_path">
@@ -213,9 +203,7 @@
             </v-col>
         </v-row>
 
-        <!-- 메인 영역 -->
-        <v-row align="stretch" no-gutters gap="6" v-if="currentSeasonInfo.season_status !== 'pending'">
-            <!-- 이번 주 매치 -->
+        <v-row align="stretch" no-gutters gap="6" v-if="currentSeasonInfo?.season_status !== 'pending'">
             <v-col :cols="isMobile ? 12 : 8" :class="[ isMobile?'mb-6':'']">
                 <v-card :class="[
                         'pa-4'
@@ -290,7 +278,6 @@
                 </v-card>
             </v-col>
 
-            <!-- 리그 순위 -->
             <v-col :cols="isMobile ? 12 : 4">
                 <v-card class="pa-4 mb-6" elevation="2" style="height: 100%;">
                     <v-card-title class="text-h6">리그 순위</v-card-title>
@@ -318,7 +305,7 @@
             </v-col>
         </v-row>
 
-        <v-card class="pa-4 mt-6" elevation="2" v-if="currentSeasonInfo.season_status !== 'pending'">
+        <v-card class="pa-4 mt-6" elevation="2" v-if="currentSeasonInfo?.season_status !== 'pending'">
             <v-card-title class="text-h6 pb-2">
                 로스터 변동 이력
             </v-card-title>
@@ -359,10 +346,15 @@ import { commonFetch } from '@/utils/common/commonFetch';
 import { LEAGUE_TYPES, LEAGUE_FORMATS, TRANSACTION_TYPE } from '@/utils/code/code';
 import { encryptData } from '@/utils/common/crypto.js';
 import { formatDate } from '@/utils/common/dateUtils.js';
-import { io } from 'socket.io-client';
 
-const socket = ref(null); // 소켓 인스턴스
-const currentSocketRoom = ref(null); // 현재 방 ID
+const props = defineProps({
+    menus: Array,
+    leagueInfo: Object,
+    seasonInfo: Object,
+    currentSeasonInfo: Object,
+    draftTeams: Array,
+    draftRoom: Object
+});
 
 const { copy } = useClipboard();
 const { mobile } = useDisplay();
@@ -377,21 +369,62 @@ const noticeSummary = ref("공지사항 테스트입니다. 다들 주목하세�
 
 const orgLeagueId = route.query.leagueId;
 
+// props 값을 담을 변수들
+const menus = ref([]);
 const leagueInfo = ref({});
 const seasonInfo = ref([]);
-const currentSeasonInfo = ref(null);
-const filteredSeasonYears = ref([]);
+const currentSeasonInfo = ref({});
 const draftTeams = ref([]);
-const draftRoom = ref(null);
+const draftRoom = ref({});
+
+
+// 기존 변수들
+const filteredSeasonYears = ref([]);
 const draftResults = ref({});
 
 const seasonYear = ref(null);
+
+const isLoadedData = ref(false);
+
+watch(
+    () => [
+        props.leagueInfo,
+        props.seasonInfo,
+        props.currentSeasonInfo,
+        props.draftTeams,
+        props.draftRoom
+    ],
+    async (newVals) => {
+        const [
+            newLeagueInfo,
+            newSeasonInfo,
+            newCurrentSeasonInfo,
+            newDraftTeams,
+            newDraftRoom
+        ] = newVals;
+
+        if (
+            newLeagueInfo && 
+            newSeasonInfo && 
+            newCurrentSeasonInfo &&
+            newDraftTeams
+        ) { 
+            leagueInfo.value = newLeagueInfo;
+            seasonInfo.value = newSeasonInfo;
+            currentSeasonInfo.value = newCurrentSeasonInfo;
+            draftTeams.value = newDraftTeams;
+            draftRoom.value = newDraftRoom;
+
+            isLoadedData.value = true;
+            await loadSeasonData();
+        }
+    },
+    { immediate: true, deep: false }
+);
+
 watch([seasonInfo, seasonYear], () => {
     filteredSeasonYears.value = seasonInfo.value.filter((sy) => sy.season_year !== seasonYear.value);
 });
-
-const isLoadedData = ref(false);
-const seasonDataYn = ref(false);
 
 const barRef = ref(null);
 const barWidth = ref(0);
@@ -430,7 +463,7 @@ const isPlayerAdded = type => {
     return ['add', 'waiver_add', 'drafted'].includes(type);
 }
 
-const datePercents = computed(() => {
+const datePercents = computed(() => { 
     if (!barWidth.value) barWidth.value = barRef.value?.offsetWidth;
     if (!barWidth.value || !currentSeasonInfo.value) return [];
 
@@ -509,8 +542,7 @@ const loadSeasonData = async () => {
     if (!currentSeasonInfo.value) return;
 
     const seasonId = currentSeasonInfo.value.season_id;
-    const leagueId = leagueInfo.value.league_id;
-
+    
     try {
         const [matchesRes, transactionsRes, rankingsRes] = await Promise.all([
             commonFetch(`/api/league/${encodeURIComponent(orgLeagueId)}/season/${encodeURIComponent(encryptData(seasonId))}/matches`, {
@@ -526,71 +558,36 @@ const loadSeasonData = async () => {
 
         if (matchesRes.success) {
             matches.value = matchesRes.data.matches || [];
+        } else {
+            // 오류 처리: matches API 호출 실패
+            console.error('Failed to load matches:', matchesRes.message);
         }
 
         if (transactionsRes.success) {
             transactionsList.value = transactionsRes.data.transactions || [];
+        } else {
+            // 오류 처리: transactions API 호출 실패
+            console.error('Failed to load transactions:', transactionsRes.message);
         }
 
         if (rankingsRes.success) {
             rankings.value = rankingsRes.data.rankings || [];
+        } else {
+            // 오류 처리: rankings API 호출 실패
+            console.error('Failed to load rankings:', rankingsRes.message);
         }
     } catch (err) {
-        console.error('시즌 데이터 로드 실패:', err);
-    }
-};
-
-
-const loadLeagueInfo = async () => {
-    try {
-        const response = await commonFetch(`/api/league/${encodeURIComponent(orgLeagueId)}/info`, {
-            method: 'GET'
-        });
-
-        if (response.success) {
-            const data = response.data.leagueInfo;
-
-            leagueInfo.value = {
-                ...data,
-                leagueTypeLabel: LEAGUE_TYPES.find(item => item.id === data.league_type)?.label || '',
-                leagueFormatLabel: LEAGUE_FORMATS.find(item => item.id === data.league_format)?.label || '',
-            };
-
-            seasonInfo.value = response.data.seasonInfo;
-
-            if (seasonInfo.value?.length > 0) {
-                seasonYear.value = seasonInfo.value[0].season_year;
-                const seasonRes = await commonFetch(`/api/league/${encodeURIComponent(orgLeagueId)}/season/${encodeURIComponent(encryptData(seasonInfo.value[0].season_id))}/info`);
-
-                if (seasonRes.success) {
-                    seasonDataYn.value = true;
-                    currentSeasonInfo.value = seasonRes.data.seasonInfo;
-                    draftTeams.value = seasonRes.data.draftTeams;
-                    draftRoom.value = seasonRes.data.draftRoom;
-                    draftResults.value = seasonRes.data.draftResults;
-                    
-                    await loadSeasonData();
-                }
-            }
-        } else {
-            alert("리그 정보 조회 도중 문제가 발생하였습니다.");
-            router.push("/");
-        }
-
-    } catch (error) {
-        console.error('리그 정보 조회 실패:', error);
-    } finally {
-        isLoadedData.value = true;
+        // Promise.all 내에서 발생한 치명적인 오류 처리 (e.g., 네트워크 문제)
+        console.error('An error occurred during season data loading:', err);
     }
 };
 
 const isDetailsOpen = ref(false);
 
-onMounted(() => {
+onMounted(async () => {
     if (!isMobile.value) {
         isDetailsOpen.value = true;
     }
-    loadLeagueInfo();
 });
 
 watch(isMobile, (newVal) => {
@@ -638,87 +635,6 @@ const getDraftOrder = async () => {
         draftTeams.value = seasonRes.data.draftTeams;
     }
 };
-
-// 소켓 이벤트 리스너 등록 함수
-const registerSocketEvents = () => {
-    if (!socket.value) return;
-
-    // 중복 등록 방지용 이벤트 제거
-    socket.value.off('createDraftRoom');
-    socket.value.off('draftAlert');
-
-    socket.value.on('createDraftRoom', (payload) => {
-        console.log('[소켓] createDraftRoom 수신:', payload);
-        //alert(payload.message || '드래프트 룸이 생성되었습니다.');
-        //getDraftOrder();
-    });
-
-    socket.value.on('draftAlert', (payload) => {
-        console.log('[소켓] draftAlert 수신:', payload);
-        //alert(payload.message || '드래프트 시작까지 얼마 남지 않았습니다!');
-    });
-
-    // 모든 이벤트를 콘솔에 찍어 디버깅 도움
-    socket.value.onAny((event, ...args) => {
-        console.log(`[소켓][onAny] 이벤트명: ${event}, 데이터:`, args);
-    });
-};
-
-// 소켓 연결 및 방 입장 함수
-const connectSocketRoom = (leagueId, seasonId) => {
-    const newRoom = `${leagueId}_${seasonId}`;
-
-    if (currentSocketRoom.value === newRoom) return;
-
-    if (!socket.value) {
-        socket.value = io(`${import.meta.env.VITE_API_URL}`, {
-            autoConnect: false,
-        });
-    }
-
-    // 기존 방에서 나가기
-    if (currentSocketRoom.value) {
-        socket.value.emit('leaveRoom', currentSocketRoom.value);
-        console.log(`Left room ${currentSocketRoom.value}`);
-    }
-
-    currentSocketRoom.value = newRoom;
-
-    if (!socket.value.connected) {
-        socket.value.connect();
-
-        socket.value.once('connect', () => {
-            console.log('Socket connected:', socket.value.id);
-            socket.value.emit('joinRoom', newRoom);
-            console.log(`Requested to join room: ${newRoom}`);
-
-            registerSocketEvents();
-        });
-    } else {
-        socket.value.emit('joinRoom', newRoom);
-        console.log(`Requested to join room: ${newRoom}`);
-
-        registerSocketEvents();
-    }
-};
-
-watch(
-    [() => leagueInfo.value?.league_id, () => currentSeasonInfo.value?.season_id],
-    ([newLeagueId, newSeasonId]) => {
-        if (newLeagueId && newSeasonId) {
-            connectSocketRoom(newLeagueId, newSeasonId);
-            // onSocketEvents() 호출은 registerSocketEvents()로 대체됨
-        }
-    }
-);
-
-onBeforeUnmount(() => {
-    if (socket.value && currentSocketRoom.value) {
-        socket.value.emit('leaveRoom', currentSocketRoom.value);
-        socket.value.disconnect();
-        console.log('Socket disconnected on unmount');
-    }
-});
 
 const goToDraftRoom = () => {
     router.push("/league/draftroom?leagueId="+encodeURIComponent(orgLeagueId)+"&seasonId="+encodeURIComponent(encryptData(currentSeasonInfo.value.season_id)))
