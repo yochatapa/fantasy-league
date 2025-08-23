@@ -3,6 +3,7 @@
     :menus="menus"
     :leagueInfo="leagueInfo"
     :currentSeasonInfo="currentSeasonInfo"
+    :my-team-info="myTeamInfo"
   />
 </template>
 
@@ -21,6 +22,7 @@ const orgLeagueId = route.query.leagueId;
 
 const leagueInfo = ref(null);
 const currentSeasonInfo = ref(null);
+const myTeamInfo = ref(null);
 const isLoadedData = ref(false);
 
 const socket = ref(null); // 소켓 인스턴스
@@ -161,9 +163,10 @@ const connectSocketRoom = (leagueId, seasonId) => {
 
 const loadLeagueInfo = async () => {
     try {
-        const [leagueRes, seasonRes] = await Promise.all([
+        const [leagueRes, seasonRes, teamInfoRes] = await Promise.all([
             commonFetch(`/api/league/${encodeURIComponent(orgLeagueId)}/info`, { method: 'GET' }),
             commonFetch(`/api/league/${encodeURIComponent(orgLeagueId)}/current-season-info`, { method: 'GET' }),
+            commonFetch(`/api/league/${encodeURIComponent(orgLeagueId)}/current-my-team-info`, { method: 'GET' }),
         ]);
 
         if(leagueRes.success){
@@ -184,7 +187,14 @@ const loadLeagueInfo = async () => {
             
             connectSocketRoom(leagueInfo.value.league_id, currentSeasonInfo.value.season_id);
         }else {
-            alert("리그 정보 조회 도중 문제가 발생하였습니다.");
+            alert("현재 시즌 정보 조회 도중 문제가 발생하였습니다.");
+            router.push("/");
+        }
+
+        if(teamInfoRes.success){
+            myTeamInfo.value = teamInfoRes.data.myTeamInfo;
+        }else {
+            alert("내 팀 정보 조회 도중 문제가 발생하였습니다.");
             router.push("/");
         }
     } catch (error) {

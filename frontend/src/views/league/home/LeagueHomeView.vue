@@ -351,6 +351,7 @@ const props = defineProps({
     menus: Array,
     leagueInfo: Object,
     currentSeasonInfo: Object,
+    myTeamInfo: Object,
 });
 
 const { copy } = useClipboard();
@@ -370,6 +371,7 @@ const orgLeagueId = route.query.leagueId;
 const leagueInfo = ref({});
 const seasonInfo = ref([]);
 const currentSeasonInfo = ref({});
+const myTeamInfo = ref({});
 const draftTeams = ref([]);
 const draftRoom = ref({});
 
@@ -554,18 +556,22 @@ onMounted(async () => {
         () => [
             props.leagueInfo,
             props.currentSeasonInfo,
+            props.myTeamInfo
         ],
         async ([
             newLeagueInfo,
             newCurrentSeasonInfo,
+            newMyTeamInfo
         ]) => {
             const hasAllData =
             newLeagueInfo &&
-            newCurrentSeasonInfo
+            newCurrentSeasonInfo &&
+            newMyTeamInfo
             
             if (hasAllData) {
                 leagueInfo.value = newLeagueInfo;
                 currentSeasonInfo.value = newCurrentSeasonInfo;
+                myTeamInfo.value = newMyTeamInfo
 
                 isLoadedData.value = true;
                 

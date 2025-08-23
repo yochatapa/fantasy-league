@@ -2,10 +2,7 @@
     <v-container v-if="isLoadedData">
         <v-row class="align-center mb-6" no-gutters>
             <v-col cols="12" class="d-flex align-center justify-space-between">
-                <h1 class="text-h4 font-weight-bold mr-2">{{ leagueInfo?.league_name }}</h1>
-                <v-icon color="primary" style="cursor: pointer;">
-                    mdi-share-variant
-                </v-icon>
+                <h1 class="text-h4 font-weight-bold mr-2">{{ myTeamInfo?.team_name }}</h1>
             </v-col>
         </v-row>
     </v-container>
@@ -25,10 +22,8 @@ import { formatDate } from '@/utils/common/dateUtils.js';
 const props = defineProps({
     menus: Array,
     leagueInfo: Object,
-    seasonInfo: Object,
     currentSeasonInfo: Object,
-    draftTeams: Array,
-    draftRoom: Object
+    myTeamInfo: Object,
 });
 
 const { copy } = useClipboard();
@@ -45,6 +40,7 @@ const orgLeagueId = route.query.leagueId;
 const leagueInfo = ref({});
 const seasonInfo = ref([]);
 const currentSeasonInfo = ref({});
+const myTeamInfo = ref({});
 const draftTeams = ref([]);
 const draftRoom = ref({});
 
@@ -54,31 +50,23 @@ onMounted(async () => {
     watch(
         () => [
             props.leagueInfo,
-            props.seasonInfo,
             props.currentSeasonInfo,
-            props.draftTeams,
-            props.draftRoom
+            props.myTeamInfo
         ],
         async ([
             newLeagueInfo,
-            newSeasonInfo,
             newCurrentSeasonInfo,
-            newDraftTeams,
-            newDraftRoom
+            newMyTeamInfo
         ]) => {
             const hasAllData =
             newLeagueInfo &&
-            Array.isArray(newSeasonInfo) && newSeasonInfo.length > 0 &&
             newCurrentSeasonInfo &&
-            Array.isArray(newDraftTeams) &&
-            newDraftRoom !== undefined; // draftRoom은 null도 올 수 있으니 undefined만 배제
+            newMyTeamInfo
 
             if (hasAllData) {
                 leagueInfo.value = newLeagueInfo;
-                seasonInfo.value = newSeasonInfo;
                 currentSeasonInfo.value = newCurrentSeasonInfo;
-                draftTeams.value = newDraftTeams;
-                draftRoom.value = newDraftRoom;
+                myTeamInfo.value = newMyTeamInfo;
 
                 isLoadedData.value = true;
             } else {

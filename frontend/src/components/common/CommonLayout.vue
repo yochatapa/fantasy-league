@@ -99,8 +99,8 @@
     <!-- 콘텐츠 영역 -->
     <v-row>
         <v-col cols="12">
-            <router-view v-slot="{ Component }" :league-info="leagueInfo" :current-season-info="currentSeasonInfo" > 
-                <component :is="Component" :league-info="leagueInfo" :current-season-info="currentSeasonInfo" /> 
+            <router-view v-slot="{ Component }" :league-info="leagueInfo" :current-season-info="currentSeasonInfo" :my-team-info="myTeamInfo" > 
+                <component :is="Component"      :league-info="leagueInfo" :current-season-info="currentSeasonInfo" :my-team-info="myTeamInfo" /> 
             </router-view>
         </v-col>
     </v-row>
@@ -116,6 +116,7 @@ const props = defineProps({
     menus: Array,
     leagueInfo: Object,
     currentSeasonInfo: Object,
+    myTeamInfo : Object,
 });
 
 const { mobile } = useDisplay();

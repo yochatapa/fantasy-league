@@ -356,6 +356,78 @@ export const getCurrentSeasonInfo = async (req, res) => {
     }
 }
 
+export const getCurrentMyTeamInfo = async (req, res) => {
+    let { leagueId } = req.params;
+    const accessToken = req.headers['authorization']?.split(' ')[1];  // 'Bearer <token>' 형식에서 토큰 추출
+
+    leagueId = decryptData(leagueId)
+
+    const user = jwt.verify(accessToken, process.env.JWT_SECRET);
+    
+    try {
+        const teamListQuery = `
+            SELECT
+                lst.id,
+                lst.user_id,
+                lst.team_name,
+                lst.logo_url,
+                ft.path AS file_path,
+                ft.mimetype AS file_mimetype
+            FROM league_season_team lst
+            LEFT JOIN file_table ft ON ft.file_id = lst.logo_url::uuid AND ft.sn = 1
+            WHERE lst.league_id = $1
+            AND lst.season_id = (
+                SELECT
+                    season_id
+                FROM league_season ls 
+                WHERE ls.league_id = $1
+                AND   ls.season_year = (
+                    SELECT
+                        max(season_year)
+                    FROM league_season 
+                    WHERE league_id = $1
+                )
+            )
+            AND user_id = $2;
+        `;
+
+        const { rows: teamList } = await query(teamListQuery, [leagueId, user.userId]);
+
+        // logo_url이 상대경로나 절대경로인 경우, 파일에서 base64로 변환
+        // mimetype 컬럼이 없으면 기본 이미지 타입(ex. image/png)로 지정하거나 mime-type 추론 필요
+        for (let i = 0; i < teamList.length; i++) {
+            const team = teamList[i];
+
+            if (team.logo_url) {
+                try {
+                    // 예를 들어 logo_url이 'uploads/teams/logo1.png' 같은 상대경로라면
+                    const filePath = path.isAbsolute(team.logo_url)
+                        ? team.logo_url
+                        : path.join(process.cwd(), team.logo_url);
+
+                    // mimetype 컬럼이 없으면 기본값 지정 (예: 'image/png')
+                    const mimeType = team.logo_url_mimetype || 'image/png';
+
+                    const base64Image = await convertFileToBase64(filePath, mimeType);
+
+                    team.logo_url = base64Image;
+                } catch (err) {
+                    // 파일 없거나 에러 나면 그냥 원래 url 유지하거나 null 처리 가능
+                    console.error(`Failed to convert logo_url to base64 for team id ${team.id}`, err);
+                    // team.logo_url = null; // 선택사항
+                }
+            }
+        }
+
+        return sendSuccess(res, {
+            message: '현재 시즌 정보가 조회되었습니다.',
+            myTeamInfo : teamList[0]
+        });
+    } catch (error) {
+        return sendServerError(res, error, '리그 정보 조회 중 문제가 발생했습니다. 다시 시도해주세요.');
+    }
+}
+
 export const getLeagueList = async (req, res) => {
     const accessToken = req.headers['authorization']?.split(' ')[1];  // 'Bearer <token>' 형식에서 토큰 추출
 
