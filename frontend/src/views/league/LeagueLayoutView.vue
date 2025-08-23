@@ -2,10 +2,7 @@
   <CommonLayout
     :menus="menus"
     :leagueInfo="leagueInfo"
-    :seasonInfo="seasonInfo"
     :currentSeasonInfo="currentSeasonInfo"
-    :draftTeams="draftTeams"
-    :draftRoom="draftRoom"
   />
 </template>
 
@@ -23,13 +20,7 @@ const router = useRouter();
 const orgLeagueId = route.query.leagueId;
 
 const leagueInfo = ref(null);
-const seasonInfo = ref([]);
-const seasonYear = ref(null);
-const seasonDataYn = ref(false);
 const currentSeasonInfo = ref(null);
-const draftTeams = ref([]);
-const draftRoom = ref(null);
-const draftResults = ref([]);
 const isLoadedData = ref(false);
 
 const socket = ref(null); // 소켓 인스턴스
@@ -44,12 +35,12 @@ const menus = [
     },
     {
         name: '팀 관리',
-        path: '/league/team-management',
+        path: `/league/team/info?leagueId=${encodeURIComponent(orgLeagueId)}`,
         subMenu: [
-            { name: '팀 정보', path: '/league/team-management/team-info' },
-            { name: '팀 변경', path: '/league/team-management/team-changes' },
-            { name: '선수 목록', path: '/league/team-management/players' },
-            { name: '코칭스태프', path: '/league/team-management/coaches' }
+            { name: '팀 정보', path: `/league/team/info?leagueId=${encodeURIComponent(orgLeagueId)}` },
+            { name: '팀 변경', path: '/league/team/changes' },
+            { name: '선수 목록', path: '/league/team/players' },
+            { name: '코칭스태프', path: '/league/team/coaches' }
         ]
     },
     {
@@ -170,37 +161,29 @@ const connectSocketRoom = (leagueId, seasonId) => {
 
 const loadLeagueInfo = async () => {
     try {
-        const response = await commonFetch(`/api/league/${encodeURIComponent(orgLeagueId)}/info`, { method: 'GET' });
+        const [leagueRes, seasonRes] = await Promise.all([
+            commonFetch(`/api/league/${encodeURIComponent(orgLeagueId)}/info`, { method: 'GET' }),
+            commonFetch(`/api/league/${encodeURIComponent(orgLeagueId)}/current-season-info`, { method: 'GET' }),
+        ]);
 
-        if (response.success) {
-            const data = response.data.leagueInfo;
+        if(leagueRes.success){
+            const data = leagueRes.data.leagueInfo;
 
             leagueInfo.value = {
                 ...data,
                 leagueTypeLabel: LEAGUE_TYPES.find(item => item.id === data.league_type)?.label || '',
                 leagueFormatLabel: LEAGUE_FORMATS.find(item => item.id === data.league_format)?.label || '',
             };
+        }else {
+            alert("리그 정보 조회 도중 문제가 발생하였습니다.");
+            router.push("/");
+        }
 
-            seasonInfo.value = response.data.seasonInfo;
-
-            if (seasonInfo.value?.length > 0) {
-                seasonYear.value = seasonInfo.value[0].season_year;
-                const seasonRes = await commonFetch(
-                    `/api/league/${encodeURIComponent(orgLeagueId)}/season/${encodeURIComponent(encryptData(seasonInfo.value[0].season_id))}/info`
-                );
-
-                if (seasonRes.success) {
-                    seasonDataYn.value = true;
-                    currentSeasonInfo.value = seasonRes.data.seasonInfo;
-                    draftTeams.value = seasonRes.data.draftTeams;
-                    draftRoom.value = seasonRes.data.draftRoom;
-                    draftResults.value = seasonRes.data.draftResults;
-
-                    // ✨ 여기서 소켓 연결을 시작합니다.
-                    connectSocketRoom(leagueInfo.value.league_id, currentSeasonInfo.value.season_id);
-                }
-            }
-        } else {
+        if(seasonRes.success){
+            currentSeasonInfo.value = seasonRes.data.seasonInfo;
+            
+            connectSocketRoom(leagueInfo.value.league_id, currentSeasonInfo.value.season_id);
+        }else {
             alert("리그 정보 조회 도중 문제가 발생하였습니다.");
             router.push("/");
         }

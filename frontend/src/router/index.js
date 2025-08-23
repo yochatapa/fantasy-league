@@ -21,6 +21,7 @@ import KboGameManagementView from '@/views/admin/kbo/game/KboGameManagementView.
 import KboRosterManagementView from '@/views/admin/kbo/team/KboRosterManagementView.vue'
 
 import KboGameDetailView from '@/views/kbo/game/KboGameDetailView.vue'
+import TeamInfoView from '../views/league/team/TeamInfoView.vue'
 // import KboGameAddView from '@/views/admin/kbo/game/KboGameAddView.vue'
 
 const router = createRouter({
@@ -94,6 +95,21 @@ const router = createRouter({
                             path: 'home',
                             name: 'LeagueHomeView',
                             component: LeagueHomeView,
+                        },
+                        {
+                            path: 'team',
+                            component: TeamInfoView, // 서브 레이아웃 또는 view
+                            meta : {
+                                requiresAuth : true
+                            },
+                            children: [
+                                {
+                                    path: 'info',
+                                    name: 'TeamInfoView',
+                                    component: TeamInfoView,
+                                },
+                                
+                            ]
                         }
                     ]
                 },{

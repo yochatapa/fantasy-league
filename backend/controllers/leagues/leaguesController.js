@@ -292,6 +292,70 @@ export const getLeagueInfo = async (req, res) => {
     }
 }
 
+export const getCurrentSeasonInfo = async (req, res) => {
+    let { leagueId } = req.params;
+
+    leagueId = decryptData(leagueId)
+    
+    try {
+        const leagueInfoQuery = `
+            SELECT
+                ls.season_id,
+                ls.season_year,
+                ls.max_teams,
+                ls.playoff_teams,
+                ls.foreign_player_limit,
+                TO_CHAR(ls.start_date, 'YYYY.MM.DD') AS start_date,
+                ls.allow_trades,
+                TO_CHAR(ls.trade_deadline, 'YYYY.MM.DD HH24:MI') AS trade_deadline,
+                ls.waiver_clear_days,
+                ls.allow_matchup_reset,
+                ls.injured_list_slots,
+                ls.tie_breaker,
+                ls.lineup_change_restriction,
+                ls.season_status,
+
+                -- draft information
+                draft_start_date,
+                -- TO_CHAR(d.draft_start_time, 'HH24:MI') AS draft_start_time,
+                d.draft_end_date,
+                d.draft_type,
+                d.draft_timer,
+                d.allow_auto_draft
+            FROM league_master lm
+                INNER JOIN league_season ls ON lm.league_id = ls.league_id
+                LEFT JOIN league_season_draft_master d ON ls.league_id = d.league_id and ls.season_id = d.season_id
+            WHERE lm.league_id = $1
+            AND ls.season_id = (
+                SELECT
+                    season_id
+                FROM league_season ls 
+                WHERE ls.league_id = $1
+                AND   ls.season_year = (
+                    SELECT
+                        max(season_year)
+                    FROM league_season 
+                    WHERE league_id = $1
+                )
+            );
+        `;
+
+        const param = [leagueId];
+
+        const { rows : seasonInfo } = await query(leagueInfoQuery, param);
+        
+        if (!seasonInfo[0])
+            return sendBadRequest(res, '시즌 정보가 없습니다.');
+
+        return sendSuccess(res, {
+            message: '현재 시즌 정보가 조회되었습니다.',
+            seasonInfo : seasonInfo[0]
+        });
+    } catch (error) {
+        return sendServerError(res, error, '리그 정보 조회 중 문제가 발생했습니다. 다시 시도해주세요.');
+    }
+}
+
 export const getLeagueList = async (req, res) => {
     const accessToken = req.headers['authorization']?.split(' ')[1];  // 'Bearer <token>' 형식에서 토큰 추출
 

@@ -350,10 +350,7 @@ import { formatDate } from '@/utils/common/dateUtils.js';
 const props = defineProps({
     menus: Array,
     leagueInfo: Object,
-    seasonInfo: Object,
     currentSeasonInfo: Object,
-    draftTeams: Array,
-    draftRoom: Object
 });
 
 const { copy } = useClipboard();
@@ -370,7 +367,6 @@ const noticeSummary = ref("공지사항 테스트입니다. 다들 주목하세�
 const orgLeagueId = route.query.leagueId;
 
 // props 값을 담을 변수들
-const menus = ref([]);
 const leagueInfo = ref({});
 const seasonInfo = ref([]);
 const currentSeasonInfo = ref({});
@@ -385,42 +381,6 @@ const draftResults = ref({});
 const seasonYear = ref(null);
 
 const isLoadedData = ref(false);
-
-watch(
-    () => [
-        props.leagueInfo,
-        props.seasonInfo,
-        props.currentSeasonInfo,
-        props.draftTeams,
-        props.draftRoom
-    ],
-    async (newVals) => {
-        const [
-            newLeagueInfo,
-            newSeasonInfo,
-            newCurrentSeasonInfo,
-            newDraftTeams,
-            newDraftRoom
-        ] = newVals;
-
-        if (
-            newLeagueInfo && 
-            newSeasonInfo && 
-            newCurrentSeasonInfo &&
-            newDraftTeams
-        ) { 
-            leagueInfo.value = newLeagueInfo;
-            seasonInfo.value = newSeasonInfo;
-            currentSeasonInfo.value = newCurrentSeasonInfo;
-            draftTeams.value = newDraftTeams;
-            draftRoom.value = newDraftRoom;
-
-            isLoadedData.value = true;
-            await loadSeasonData();
-        }
-    },
-    { immediate: true, deep: false }
-);
 
 watch([seasonInfo, seasonYear], () => {
     filteredSeasonYears.value = seasonInfo.value.filter((sy) => sy.season_year !== seasonYear.value);
@@ -539,22 +499,23 @@ const transactionsList = ref([]);
 const rankings = ref([]);
 
 const loadSeasonData = async () => {
-    if (!currentSeasonInfo.value) return;
+    if (!currentSeasonInfo.value.season_id) return;
 
     const seasonId = currentSeasonInfo.value.season_id;
     
     try {
-        const [matchesRes, transactionsRes, rankingsRes] = await Promise.all([
-            commonFetch(`/api/league/${encodeURIComponent(orgLeagueId)}/season/${encodeURIComponent(encryptData(seasonId))}/matches`, {
-                method: 'GET'
-            }),
-            commonFetch(`/api/league/${encodeURIComponent(orgLeagueId)}/season/${encodeURIComponent(encryptData(seasonId))}/transactions`, {
-                method: 'GET'
-            }),
-            commonFetch(`/api/league/${encodeURIComponent(orgLeagueId)}/season/${encodeURIComponent(encryptData(seasonId))}/rankings`, {
-                method: 'GET'
-            }),
+        const [seasonRes, matchesRes, transactionsRes, rankingsRes] = await Promise.all([
+            commonFetch(`/api/league/${encodeURIComponent(orgLeagueId)}/season/${encodeURIComponent(encryptData(seasonId))}/info`),
+            commonFetch(`/api/league/${encodeURIComponent(orgLeagueId)}/season/${encodeURIComponent(encryptData(seasonId))}/matches`),
+            commonFetch(`/api/league/${encodeURIComponent(orgLeagueId)}/season/${encodeURIComponent(encryptData(seasonId))}/transactions`),
+            commonFetch(`/api/league/${encodeURIComponent(orgLeagueId)}/season/${encodeURIComponent(encryptData(seasonId))}/rankings`),
         ]);
+
+        if(seasonRes.success){
+            draftTeams.value = seasonRes.data.draftTeams;
+            draftRoom.value = seasonRes.data.draftRoom;
+            draftResults.value = seasonRes.data.draftResults;
+        }
 
         if (matchesRes.success) {
             matches.value = matchesRes.data.matches || [];
@@ -588,6 +549,38 @@ onMounted(async () => {
     if (!isMobile.value) {
         isDetailsOpen.value = true;
     }
+
+    watch(
+        () => [
+            props.leagueInfo,
+            props.currentSeasonInfo,
+        ],
+        async ([
+            newLeagueInfo,
+            newCurrentSeasonInfo,
+        ]) => {
+            const hasAllData =
+            newLeagueInfo &&
+            newCurrentSeasonInfo
+            
+            if (hasAllData) {
+                leagueInfo.value = newLeagueInfo;
+                currentSeasonInfo.value = newCurrentSeasonInfo;
+
+                isLoadedData.value = true;
+                
+                try {
+                    await loadSeasonData();
+                } catch (err) {
+                    console.error("loadSeasonData 실패:", err);
+                }
+            } else {
+                // 데이터 부족할 때 초기화 (옵션)
+                isLoadedData.value = false;
+            }
+        },
+        { immediate: true }
+    );
 });
 
 watch(isMobile, (newVal) => {
