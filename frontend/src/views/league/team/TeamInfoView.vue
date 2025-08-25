@@ -111,20 +111,29 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { formatDate } from '@/utils/common/dateUtils.js';
 import { commonFetch } from '@/utils/common/commonFetch';
+import { encryptData } from '@/utils/common/crypto.js';
 import dayjs from 'dayjs';
 
 const props = defineProps({
-    myTeamInfo: Object
+    menus: Array,
+    leagueInfo: Object,
+    currentSeasonInfo: Object,
+    myTeamInfo: Object,
 });
 
 const router = useRouter();
 const route = useRoute();
-const isLoadedData = ref(true);
+
+const isLoadedData = ref(false);
 const calendarOpen = ref(false);
+
+const leagueInfo = ref({});
+const currentSeasonInfo = ref({});
+const myTeamInfo = ref({});
 
 // 필터
 const selectedDate = ref(route.query.date ? dayjs(route.query.date).format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD'));
@@ -206,4 +215,65 @@ const getMatchupList = async () => {
     console.log('선택된 날짜:', selectedDate.value);
     // 실제 API 호출 코드 작성
 };
+
+const loadPlayerData = async () => {
+    if (!currentSeasonInfo.value.season_id) return;
+
+    const leagueId = leagueInfo.value.league_id
+    const seasonId = currentSeasonInfo.value.season_id;
+    const teamId = myTeamInfo.value.id
+    
+    try {
+        const [seasonRes] = await Promise.all([
+            commonFetch(`/api/league/${encodeURIComponent(encryptData(leagueId))}/season/${encodeURIComponent(encryptData(seasonId))}/teams/${encodeURIComponent(encryptData(teamId))}/roster?date=${selectedDate.value}`),
+        ]);
+
+        if(seasonRes.success){
+            draftTeams.value = seasonRes.data.draftTeams;
+            draftRoom.value = seasonRes.data.draftRoom;
+            draftResults.value = seasonRes.data.draftResults;
+        }
+    } catch (err) {
+        // Promise.all 내에서 발생한 치명적인 오류 처리 (e.g., 네트워크 문제)
+        console.error('An error occurred during season data loading:', err);
+    }
+}
+
+onMounted(async() => {
+    watch(
+        () => [
+            props.leagueInfo,
+            props.currentSeasonInfo,
+            props.myTeamInfo
+        ],
+        async ([
+            newLeagueInfo,
+            newCurrentSeasonInfo,
+            newMyTeamInfo
+        ]) => {
+            const hasAllData =
+            newLeagueInfo &&
+            newCurrentSeasonInfo &&
+            newMyTeamInfo
+            
+            if (hasAllData) {
+                leagueInfo.value = newLeagueInfo;
+                currentSeasonInfo.value = newCurrentSeasonInfo;
+                myTeamInfo.value = newMyTeamInfo
+
+                isLoadedData.value = true;
+                
+                try {
+                    await loadPlayerData();
+                } catch (err) {
+                    console.error("팀 선수 정보 조회 실패:", err);
+                }
+            } else {
+                // 데이터 부족할 때 초기화 (옵션)
+                isLoadedData.value = false;
+            }
+        },
+        { immediate: true }
+    );
+})
 </script>

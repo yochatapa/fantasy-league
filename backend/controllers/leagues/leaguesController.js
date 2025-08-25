@@ -1123,3 +1123,121 @@ export const getRankings = async (req, res) => {
         return sendServerError(res, error, '순위 정보를 가져오는 중 오류가 발생했습니다.');
     }
 };
+
+export const getTeamRosterLists = async (req, res) => {
+    const accessToken = req.headers['authorization']?.split(' ')[1];
+    if (!accessToken) return sendBadRequest(res, '토큰이 제공되지 않았습니다.');
+
+    const user = jwt.verify(accessToken, process.env.JWT_SECRET);
+    let { leagueId, seasonId, teamId } = req.params;
+    let { date } = req.query;
+
+    leagueId = decryptData(leagueId);
+    seasonId = decryptData(seasonId);
+    teamId = decryptData(teamId);
+
+    const today = dayjs().startOf('day');
+    const targetDate = dayjs(date || undefined).startOf('day');
+
+    try {
+        // 서브쿼리로 시즌 연도 가져오기
+        const seasonYearQuery = `SELECT season_year FROM league_season WHERE season_id = $1`;
+        const { rows: seasonRows } = await query(seasonYearQuery, [seasonId]);
+        if (!seasonRows[0]) return sendBadRequest(res, '시즌 정보를 찾을 수 없습니다.');
+        const seasonYear = seasonRows[0].season_year;
+
+        let rosterQuery = '';
+        let queryParams = [leagueId, seasonId, teamId, targetDate.format('YYYY-MM-DD'), seasonYear];
+
+        if (targetDate.isBefore(today)) {
+            // 과거 → snapshot
+            rosterQuery = `
+                SELECT s.player_id,
+                       p.name AS player_name,
+                       s.roster_slot_position,
+                       ps.position AS season_position,
+                       ps.uniform_number,
+                       ps.profile_image,
+                       'n' AS move_yn
+                FROM team_roster_snapshots s
+                JOIN kbo_player_master p ON p.id = s.player_id
+                JOIN kbo_player_season ps 
+                    ON ps.player_id = p.id 
+                   AND ps.year = $5
+                WHERE s.league_id = $1
+                  AND s.season_id = $2
+                  AND s.team_id = $3
+                  AND s.snapshot_date = $4
+                ORDER BY s.roster_slot_position;
+            `;
+        } else if (targetDate.isAfter(today)) {
+            // 미래 → plan (없으면 현재 roster)
+            rosterQuery = `
+                SELECT COALESCE(pl.player_id, r.player_id) AS player_id,
+                       COALESCE(pl.roster_slot_position, r.roster_slot_position) AS roster_slot_position,
+                       p.name AS player_name,
+                       ps.position AS season_position,
+                       ps.uniform_number,
+                       ps.profile_image,
+                       'y' AS move_yn
+                FROM league_season_team_rosters r
+                LEFT JOIN team_roster_plans pl
+                  ON r.league_id = pl.league_id
+                 AND r.season_id = pl.season_id
+                 AND r.team_id = pl.team_id
+                 AND r.player_id = pl.player_id
+                 AND pl.lineup_date = $4
+                JOIN kbo_player_master p 
+                  ON p.id = COALESCE(pl.player_id, r.player_id)
+                JOIN kbo_player_season ps 
+                  ON ps.player_id = COALESCE(pl.player_id, r.player_id)
+                 AND ps.year = $5
+                WHERE r.league_id = $1
+                  AND r.season_id = $2
+                  AND r.team_id = $3
+                  AND r.is_active = true
+                ORDER BY roster_slot_position;
+            `;
+        } else {
+            // 오늘
+            rosterQuery = `
+                SELECT r.player_id,
+                       r.roster_slot_position,
+                       p.name AS player_name,
+                       ps.position AS season_position,
+                       ps.uniform_number,
+                       ps.profile_image,
+                       CASE
+                           WHEN g.game_time IS NOT NULL
+                                AND (g.game_date + g.game_time::interval) <= NOW() THEN 'n'
+                           ELSE 'y'
+                       END AS move_yn
+                FROM league_season_team_rosters r
+                LEFT JOIN kbo_game_master g
+                       ON g.season_year = $5
+                      AND g.game_date = $4
+                      AND (g.home_team_id = r.team_id OR g.away_team_id = r.team_id)
+                JOIN kbo_player_master p 
+                  ON p.id = r.player_id
+                JOIN kbo_player_season ps 
+                  ON ps.player_id = r.player_id
+                 AND ps.year = $5
+                WHERE r.league_id = $1
+                  AND r.season_id = $2
+                  AND r.team_id = $3
+                  AND r.is_active = true
+                ORDER BY r.roster_slot_position;
+            `;
+        }
+
+        const { rows: rosterInfo } = await query(rosterQuery, queryParams);
+
+        if (rosterInfo.length > 0) {
+            return sendSuccess(res, { message: '로스터가 조회되었습니다.', rosterInfo });
+        } else {
+            return sendBadRequest(res, '로스터 정보가 없습니다.');
+        }
+    } catch (error) {
+        return sendServerError(res, error, '로스터 정보를 가져오는 중 오류가 발생했습니다.');
+    }
+};
